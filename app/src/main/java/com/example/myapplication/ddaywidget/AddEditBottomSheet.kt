@@ -54,7 +54,7 @@ fun AddEditBottomSheet(
         mutableStateOf(editItem?.getEmoji() ?: if (actualItemType == ItemType.TODO) "✅" else "📌")
     }
     var selectedColor by remember(editItem) {
-        mutableStateOf(editItem?.getColorLong() ?: 0xFF757575L)
+        mutableStateOf(editItem?.getColorLong() ?: 0xFFA8C5DAL)  // Pastel Blue
     }
     var selectedRepeatType by remember(editItem) {
         mutableStateOf(editItem?.repeatTypeEnum() ?: RepeatType.NONE)
@@ -257,7 +257,7 @@ fun AddEditBottomSheet(
                             memo = ""
                             selectedDate = Date()
                             selectedEmoji = if (actualItemType == ItemType.TODO) "✅" else "📌"
-                            selectedColor = 0xFF757575L
+                            selectedColor = 0xFFA8C5DAL  // Pastel Blue
                             selectedRepeatType = RepeatType.NONE
                         }
                     },

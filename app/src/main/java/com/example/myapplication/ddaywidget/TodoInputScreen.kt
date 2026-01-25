@@ -18,7 +18,7 @@ fun TodoInputScreen(viewModel: DdayViewModel) {
     var title by remember { mutableStateOf("") }
     var memo by remember { mutableStateOf("") }
     var selectedEmoji by remember { mutableStateOf("✅") }  // To-Do 기본 이모지
-    var selectedColor by remember { mutableStateOf(0xFF757575L) }  // 기본 색상 (회색)
+    var selectedColor by remember { mutableStateOf(0xFFA8C5DAL) }  // 기본 색상 (Pastel Blue)
     var showEmojiPicker by remember { mutableStateOf(false) }
 
     // 이모지 선택 다이얼로그
@@ -107,7 +107,7 @@ fun TodoInputScreen(viewModel: DdayViewModel) {
                     title = ""
                     memo = ""
                     selectedEmoji = "✅"
-                    selectedColor = 0xFF757575L
+                    selectedColor = 0xFFA8C5DAL
                 }
             },
             modifier = Modifier.align(Alignment.CenterHorizontally)

@@ -25,7 +25,7 @@ fun DdayInputScreen(viewModel: DdayViewModel) {
     var memo by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf(Date()) }
     var selectedEmoji by remember { mutableStateOf("📌") }  // 기본 이모지
-    var selectedColor by remember { mutableStateOf(0xFF757575L) }  // 기본 색상 (회색)
+    var selectedColor by remember { mutableStateOf(0xFFA8C5DAL) }  // 기본 색상 (Pastel Blue)
     var showEmojiPicker by remember { mutableStateOf(false) }
     var selectedRepeatType by remember { mutableStateOf(RepeatType.NONE) }
     var showRepeatPicker by remember { mutableStateOf(false) }
@@ -160,7 +160,7 @@ fun DdayInputScreen(viewModel: DdayViewModel) {
                     memo = ""
                     selectedDate = Date()
                     selectedEmoji = "📌"
-                    selectedColor = 0xFF757575L
+                    selectedColor = 0xFFA8C5DAL
                     selectedRepeatType = RepeatType.NONE
                 }
             },

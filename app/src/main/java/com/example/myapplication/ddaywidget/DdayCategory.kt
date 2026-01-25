@@ -8,21 +8,22 @@ enum class DdayCategory(
     val color: Color,
     val colorLong: Long  // 위젯용 (RemoteViews)
 ) {
-    STUDY("공부/시험", "📚", Color(0xFFE53935), 0xFFE53935),
-    APPOINTMENT("약속/일정", "📅", Color(0xFFFB8C00), 0xFFFB8C00),
-    ANNIVERSARY("생일/기념일", "🎂", Color(0xFF43A047), 0xFF43A047),
-    WORK("업무", "💼", Color(0xFF1E88E5), 0xFF1E88E5),
-    PERSONAL("개인", "🏠", Color(0xFF8E24AA), 0xFF8E24AA),
-    TRAVEL("여행", "✈️", Color(0xFF00ACC1), 0xFF00ACC1),
-    EXERCISE("운동", "💪", Color(0xFFFF7043), 0xFFFF7043),
-    HEALTH("건강/병원", "💊", Color(0xFFEC407A), 0xFFEC407A),
-    SHOPPING("쇼핑", "🛒", Color(0xFFAB47BC), 0xFFAB47BC),
-    FINANCE("금융", "💰", Color(0xFF26A69A), 0xFF26A69A),
-    HOBBY("취미", "🎮", Color(0xFF5C6BC0), 0xFF5C6BC0),
-    FOOD("음식", "🍽️", Color(0xFFFF8A65), 0xFFFF8A65),
-    LOVE("연애", "❤️", Color(0xFFE91E63), 0xFFE91E63),
-    FAMILY("가족", "👨‍👩‍👧", Color(0xFF7CB342), 0xFF7CB342),
-    OTHER("기타", "📌", Color(0xFF757575), 0xFF757575);
+    // Soft Pastel 카테고리 색상
+    STUDY("공부/시험", "📚", Color(0xFFE8A598), 0xFFE8A598),        // Coral
+    APPOINTMENT("약속/일정", "📅", Color(0xFFF5D5C8), 0xFFF5D5C8),  // Peach
+    ANNIVERSARY("생일/기념일", "🎂", Color(0xFFDBA8B8), 0xFFDBA8B8), // Rose
+    WORK("업무", "💼", Color(0xFF7BA3BD), 0xFF7BA3BD),              // Slate Blue
+    PERSONAL("개인", "🏠", Color(0xFFC4B5D4), 0xFFC4B5D4),          // Lavender
+    TRAVEL("여행", "✈️", Color(0xFF9BC4D9), 0xFF9BC4D9),            // Sky
+    EXERCISE("운동", "💪", Color(0xFFE8B5A2), 0xFFE8B5A2),          // Salmon
+    HEALTH("건강/병원", "💊", Color(0xFFB8A5C8), 0xFFB8A5C8),        // Mauve
+    SHOPPING("쇼핑", "🛒", Color(0xFFF2E2A0), 0xFFF2E2A0),          // Lemon
+    FINANCE("금융", "💰", Color(0xFF8CBAB2), 0xFF8CBAB2),           // Teal
+    HOBBY("취미", "🎮", Color(0xFFA8C5DA), 0xFFA8C5DA),             // Pastel Blue
+    FOOD("음식", "🍽️", Color(0xFFE8A598), 0xFFE8A598),              // Coral
+    LOVE("연애", "❤️", Color(0xFFDBA8B8), 0xFFDBA8B8),              // Rose
+    FAMILY("가족", "👨‍👩‍👧", Color(0xFF9FCEC4), 0xFF9FCEC4),            // Mint
+    OTHER("기타", "📌", Color(0xFFA8C5DA), 0xFFA8C5DA);             // Pastel Blue
 
     companion object {
         fun fromName(name: String): DdayCategory {

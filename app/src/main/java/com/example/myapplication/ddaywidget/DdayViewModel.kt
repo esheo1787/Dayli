@@ -134,7 +134,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         memo: String,
         date: Date,
         emoji: String = "📌",
-        color: Long = 0xFF757575L,
+        color: Long = 0xFFA8C5DAL,  // Pastel Blue
         repeatType: RepeatType = RepeatType.NONE
     ) {
         viewModelScope.launch {
@@ -169,7 +169,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         title: String,
         memo: String? = null,
         emoji: String = "✅",
-        color: Long = 0xFF757575L,
+        color: Long = 0xFFA8C5DAL,  // Pastel Blue
         repeatType: RepeatType = RepeatType.NONE
     ) {
         viewModelScope.launch {
