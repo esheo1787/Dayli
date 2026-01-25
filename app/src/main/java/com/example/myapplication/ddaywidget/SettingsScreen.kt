@@ -54,6 +54,11 @@ fun SettingsScreen(
         mutableStateOf(DdaySettings.getWidgetFontSize(context))
     }
 
+    // 테마 설정 상태
+    var themeMode by remember {
+        mutableStateOf(DdaySettings.getThemeModeEnum(context))
+    }
+
     // 알림 설정 상태
     var notifyDayBefore by remember {
         mutableStateOf(DdaySettings.isNotifyDayBeforeEnabled(context))
@@ -80,6 +85,70 @@ fun SettingsScreen(
             .fillMaxWidth()
             .padding(16.dp)
     ) {
+        // ===== 테마 설정 섹션 =====
+        Text(
+            text = "테마 설정",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // 테마 모드 선택
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Text(
+                text = "화면 모드",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = "앱과 위젯의 색상 테마를 선택합니다",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                DdaySettings.ThemeMode.entries.forEach { mode ->
+                    FilterChip(
+                        selected = themeMode == mode,
+                        onClick = {
+                            themeMode = mode
+                            DdaySettings.setThemeModeEnum(context, mode)
+                            onSettingsChanged()
+                        },
+                        label = {
+                            Text(
+                                text = when (mode) {
+                                    DdaySettings.ThemeMode.SYSTEM -> "시스템"
+                                    DdaySettings.ThemeMode.LIGHT -> "라이트"
+                                    DdaySettings.ThemeMode.DARK -> "다크"
+                                }
+                            )
+                        },
+                        leadingIcon = {
+                            Text(
+                                text = when (mode) {
+                                    DdaySettings.ThemeMode.SYSTEM -> "📱"
+                                    DdaySettings.ThemeMode.LIGHT -> "☀️"
+                                    DdaySettings.ThemeMode.DARK -> "🌙"
+                                },
+                                fontSize = 14.sp
+                            )
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+        // ===== 배경 설정 섹션 =====
         Text(
             text = "배경 설정",
             style = MaterialTheme.typography.titleMedium,

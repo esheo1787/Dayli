@@ -10,6 +10,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.RemoteViews
 import com.example.myapplication.R
+import com.example.myapplication.ui.theme.isDarkMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -123,9 +124,13 @@ class DdayWidgetProvider : AppWidgetProvider() {
             // 위젯 배경 투명도 설정 읽기
             val widgetBgOpacity = DdaySettings.getWidgetBgOpacity(context)
             val bgAlpha = (widgetBgOpacity * 2.55f).toInt().coerceIn(0, 255)  // 0~100 → 0~255
-            val widgetBgColor = (bgAlpha shl 24) or 0x00FFFFFF  // 흰색 + 알파
 
-            android.util.Log.d("DDAY_WIDGET", "🎨 위젯 배경 업데이트: opacity=$widgetBgOpacity, alpha=$bgAlpha")
+            // 다크모드 여부에 따라 배경색 결정
+            val isDark = isDarkMode(context)
+            val baseColor = if (isDark) 0x001E1E2E else 0x00FFFFFF  // 어두운 네이비/흰색
+            val widgetBgColor = (bgAlpha shl 24) or baseColor
+
+            android.util.Log.d("DDAY_WIDGET", "🎨 위젯 배경 업데이트: opacity=$widgetBgOpacity, alpha=$bgAlpha, isDark=$isDark")
 
             val views = RemoteViews(context.packageName, R.layout.widget_dday_scrollable).apply {
                 setRemoteAdapter(R.id.widgetListView, intent)
@@ -133,6 +138,10 @@ class DdayWidgetProvider : AppWidgetProvider() {
 
                 // 위젯 컨테이너 배경색 적용
                 setInt(R.id.widget_container, "setBackgroundColor", widgetBgColor)
+
+                // 빈 텍스트 색상 (다크모드 대응)
+                val emptyTextColor = if (isDark) 0x80FFFFFF.toInt() else 0x80000000.toInt()
+                setTextColor(R.id.emptyTextView, emptyTextColor)
 
                 // 체크박스 클릭을 위한 PendingIntent 템플릿
                 val clickIntent = Intent(context, DdayWidgetProvider::class.java).apply {

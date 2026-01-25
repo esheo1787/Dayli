@@ -2,11 +2,13 @@ package com.example.myapplication.ddaywidget
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Paint
 import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import com.example.myapplication.R
+import com.example.myapplication.ui.theme.isDarkMode
 import kotlinx.coroutines.runBlocking
 import java.util.*
 import java.text.SimpleDateFormat
@@ -65,12 +67,15 @@ class RemoteViewsFactory(
         val item = items[position]
         val views = RemoteViews(context.packageName, R.layout.item_dday_widget)
 
+        // 다크모드 확인
+        val isDark = isDarkMode(context)
+
         // 설정값 읽기
         val backgroundEnabled = DdaySettings.isBackgroundEnabled(context)
         val bgOpacity = DdaySettings.getBackgroundOpacity(context) / 100f
         val iconBgOpacity = DdaySettings.getIconBgOpacity(context) / 100f
 
-        android.util.Log.d("DDAY_WIDGET", "🎨 아이템 배경: enabled=$backgroundEnabled, bgOpacity=$bgOpacity, iconBgOpacity=$iconBgOpacity")
+        android.util.Log.d("DDAY_WIDGET", "🎨 아이템 배경: enabled=$backgroundEnabled, bgOpacity=$bgOpacity, iconBgOpacity=$iconBgOpacity, isDark=$isDark")
         val fontSizeMultiplier = when (DdaySettings.getWidgetFontSize(context)) {
             0 -> 0.85f  // 작게
             2 -> 1.15f  // 크게
@@ -99,8 +104,15 @@ class RemoteViewsFactory(
             views.setInt(R.id.item_icon_card, "setBackgroundColor", iconTintColor)
         } else {
             // 배경 비활성화 또는 체크된 항목
-            views.setInt(R.id.item_card, "setBackgroundColor", 0x00000000)
-            views.setInt(R.id.item_icon_card, "setBackgroundColor", 0x15000000)
+            if (isDark) {
+                // 다크모드: 약간 밝은 배경
+                views.setInt(R.id.item_card, "setBackgroundColor", 0x00000000)
+                views.setInt(R.id.item_icon_card, "setBackgroundColor", 0x20FFFFFF)
+            } else {
+                // 라이트모드: 약간 어두운 배경
+                views.setInt(R.id.item_card, "setBackgroundColor", 0x00000000)
+                views.setInt(R.id.item_icon_card, "setBackgroundColor", 0x15000000)
+            }
         }
 
         // 텍스트 설정 + 글씨 크기 (반복 태그 포함 - D-Day와 To-Do 모두)
@@ -164,6 +176,13 @@ class RemoteViewsFactory(
         // 체크박스 상태 설정
         views.setCompoundButtonChecked(R.id.item_checkbox, item.isChecked)
 
+        // 다크모드 텍스트 색상 정의
+        val titleColor = if (isDark) 0xFFF5F5F0.toInt() else 0xFF000000.toInt()  // 아이보리/검정
+        val dateColor = if (isDark) 0xFFB0B0B0.toInt() else 0xFF888888.toInt()   // 밝은회색/회색
+        val checkedTitleColor = if (isDark) 0xFF666666.toInt() else 0xFF888888.toInt()
+        val checkedDateColor = if (isDark) 0xFF555555.toInt() else 0xFFAAAAAA.toInt()
+        val memoColor = if (isDark) 0xFFD0D0D0.toInt() else 0xFF666666.toInt()
+
         // 체크된 항목은 가로줄 표시 (STRIKE_THRU_TEXT_FLAG)
         if (item.isChecked) {
             // 가로줄 + 기본 스타일
@@ -173,9 +192,10 @@ class RemoteViewsFactory(
             views.setInt(R.id.item_dday, "setPaintFlags", strikePaintFlags)
             views.setInt(R.id.item_category_icon, "setPaintFlags", strikePaintFlags)
             // 체크된 항목은 회색으로 표시
-            views.setTextColor(R.id.item_title, 0xFF888888.toInt())
-            views.setTextColor(R.id.item_dday, 0xFF888888.toInt())
-            views.setTextColor(R.id.item_date, 0xFFAAAAAA.toInt())
+            views.setTextColor(R.id.item_title, checkedTitleColor)
+            views.setTextColor(R.id.item_dday, checkedTitleColor)
+            views.setTextColor(R.id.item_date, checkedDateColor)
+            views.setTextColor(R.id.item_memo, checkedTitleColor)
         } else {
             // 가로줄 없음
             val normalPaintFlags = Paint.ANTI_ALIAS_FLAG
@@ -183,10 +203,11 @@ class RemoteViewsFactory(
             views.setInt(R.id.item_memo, "setPaintFlags", normalPaintFlags)
             views.setInt(R.id.item_dday, "setPaintFlags", normalPaintFlags)
             views.setInt(R.id.item_category_icon, "setPaintFlags", normalPaintFlags)
-            // D-Day 색상 적용 (남색/빨간색)
-            views.setTextColor(R.id.item_title, 0xFF000000.toInt())
-            views.setTextColor(R.id.item_dday, ddayColor)
-            views.setTextColor(R.id.item_date, 0xFF888888.toInt())
+            // D-Day 색상 적용 (다크모드에서는 밝게)
+            views.setTextColor(R.id.item_title, titleColor)
+            views.setTextColor(R.id.item_dday, if (isDark) adjustColorForDarkMode(ddayColor) else ddayColor)
+            views.setTextColor(R.id.item_date, dateColor)
+            views.setTextColor(R.id.item_memo, memoColor)
         }
 
         // 체크박스 클릭 시 전달할 인텐트
@@ -223,6 +244,19 @@ class RemoteViewsFactory(
         }.time
 
         return ((targetDate.time - today.time) / (1000 * 60 * 60 * 24)).toInt()
+    }
+
+    // 다크모드용 색상 밝기 조정
+    private fun adjustColorForDarkMode(color: Int): Int {
+        // 빨간색 (D-1 이하): 더 밝은 빨간색
+        if (color == 0xFFE53935.toInt()) {
+            return 0xFFFF6B6B.toInt()  // 밝은 빨간색
+        }
+        // 남색 (D-2 이상): 더 밝은 파란색
+        if (color == 0xFF1A237E.toInt()) {
+            return 0xFF7C9FE8.toInt()  // 밝은 파란색
+        }
+        return color
     }
 
     override fun getLoadingView(): RemoteViews? = null

@@ -49,6 +49,10 @@ object DdaySettings {
     private const val KEY_NOTIFY_VIBRATE = "notify_vibrate"
     private const val DEFAULT_NOTIFY_VIBRATE = true
 
+    // 테마 모드 (0=시스템, 1=라이트, 2=다크)
+    private const val KEY_THEME_MODE = "theme_mode"
+    private const val DEFAULT_THEME_MODE = 0  // 시스템 설정 따라가기
+
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
@@ -179,5 +183,37 @@ object DdaySettings {
         } else {
             "$amPm ${displayHour}시 ${minute}분"
         }
+    }
+
+    // ===== 테마 설정 =====
+
+    // 테마 모드 (0=시스템, 1=라이트, 2=다크)
+    fun getThemeMode(context: Context): Int {
+        return getPrefs(context).getInt(KEY_THEME_MODE, DEFAULT_THEME_MODE)
+    }
+
+    fun setThemeMode(context: Context, mode: Int) {
+        getPrefs(context).edit().putInt(KEY_THEME_MODE, mode.coerceIn(0, 2)).apply()
+    }
+
+    // 테마 모드 enum
+    enum class ThemeMode(val value: Int, val displayName: String) {
+        SYSTEM(0, "시스템 설정"),
+        LIGHT(1, "라이트 모드"),
+        DARK(2, "다크 모드");
+
+        companion object {
+            fun fromValue(value: Int): ThemeMode {
+                return entries.find { it.value == value } ?: SYSTEM
+            }
+        }
+    }
+
+    fun getThemeModeEnum(context: Context): ThemeMode {
+        return ThemeMode.fromValue(getThemeMode(context))
+    }
+
+    fun setThemeModeEnum(context: Context, mode: ThemeMode) {
+        setThemeMode(context, mode.value)
     }
 }
