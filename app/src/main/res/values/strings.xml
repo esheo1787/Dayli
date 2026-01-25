@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">My Application</string>
+    <string name="empty_dday">등록된 D-Day 없음</string>
+</resources>

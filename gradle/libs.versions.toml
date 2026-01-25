@@ -1,0 +1,35 @@
+[versions]
+agp = "8.10.1"
+kotlin = "2.0.21"
+core_ktx = "1.10.1"
+junit = "4.13.2"
+junit_version = "1.1.5"
+espresso_core = "3.5.1"
+lifecycle_runtime_ktx = "2.6.1"
+lifecycle = "2.7.0"
+activity_compose = "1.8.0"
+compose_bom = "2024.09.00"
+compose_runtime_livedata = "1.6.4"
+
+[libraries]
+androidx_core_ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core_ktx" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx_junit = { group = "androidx.test.ext", name = "junit", version.ref = "junit_version" }
+androidx_espresso_core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso_core" }
+androidx_lifecycle_runtime_ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle_runtime_ktx" }
+androidx_activity_compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity_compose" }
+androidx_compose_bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose_bom" }
+androidx_ui = { group = "androidx.compose.ui", name = "ui" }
+androidx_ui_graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx_ui_tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx_ui_tooling_preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx_ui_test_manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx_ui_test_junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx_material3 = { group = "androidx.compose.material3", name = "material3" }
+lifecycle_livedata_ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycle" }
+compose_runtime_livedata = { group = "androidx.compose.runtime", name = "runtime-livedata", version.ref = "compose_runtime_livedata" }
+
+[plugins]
+android_application = { id = "com.android.application", version.ref = "agp" }
+kotlin_android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin_compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
