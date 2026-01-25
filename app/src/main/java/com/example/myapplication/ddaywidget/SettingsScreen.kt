@@ -33,7 +33,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
-    onSettingsChanged: () -> Unit = {}
+    onSettingsChanged: () -> Unit = {},
+    onThemeChanged: (DdaySettings.ThemeMode) -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -119,6 +120,7 @@ fun SettingsScreen(
                         onClick = {
                             themeMode = mode
                             DdaySettings.setThemeModeEnum(context, mode)
+                            onThemeChanged(mode)  // 테마 즉시 적용
                             onSettingsChanged()
                         },
                         label = {

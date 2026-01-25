@@ -51,8 +51,17 @@ class MainActivity : ComponentActivity() {
         requestNotificationPermission()
 
         setContent {
-            MyApplicationTheme {
-                MainDdayScreen()  // Composable 함수로 분리
+            // 테마 모드 상태 관리 (즉시 적용을 위해)
+            var currentThemeMode by remember {
+                mutableStateOf(DdaySettings.getThemeModeEnum(this))
+            }
+
+            MyApplicationTheme(themeMode = currentThemeMode) {
+                MainDdayScreen(
+                    onThemeChanged = { newMode ->
+                        currentThemeMode = newMode
+                    }
+                )
             }
         }
     }
@@ -78,7 +87,10 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainDdayScreen(viewModel: DdayViewModel = viewModel()) {
+fun MainDdayScreen(
+    viewModel: DdayViewModel = viewModel(),
+    onThemeChanged: (DdaySettings.ThemeMode) -> Unit = {}
+) {
     val context = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
     // 설정 변경 시 리스트 새로고침을 위한 키
@@ -200,7 +212,8 @@ fun MainDdayScreen(viewModel: DdayViewModel = viewModel()) {
                             DdayWidgetProvider.refreshAllWidgets(context)
                             // 앱 리스트 새로고침
                             settingsKey++
-                        }
+                        },
+                        onThemeChanged = onThemeChanged
                     )
                 }
             },
