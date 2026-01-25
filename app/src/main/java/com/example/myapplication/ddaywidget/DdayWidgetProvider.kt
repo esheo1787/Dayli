@@ -125,9 +125,10 @@ class DdayWidgetProvider : AppWidgetProvider() {
             val widgetBgOpacity = DdaySettings.getWidgetBgOpacity(context)
             val bgAlpha = (widgetBgOpacity * 2.55f).toInt().coerceIn(0, 255)  // 0~100 → 0~255
 
-            // 다크모드 여부에 따라 배경색 결정
+            // Soft Pastel 테마 배경색
+            // 라이트: CreamWhite (#FFFDF5), 다크: DarkSurface (#2A2A3E)
             val isDark = isDarkMode(context)
-            val baseColor = if (isDark) 0x001E1E2E else 0x00FFFFFF  // 어두운 네이비/흰색
+            val baseColor = if (isDark) 0x002A2A3E else 0x00FFFDF5
             val widgetBgColor = (bgAlpha shl 24) or baseColor
 
             android.util.Log.d("DDAY_WIDGET", "🎨 위젯 배경 업데이트: opacity=$widgetBgOpacity, alpha=$bgAlpha, isDark=$isDark")
@@ -139,8 +140,8 @@ class DdayWidgetProvider : AppWidgetProvider() {
                 // 위젯 컨테이너 배경색 적용
                 setInt(R.id.widget_container, "setBackgroundColor", widgetBgColor)
 
-                // 빈 텍스트 색상 (다크모드 대응)
-                val emptyTextColor = if (isDark) 0x80FFFFFF.toInt() else 0x80000000.toInt()
+                // 빈 텍스트 색상 (Soft Pastel 테마)
+                val emptyTextColor = if (isDark) 0x80B8B8B8.toInt() else 0x807A7A7A.toInt()
                 setTextColor(R.id.emptyTextView, emptyTextColor)
 
                 // 체크박스 클릭을 위한 PendingIntent 템플릿
