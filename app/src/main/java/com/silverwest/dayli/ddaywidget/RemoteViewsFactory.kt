@@ -40,6 +40,7 @@ class RemoteViewsFactory(
     }
 
     override fun onDataSetChanged() {
+        android.util.Log.d("WIDGET_DEBUG", "onDataSetChanged START, mode=$mode")
         android.util.Log.d("WIDGET_PIPE", "onDataSetChanged")
         android.util.Log.d("DDAY_WIDGET", "📦 RemoteViewsFactory.onDataSetChanged() 호출됨 (mode=$mode)")
 
@@ -66,14 +67,11 @@ class RemoteViewsFactory(
                     val ddayItems = items.filter { it.isDday() }
                     val todoItems = items.filter { it.isTodo() }
                     buildList {
-                        if (ddayItems.isNotEmpty()) {
-                            add(WidgetRow.Header("D-Day"))
-                            addAll(ddayItems.map { WidgetRow.Item(it) })
-                        }
-                        if (todoItems.isNotEmpty()) {
-                            add(WidgetRow.Header("To-Do"))
-                            addAll(todoItems.map { WidgetRow.Item(it) })
-                        }
+                        // 헤더는 항상 표시 (아이템이 0개여도)
+                        add(WidgetRow.Header("D-Day"))
+                        addAll(ddayItems.map { WidgetRow.Item(it) })
+                        add(WidgetRow.Header("To-Do"))
+                        addAll(todoItems.map { WidgetRow.Item(it) })
                     }
                 } else {
                     // D-Day 전용 / To-Do 전용은 헤더 없이 아이템만
@@ -81,11 +79,13 @@ class RemoteViewsFactory(
                 }
 
                 android.util.Log.d("DDAY_WIDGET", "📦 위젯 items 개수: ${items.size}, displayRows: ${displayRows.size} (전체: ${allItems.size})")
+                android.util.Log.d("WIDGET_FACTORY", "onDataSetChanged END: RemoteViewsFactory, rows.size=${displayRows.size}")
             }
         } catch (e: Exception) {
             android.util.Log.e("DDAY_WIDGET", "❌ 위젯 데이터 로드 실패", e)
             items = emptyList()
             displayRows = emptyList()
+            android.util.Log.d("WIDGET_DEBUG", "onDataSetChanged EXCEPTION, displayRows.size=${displayRows.size}")
         }
     }
 
@@ -94,7 +94,10 @@ class RemoteViewsFactory(
         displayRows = emptyList()
     }
 
-    override fun getCount(): Int = displayRows.size
+    override fun getCount(): Int {
+        android.util.Log.d("WIDGET_FACTORY", "getCount returning ${displayRows.size}: RemoteViewsFactory")
+        return displayRows.size
+    }
 
     override fun getViewTypeCount(): Int = 2
 
@@ -106,7 +109,10 @@ class RemoteViewsFactory(
     }
 
     override fun getViewAt(position: Int): RemoteViews {
+        android.util.Log.d("WIDGET_DEBUG", "getViewAt position=$position, row=${displayRows.getOrNull(position)}")
+
         if (position < 0 || position >= displayRows.size) {
+            android.util.Log.d("WIDGET_DEBUG", "getViewAt INVALID position=$position, displayRows.size=${displayRows.size}")
             return RemoteViews(context.packageName, R.layout.item_dday_widget)
         }
 
@@ -319,7 +325,13 @@ class RemoteViewsFactory(
         return ((targetDate.time - today.time) / (1000 * 60 * 60 * 24)).toInt()
     }
 
-    override fun getLoadingView(): RemoteViews? = null
+    override fun getLoadingView(): RemoteViews {
+        android.util.Log.d("WIDGET_FACTORY", "getLoadingView called: RemoteViewsFactory (mode=$mode)")
+        // 로딩 중에 빈 헤더 뷰를 표시 (기본 "로드 중" 메시지 방지)
+        return RemoteViews(context.packageName, R.layout.item_widget_section_header).apply {
+            setTextViewText(R.id.header_title, "")
+        }
+    }
     // getViewTypeCount()는 위에서 이미 override 했으므로 제거
     override fun getItemId(position: Int): Long {
         return when (val row = displayRows.getOrNull(position)) {

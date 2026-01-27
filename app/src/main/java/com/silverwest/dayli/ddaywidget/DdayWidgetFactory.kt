@@ -19,6 +19,7 @@ class DdayWidgetFactory(
     override fun onCreate() {}
 
     override fun onDataSetChanged() {
+        android.util.Log.d("WIDGET_FACTORY", "onDataSetChanged START: DdayWidgetFactory")
         val db = DdayDatabase.getDatabase(context)
         val dao = db.ddayDao()
 
@@ -33,9 +34,13 @@ class DdayWidgetFactory(
         runBlocking {
             items = dao.getAllForWidget(todayStart)
         }
+        android.util.Log.d("WIDGET_FACTORY", "onDataSetChanged END: DdayWidgetFactory, rows.size=${items.size}")
     }
 
-    override fun getCount(): Int = items.size
+    override fun getCount(): Int {
+        android.util.Log.d("WIDGET_FACTORY", "getCount returning ${items.size}: DdayWidgetFactory")
+        return items.size
+    }
 
     override fun getViewAt(position: Int): RemoteViews {
         val item = items[position]
@@ -48,7 +53,11 @@ class DdayWidgetFactory(
         return views
     }
 
-    override fun getLoadingView(): RemoteViews? = null
+    override fun getLoadingView(): RemoteViews {
+        android.util.Log.d("WIDGET_FACTORY", "getLoadingView called: DdayWidgetFactory")
+        // 로딩 중에 빈 뷰 표시 (기본 "로드 중" 메시지 방지)
+        return RemoteViews(context.packageName, R.layout.item_dday_widget)
+    }
     override fun getViewTypeCount(): Int = 1
     override fun getItemId(position: Int): Long = items[position].id.toLong()
     override fun hasStableIds(): Boolean = true

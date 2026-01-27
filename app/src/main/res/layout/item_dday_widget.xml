@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 위젯 아이템 레이아웃 (Step 9D 가독성 개선) -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/item_card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:paddingHorizontal="12dp"
-    android:paddingVertical="10dp"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="12dp"
+    android:layout_marginVertical="3dp"
     android:gravity="center_vertical"
     android:background="@drawable/widget_item_rounded_bg">
 
@@ -34,15 +36,15 @@
         android:layout_marginStart="12dp"
         android:layout_marginEnd="8dp">
 
-        <!-- 제목 -->
+        <!-- 제목 (Primary) -->
         <TextView
             android:id="@+id/item_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="제목"
             android:textStyle="bold"
-            android:textSize="15sp"
-            android:textColor="#DD000000"
+            android:textSize="16sp"
+            android:textColor="#212121"
             android:ellipsize="end"
             android:maxLines="1"
             android:fontFamily="sans-serif-medium" />
@@ -52,16 +54,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="3dp">
+            android:layout_marginTop="4dp">
 
+            <!-- 날짜 (Secondary) -->
             <TextView
                 android:id="@+id/item_date"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="2025.05.28"
-                android:textSize="12sp"
-                android:textColor="#88000000" />
+                android:textSize="13sp"
+                android:textColor="#616161" />
 
+            <!-- 메모 (Tertiary) -->
             <TextView
                 android:id="@+id/item_memo"
                 android:layout_width="0dp"
@@ -69,7 +73,7 @@
                 android:layout_weight="1"
                 android:text="메모"
                 android:textSize="12sp"
-                android:textColor="#77000000"
+                android:textColor="#9E9E9E"
                 android:layout_marginStart="8dp"
                 android:ellipsize="end"
                 android:maxLines="1"
@@ -77,16 +81,17 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- D-Day 텍스트 -->
+    <!-- D-Day 텍스트 (Primary - 색상은 Factory에서 동적 설정) -->
     <TextView
         android:id="@+id/item_dday"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="D-3"
         android:textStyle="bold"
-        android:textSize="15sp"
-        android:textColor="#FF1A237E"
-        android:layout_marginEnd="6dp"
+        android:textSize="17sp"
+        android:textColor="#212121"
+        android:singleLine="true"
+        android:layout_marginEnd="8dp"
         android:fontFamily="sans-serif-medium" />
 
     <!-- 체크박스 - 기본 스타일 (위젯 호환성) -->

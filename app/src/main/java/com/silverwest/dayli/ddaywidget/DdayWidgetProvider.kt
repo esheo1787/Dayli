@@ -106,6 +106,7 @@ class DdayWidgetProvider : AppWidgetProvider() {
                 updateAppWidget(context, manager, id)
             }
             if (mainIds.isNotEmpty()) {
+                android.util.Log.d("WIDGET_DEBUG", "notifyAppWidgetViewDataChanged mainIds=${mainIds.toList()}")
                 manager.notifyAppWidgetViewDataChanged(mainIds, R.id.widgetListView)
             }
 
@@ -129,10 +130,14 @@ class DdayWidgetProvider : AppWidgetProvider() {
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int
         ) {
+            // RemoteViewsService Intent with MODE_ALL (통합 위젯)
             val intent = Intent(context, DdayWidgetService::class.java).apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
+                putExtra(DdayOnlyWidgetProvider.EXTRA_WIDGET_MODE, DdayOnlyWidgetProvider.MODE_ALL)
+                // Unique URI to prevent cache collision (include mode)
+                data = Uri.parse("dayli://widget/$appWidgetId?mode=${DdayOnlyWidgetProvider.MODE_ALL}")
             }
+            android.util.Log.d("WIDGET_DEBUG", "updateAppWidget id=$appWidgetId, data=${intent.data}")
 
             // 위젯 배경 투명도 설정 읽기
             val widgetBgOpacity = DdaySettings.getWidgetBgOpacity(context)

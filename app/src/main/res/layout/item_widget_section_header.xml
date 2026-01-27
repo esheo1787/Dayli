@@ -1,13 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<TextView
+<!-- 위젯 섹션 헤더 (Step 9D 가독성 개선) -->
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/header_title"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingHorizontal="14dp"
-    android:paddingTop="10dp"
-    android:paddingBottom="4dp"
-    android:textSize="12sp"
-    android:textStyle="bold"
-    android:textColor="#88000000"
-    android:background="@android:color/transparent" />
+    android:orientation="vertical"
+    android:background="#F5F5F5">
+
+    <!-- 섹션 타이틀 (Secondary) - 텍스트는 Factory에서만 설정 -->
+    <TextView
+        android:id="@+id/header_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="14dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="8dp"
+        android:text=""
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="#616161"
+        android:fontFamily="sans-serif-medium" />
+
+    <!-- 하단 구분선 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="14dp"
+        android:background="#E0E0E0" />
+
+</LinearLayout>
