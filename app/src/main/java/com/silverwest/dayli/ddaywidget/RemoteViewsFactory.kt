@@ -13,15 +13,22 @@ import java.util.*
 import java.text.SimpleDateFormat
 
 class RemoteViewsFactory(
-    private val context: Context
+    private val context: Context,
+    private val intent: Intent? = null
 ) : RemoteViewsService.RemoteViewsFactory {
 
     private var items: List<DdayItem> = emptyList()
 
-    override fun onCreate() {}
+    // Widget mode from intent (MODE_ALL, MODE_DDAY, MODE_TODO)
+    private val mode: String = intent?.getStringExtra(DdayOnlyWidgetProvider.EXTRA_WIDGET_MODE)
+        ?: DdayOnlyWidgetProvider.MODE_ALL
+
+    override fun onCreate() {
+        android.util.Log.d("DDAY_WIDGET", "📦 RemoteViewsFactory created with mode: $mode")
+    }
 
     override fun onDataSetChanged() {
-        android.util.Log.d("DDAY_WIDGET", "📦 RemoteViewsFactory.onDataSetChanged() 호출됨")
+        android.util.Log.d("DDAY_WIDGET", "📦 RemoteViewsFactory.onDataSetChanged() 호출됨 (mode=$mode)")
 
         try {
             runBlocking {
@@ -31,15 +38,17 @@ class RemoteViewsFactory(
                 // 24시간 전 타임스탬프 계산 (To-Do 체크 후 24시간 유지용)
                 val cutoffTime = System.currentTimeMillis() - 24 * 60 * 60 * 1000
 
-                android.util.Log.d("DDAY_WIDGET", "📦 cutoffTime: $cutoffTime")
-
                 // D-Day: 체크 즉시 숨김 / To-Do: 체크 후 24시간 유지
-                items = dao.getAllForWidgetWithTodos(cutoffTime)
+                val allItems = dao.getAllForWidgetWithTodos(cutoffTime)
 
-                android.util.Log.d("DDAY_WIDGET", "📦 위젯 items 개수: ${items.size}")
-                items.forEach { item ->
-                    android.util.Log.d("DDAY_WIDGET", "📦 item: id=${item.id}, title=${item.title}, isChecked=${item.isChecked}, checkedAt=${item.checkedAt}")
+                // mode에 따라 필터링
+                items = when (mode) {
+                    DdayOnlyWidgetProvider.MODE_DDAY -> allItems.filter { it.isDday() }
+                    DdayOnlyWidgetProvider.MODE_TODO -> allItems.filter { it.isTodo() }
+                    else -> allItems  // MODE_ALL: 전체 표시
                 }
+
+                android.util.Log.d("DDAY_WIDGET", "📦 위젯 items 개수: ${items.size} (전체: ${allItems.size})")
             }
         } catch (e: Exception) {
             android.util.Log.e("DDAY_WIDGET", "❌ 위젯 데이터 로드 실패", e)

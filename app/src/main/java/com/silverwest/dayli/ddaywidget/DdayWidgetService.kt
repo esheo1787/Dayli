@@ -5,7 +5,7 @@ import android.widget.RemoteViewsService
 
 class DdayWidgetService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory {
-        return RemoteViewsFactory(applicationContext)
+        return RemoteViewsFactory(applicationContext, intent)
     }
 }
 
