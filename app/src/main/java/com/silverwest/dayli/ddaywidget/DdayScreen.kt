@@ -37,7 +37,7 @@ fun DdayScreen(
     val context = LocalContext.current
     val ddays by viewModel.ddayList.observeAsState(emptyList())
     val todos by viewModel.todoList.observeAsState(emptyList())
-    val currentSort by viewModel.sortOption.observeAsState(SortOption.LATEST)
+    val currentSort by viewModel.sortOption.observeAsState(SortOption.NEAREST)
     val currentCategory by viewModel.categoryFilter.observeAsState(null)
     val currentTab by viewModel.currentTab.observeAsState(ItemType.DDAY)
 
@@ -122,15 +122,15 @@ fun DdayScreen(
                         style = MaterialTheme.typography.bodySmall
                     )
                     FilterChip(
-                        selected = currentSort == SortOption.LATEST,
-                        onClick = { viewModel.setSortOption(SortOption.LATEST) },
-                        label = { Text("최신순", style = MaterialTheme.typography.bodySmall) },
+                        selected = currentSort == SortOption.NEAREST,
+                        onClick = { viewModel.setSortOption(SortOption.NEAREST) },
+                        label = { Text("임박순", style = MaterialTheme.typography.bodySmall) },
                         modifier = Modifier.padding(end = 4.dp)
                     )
                     FilterChip(
-                        selected = currentSort == SortOption.DDAY,
-                        onClick = { viewModel.setSortOption(SortOption.DDAY) },
-                        label = { Text("D-Day순", style = MaterialTheme.typography.bodySmall) }
+                        selected = currentSort == SortOption.FARTHEST,
+                        onClick = { viewModel.setSortOption(SortOption.FARTHEST) },
+                        label = { Text("여유순", style = MaterialTheme.typography.bodySmall) }
                     )
                 }
             }

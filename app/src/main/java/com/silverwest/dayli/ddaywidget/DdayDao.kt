@@ -55,9 +55,13 @@ interface DdayDao {
     @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' ORDER BY id DESC")
     suspend fun getAllDdays(): List<DdayItem>
 
-    // D-Day 아이템만 (D-Day 임박순)
+    // D-Day 아이템만 (임박순 - 가까운 날짜 먼저)
     @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' ORDER BY date ASC")
-    suspend fun getAllDdaysByDate(): List<DdayItem>
+    suspend fun getAllDdaysByDateAsc(): List<DdayItem>
+
+    // D-Day 아이템만 (여유순 - 먼 날짜 먼저)
+    @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' ORDER BY date DESC")
+    suspend fun getAllDdaysByDateDesc(): List<DdayItem>
 
     // To-Do 아이템만 (최신순)
     @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' ORDER BY id DESC")

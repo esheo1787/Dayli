@@ -8,8 +8,8 @@ import java.util.Date
 
 // 정렬 옵션
 enum class SortOption {
-    LATEST,  // 최신 등록순
-    DDAY     // D-Day 임박순
+    NEAREST,   // 임박순 (가까운 날짜 먼저)
+    FARTHEST   // 여유순 (먼 날짜 먼저)
 }
 
 class DdayViewModel(application: Application) : AndroidViewModel(application) {
@@ -21,7 +21,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     private val _todoList = MutableLiveData<List<DdayItem>>()
     val todoList: LiveData<List<DdayItem>> = _todoList
 
-    private val _sortOption = MutableLiveData(SortOption.LATEST)
+    private val _sortOption = MutableLiveData(SortOption.NEAREST)
     val sortOption: LiveData<SortOption> = _sortOption
 
     // 카테고리 필터 (null = 전체)
@@ -44,9 +44,9 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     fun loadAllDdays() {
         viewModelScope.launch {
             val items = when (_sortOption.value) {
-                SortOption.LATEST -> dao.getAllDdays()
-                SortOption.DDAY -> dao.getAllDdaysByDate()
-                else -> dao.getAllDdays()
+                SortOption.NEAREST -> dao.getAllDdaysByDateAsc()
+                SortOption.FARTHEST -> dao.getAllDdaysByDateDesc()
+                else -> dao.getAllDdaysByDateAsc()
             }
             _ddayList.postValue(items)
         }
