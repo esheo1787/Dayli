@@ -28,6 +28,7 @@ class RemoteViewsFactory(
     }
 
     override fun onDataSetChanged() {
+        android.util.Log.d("WIDGET_PIPE", "onDataSetChanged")
         android.util.Log.d("DDAY_WIDGET", "📦 RemoteViewsFactory.onDataSetChanged() 호출됨 (mode=$mode)")
 
         try {
@@ -148,17 +149,17 @@ class RemoteViewsFactory(
                 daysUntil == 0 -> "D-DAY"
                 else -> "D+${-daysUntil}"
             }
-            // Soft Pastel D-Day 색상
-            // D-2 이상: 슬레이트 블루, D-1 이하(D-DAY, D+N 포함): 코랄/로즈
-            ddayColor = if (daysUntil <= 1) {
-                if (isDark) 0xFFE8A598.toInt() else 0xFFDBA8B8.toInt()  // 코랄/로즈
-            } else {
-                if (isDark) 0xFF9BC4D9.toInt() else 0xFF7BA3BD.toInt()  // 스카이/슬레이트
+            // D-Day 숫자 색상 규칙:
+            // D-3 ~ D-2: 파란색, D-1/D-Day/D+N: 빨간색, D-4 이상: 기본 검정
+            ddayColor = when {
+                daysUntil == 2 || daysUntil == 3 -> 0xFF2F6BFF.toInt()  // 파란색 (D-2, D-3)
+                daysUntil <= 1 -> 0xFFE53935.toInt()  // 빨간색 (D-1, D-Day, D+N)
+                else -> if (isDark) 0xFFF5F5F0.toInt() else 0xFF4A4A4A.toInt()  // 기본 (D-4 이상)
             }
         } else {
             // To-Do 아이템: 빈 텍스트
             ddayText = ""
-            ddayColor = itemColor
+            ddayColor = itemColor  // To-Do는 ddayText가 빈 값이므로 색상 무관
         }
         views.setTextViewText(R.id.item_dday, ddayText)
         views.setTextViewTextSize(R.id.item_dday, android.util.TypedValue.COMPLEX_UNIT_SP, 16f * fontSizeMultiplier)
@@ -177,8 +178,13 @@ class RemoteViewsFactory(
         views.setTextViewText(R.id.item_date, formattedDate)
         views.setTextViewTextSize(R.id.item_date, android.util.TypedValue.COMPLEX_UNIT_SP, 12f * fontSizeMultiplier)
 
-        // 체크박스 상태 설정
-        views.setCompoundButtonChecked(R.id.item_checkbox, item.isChecked)
+        // 체크박스: D-Day는 숨김, To-Do만 표시
+        if (item.isDday()) {
+            views.setViewVisibility(R.id.item_checkbox, View.GONE)
+        } else {
+            views.setViewVisibility(R.id.item_checkbox, View.VISIBLE)
+            views.setCompoundButtonChecked(R.id.item_checkbox, item.isChecked)
+        }
 
         // Soft Pastel 테마 텍스트 색상 정의
         // 라이트모드: WarmGray (#4A4A4A) 기반

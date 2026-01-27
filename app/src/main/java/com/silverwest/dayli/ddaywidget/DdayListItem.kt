@@ -28,6 +28,7 @@ fun DdayListItem(
     val context = LocalContext.current
     val formattedDate = item.date?.let { SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(it) }
     val ddayText = item.date?.let { calculateDday(it) }
+    val ddayDiff = item.date?.let { calculateDdayDiff(it) }
 
     // 커스텀 색상 또는 카테고리 기본 색상 사용
     val itemColor = item.getColorLong().toComposeColor()
@@ -158,12 +159,22 @@ fun DdayListItem(
         Row(verticalAlignment = Alignment.CenterVertically) {
             // D-Day 텍스트는 D-Day 아이템일 때만 표시
             ddayText?.let { text ->
+                // D-Day 숫자 색상: D-3~D-2 파란색, D-1/D-Day/D+N 빨간색, D-4 이상 기본색
+                val ddayColor = if (item.isChecked) {
+                    Color.Gray
+                } else {
+                    when {
+                        ddayDiff == 2 || ddayDiff == 3 -> Color(0xFF2F6BFF)  // 파란색
+                        ddayDiff != null && ddayDiff <= 1 -> Color(0xFFE53935)  // 빨간색
+                        else -> MaterialTheme.colorScheme.onSurface  // 기본색 (D-4 이상)
+                    }
+                }
                 Text(
                     text = text,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(end = 4.dp),
                     textDecoration = textDecoration,
-                    color = primaryTextColor
+                    color = ddayColor
                 )
             }
             Checkbox(
@@ -179,6 +190,15 @@ fun DdayListItem(
 }
 
 fun calculateDday(date: Date): String {
+    val diff = calculateDdayDiff(date)
+    return when {
+        diff > 0 -> "D-$diff"
+        diff == 0 -> "D-DAY"
+        else -> "D+${-diff}"
+    }
+}
+
+fun calculateDdayDiff(date: Date): Int {
     val today = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 0)
         set(Calendar.MINUTE, 0)
@@ -194,10 +214,5 @@ fun calculateDday(date: Date): String {
         set(Calendar.MILLISECOND, 0)
     }.time
 
-    val diff = ((targetDate.time - today.time) / (1000 * 60 * 60 * 24)).toInt()
-    return when {
-        diff > 0 -> "D-$diff"
-        diff == 0 -> "D-DAY"
-        else -> "D+${-diff}"
-    }
+    return ((targetDate.time - today.time) / (1000 * 60 * 60 * 24)).toInt()
 }
