@@ -64,6 +64,20 @@
                 android:resource="@xml/dday_only_widget_info" />
         </receiver>
 
+        <!-- ✅ To-Do 전용 위젯 Provider 등록 -->
+        <receiver
+            android:name="com.silverwest.dayli.ddaywidget.TodoOnlyWidgetProvider"
+            android:exported="false"
+            android:label="To-Do 전용">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/todo_only_widget_info" />
+        </receiver>
+
         <!-- ✅ 부팅 시 자정 알람 재설정용 Receiver -->
         <receiver
             android:name="com.silverwest.dayli.ddaywidget.BootReceiver"
