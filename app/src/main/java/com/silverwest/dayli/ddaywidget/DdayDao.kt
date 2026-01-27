@@ -67,17 +67,22 @@ interface DdayDao {
     @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' ORDER BY isChecked ASC, id DESC")
     suspend fun getAllTodosSorted(): List<DdayItem>
 
-    // 위젯용: D-Day + To-Do 함께 (체크 안 됨 OR 오늘 체크)
+    // 위젯용: D-Day + To-Do 함께
+    // D-Day: 체크 즉시 숨김
+    // To-Do: 체크 후 24시간 유지
+    // :cutoffTime = 현재 시간 - 24시간
     @Query("""
         SELECT * FROM dday_items
-        WHERE isChecked = 0
-           OR (isChecked = 1 AND checkedAt >= :todayStart)
+        WHERE
+            (itemType = 'DDAY' AND isChecked = 0)
+            OR
+            (itemType = 'TODO' AND (isChecked = 0 OR (isChecked = 1 AND checkedAt > :cutoffTime)))
         ORDER BY
             isChecked ASC,
             CASE WHEN itemType = 'DDAY' AND date IS NOT NULL THEN 0 ELSE 1 END,
             date ASC,
             id DESC
     """)
-    suspend fun getAllForWidgetWithTodos(todayStart: Long): List<DdayItem>
+    suspend fun getAllForWidgetWithTodos(cutoffTime: Long): List<DdayItem>
 }
 

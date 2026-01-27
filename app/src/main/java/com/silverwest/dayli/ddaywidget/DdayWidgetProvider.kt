@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.RemoteViews
+import com.silverwest.dayli.MainActivity
 import com.silverwest.dayli.R
 import com.silverwest.dayli.ui.theme.isDarkMode
 import kotlinx.coroutines.CoroutineScope
@@ -155,6 +156,19 @@ class DdayWidgetProvider : AppWidgetProvider() {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
                 )
                 setPendingIntentTemplate(R.id.widgetListView, clickPendingIntent)
+
+                // 위젯 전체 클릭 시 앱 실행 PendingIntent
+                val launchIntent = Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                val launchPendingIntent = PendingIntent.getActivity(
+                    context,
+                    appWidgetId,
+                    launchIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                setOnClickPendingIntent(R.id.widget_container, launchPendingIntent)
+                setOnClickPendingIntent(R.id.emptyTextView, launchPendingIntent)
             }
 
             appWidgetManager.updateAppWidget(appWidgetId, views)

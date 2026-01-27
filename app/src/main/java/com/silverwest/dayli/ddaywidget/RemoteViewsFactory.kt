@@ -28,18 +28,13 @@ class RemoteViewsFactory(
                 val db = DdayDatabase.getDatabase(context)
                 val dao = db.ddayDao()
 
-                // 오늘 00:00:00 타임스탬프 계산
-                val todayStart = Calendar.getInstance().apply {
-                    set(Calendar.HOUR_OF_DAY, 0)
-                    set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0)
-                    set(Calendar.MILLISECOND, 0)
-                }.timeInMillis
+                // 24시간 전 타임스탬프 계산 (To-Do 체크 후 24시간 유지용)
+                val cutoffTime = System.currentTimeMillis() - 24 * 60 * 60 * 1000
 
-                android.util.Log.d("DDAY_WIDGET", "📦 todayStart: $todayStart")
+                android.util.Log.d("DDAY_WIDGET", "📦 cutoffTime: $cutoffTime")
 
-                // 체크 안 됨 OR 오늘 체크한 항목만 가져오기 (D-Day + To-Do)
-                items = dao.getAllForWidgetWithTodos(todayStart)
+                // D-Day: 체크 즉시 숨김 / To-Do: 체크 후 24시간 유지
+                items = dao.getAllForWidgetWithTodos(cutoffTime)
 
                 android.util.Log.d("DDAY_WIDGET", "📦 위젯 items 개수: ${items.size}")
                 items.forEach { item ->
