@@ -24,18 +24,24 @@ class RemoteViewsFactory(
 ) : RemoteViewsService.RemoteViewsFactory {
 
     private var items: List<DdayItem> = emptyList()
-    private var rows: List<WidgetRow> = emptyList()
+    private var displayRows: List<WidgetRow> = emptyList()
 
     // Widget mode from intent (MODE_ALL, MODE_DDAY, MODE_TODO)
     private val mode: String = intent?.getStringExtra(DdayOnlyWidgetProvider.EXTRA_WIDGET_MODE)
         ?: DdayOnlyWidgetProvider.MODE_ALL
+
+    companion object {
+        private const val VIEW_TYPE_HEADER = 0
+        private const val VIEW_TYPE_ITEM = 1
+    }
 
     override fun onCreate() {
         android.util.Log.d("DDAY_WIDGET", "📦 RemoteViewsFactory created with mode: $mode")
     }
 
     override fun onDataSetChanged() {
-        android.util.Log.d("WIDGET_FACTORY", "onDataSetChanged START: mode=$mode")
+        android.util.Log.d("WIDGET_PIPE", "onDataSetChanged")
+        android.util.Log.d("DDAY_WIDGET", "📦 RemoteViewsFactory.onDataSetChanged() 호출됨 (mode=$mode)")
 
         try {
             runBlocking {
@@ -55,45 +61,56 @@ class RemoteViewsFactory(
                     else -> allItems  // MODE_ALL: 전체 표시
                 }
 
-                // rows 구성: MODE_ALL일 때만 헤더 포함
-                rows = if (mode == DdayOnlyWidgetProvider.MODE_ALL) {
+                // 통합 위젯(MODE_ALL)일 때만 섹션 헤더 삽입
+                displayRows = if (mode == DdayOnlyWidgetProvider.MODE_ALL) {
                     val ddayItems = items.filter { it.isDday() }
                     val todoItems = items.filter { it.isTodo() }
                     buildList {
-                        add(WidgetRow.Header("D-Day"))
-                        addAll(ddayItems.map { WidgetRow.Item(it) })
-                        add(WidgetRow.Header("To-Do"))
-                        addAll(todoItems.map { WidgetRow.Item(it) })
+                        if (ddayItems.isNotEmpty()) {
+                            add(WidgetRow.Header("D-Day"))
+                            addAll(ddayItems.map { WidgetRow.Item(it) })
+                        }
+                        if (todoItems.isNotEmpty()) {
+                            add(WidgetRow.Header("To-Do"))
+                            addAll(todoItems.map { WidgetRow.Item(it) })
+                        }
                     }
                 } else {
                     // D-Day 전용 / To-Do 전용은 헤더 없이 아이템만
                     items.map { WidgetRow.Item(it) }
                 }
 
-                android.util.Log.d("WIDGET_FACTORY", "onDataSetChanged END: rows.size=${rows.size}, items=${items.size}")
+                android.util.Log.d("DDAY_WIDGET", "📦 위젯 items 개수: ${items.size}, displayRows: ${displayRows.size} (전체: ${allItems.size})")
             }
         } catch (e: Exception) {
             android.util.Log.e("DDAY_WIDGET", "❌ 위젯 데이터 로드 실패", e)
             items = emptyList()
-            rows = emptyList()
+            displayRows = emptyList()
         }
     }
 
     override fun onDestroy() {
         items = emptyList()
-        rows = emptyList()
+        displayRows = emptyList()
     }
 
-    override fun getCount(): Int = rows.size
+    override fun getCount(): Int = displayRows.size
 
-    override fun getViewTypeCount(): Int = 2  // 0=Header, 1=Item
+    override fun getViewTypeCount(): Int = 2
+
+    fun getItemViewType(position: Int): Int {
+        return when (displayRows.getOrNull(position)) {
+            is WidgetRow.Header -> VIEW_TYPE_HEADER
+            else -> VIEW_TYPE_ITEM
+        }
+    }
 
     override fun getViewAt(position: Int): RemoteViews {
-        if (position < 0 || position >= rows.size) {
+        if (position < 0 || position >= displayRows.size) {
             return RemoteViews(context.packageName, R.layout.item_dday_widget)
         }
 
-        val row = rows[position]
+        val row = displayRows[position]
 
         // 헤더 행 처리
         if (row is WidgetRow.Header) {
@@ -272,6 +289,17 @@ class RemoteViewsFactory(
         return views
     }
 
+    private fun createHeaderView(title: String): RemoteViews {
+        val isDark = isDarkMode(context)
+        val views = RemoteViews(context.packageName, R.layout.item_widget_section_header)
+        views.setTextViewText(R.id.header_title, title)
+        // 다크모드 대응 헤더 텍스트 색상
+        val headerColor = if (isDark) 0xAAB8B8B8.toInt() else 0x88000000.toInt()
+        views.setTextColor(R.id.header_title, headerColor)
+        // 헤더는 클릭 시 아무 동작 안 함 (setOnClickFillInIntent 설정 안 함)
+        return views
+    }
+
     private fun calculateDaysUntil(date: Date): Int {
         val today = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
@@ -291,32 +319,14 @@ class RemoteViewsFactory(
         return ((targetDate.time - today.time) / (1000 * 60 * 60 * 24)).toInt()
     }
 
-    private fun createHeaderView(title: String): RemoteViews {
-        val isDark = isDarkMode(context)
-        return RemoteViews(context.packageName, R.layout.item_widget_section_header).apply {
-            setTextViewText(R.id.header_title, title)
-            // 다크모드 색상 적용
-            val headerBg = if (isDark) 0xFF2A2A3E.toInt() else 0xFFF5F5F5.toInt()
-            val headerTextColor = if (isDark) 0xFFB8B8B8.toInt() else 0xFF616161.toInt()
-            setInt(R.id.header_title, "setBackgroundColor", headerBg)
-            setTextColor(R.id.header_title, headerTextColor)
-        }
-    }
-
-    override fun getLoadingView(): RemoteViews {
-        // 로딩 중 빈 헤더 뷰 표시 (기본 "로드 중" 메시지 방지)
-        return RemoteViews(context.packageName, R.layout.item_widget_section_header).apply {
-            setTextViewText(R.id.header_title, "")
-        }
-    }
-
+    override fun getLoadingView(): RemoteViews? = null
+    // getViewTypeCount()는 위에서 이미 override 했으므로 제거
     override fun getItemId(position: Int): Long {
-        return when (val row = rows.getOrNull(position)) {
+        return when (val row = displayRows.getOrNull(position)) {
             is WidgetRow.Header -> -row.title.hashCode().toLong()  // 헤더는 음수 ID
             is WidgetRow.Item -> row.item.id.toLong()
             else -> position.toLong()
         }
     }
-
     override fun hasStableIds(): Boolean = true
 }
