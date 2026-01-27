@@ -106,19 +106,21 @@ class DdayWidgetProvider : AppWidgetProvider() {
                 updateAppWidget(context, manager, id)
             }
             if (mainIds.isNotEmpty()) {
-                android.util.Log.d("WIDGET_DEBUG", "notifyAppWidgetViewDataChanged mainIds=${mainIds.toList()}")
+                android.util.Log.d("WIDGET_NOTIFY", "refreshAllWidgets notify: ids=${mainIds.contentToString()}, viewId=R.id.widgetListView")
                 manager.notifyAppWidgetViewDataChanged(mainIds, R.id.widgetListView)
             }
 
             // 2) D-Day 전용 위젯 갱신
             val ddayOnlyIds = manager.getAppWidgetIds(ComponentName(context, DdayOnlyWidgetProvider::class.java))
             if (ddayOnlyIds.isNotEmpty()) {
+                android.util.Log.d("WIDGET_NOTIFY", "refreshAllWidgets notify D-Day: ids=${ddayOnlyIds.contentToString()}")
                 manager.notifyAppWidgetViewDataChanged(ddayOnlyIds, R.id.widgetListView)
             }
 
             // 3) To-Do 전용 위젯 갱신
             val todoOnlyIds = manager.getAppWidgetIds(ComponentName(context, TodoOnlyWidgetProvider::class.java))
             if (todoOnlyIds.isNotEmpty()) {
+                android.util.Log.d("WIDGET_NOTIFY", "refreshAllWidgets notify To-Do: ids=${todoOnlyIds.contentToString()}")
                 manager.notifyAppWidgetViewDataChanged(todoOnlyIds, R.id.widgetListView)
             }
 
@@ -189,6 +191,10 @@ class DdayWidgetProvider : AppWidgetProvider() {
             }
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
+
+            // 핵심: updateAppWidget 직후 notify 호출하여 onDataSetChanged 트리거
+            android.util.Log.d("WIDGET_NOTIFY", "notifyAppWidgetViewDataChanged: appWidgetId=$appWidgetId, viewId=R.id.widgetListView")
+            appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widgetListView)
         }
 
         fun scheduleMidnightUpdate(context: Context) {
