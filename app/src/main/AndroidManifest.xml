@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.example.myapplication">
+    package="com.silverwest.dayli">
 
     <!-- 부팅 완료 시 알람 재설정을 위한 권한 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -25,7 +25,7 @@
 
         <!-- ✅ 메인 액티비티 -->
         <activity
-            android:name=".MainActivity"
+            android:name="com.silverwest.dayli.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.MyApplication">
@@ -37,12 +37,12 @@
 
         <!-- ✅ D-Day 위젯 Provider 등록 -->
         <receiver
-            android:name=".ddaywidget.DdayWidgetProvider"
+            android:name="com.silverwest.dayli.ddaywidget.DdayWidgetProvider"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.example.myapplication.ACTION_CHECKBOX_CLICK" />
-                <action android:name="com.example.myapplication.ACTION_MIDNIGHT_UPDATE" />
+                <action android:name="com.silverwest.dayli.ACTION_CHECKBOX_CLICK" />
+                <action android:name="com.silverwest.dayli.ACTION_MIDNIGHT_UPDATE" />
             </intent-filter>
 
             <meta-data
@@ -52,7 +52,7 @@
 
         <!-- ✅ 부팅 시 자정 알람 재설정용 Receiver -->
         <receiver
-            android:name=".ddaywidget.BootReceiver"
+            android:name="com.silverwest.dayli.ddaywidget.BootReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -61,11 +61,11 @@
 
         <!-- ✅ 알림용 Receiver -->
         <receiver
-            android:name=".ddaywidget.NotificationReceiver"
+            android:name="com.silverwest.dayli.ddaywidget.NotificationReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.example.myapplication.ACTION_SHOW_NOTIFICATION" />
-                <action android:name="com.example.myapplication.ACTION_DAILY_CHECK" />
+                <action android:name="com.silverwest.dayli.ACTION_SHOW_NOTIFICATION" />
+                <action android:name="com.silverwest.dayli.ACTION_DAILY_CHECK" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
@@ -73,7 +73,7 @@
 
         <!-- ✅ D-Day 위젯 RemoteViewsService 등록 -->
         <service
-            android:name=".ddaywidget.DdayWidgetService"
+            android:name="com.silverwest.dayli.ddaywidget.DdayWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
 
     </application>
