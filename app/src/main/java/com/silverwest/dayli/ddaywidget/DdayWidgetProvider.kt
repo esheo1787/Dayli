@@ -106,21 +106,18 @@ class DdayWidgetProvider : AppWidgetProvider() {
                 updateAppWidget(context, manager, id)
             }
             if (mainIds.isNotEmpty()) {
-                android.util.Log.d("WIDGET_NOTIFY", "refreshAllWidgets notify: ids=${mainIds.contentToString()}, viewId=R.id.widgetListView")
                 manager.notifyAppWidgetViewDataChanged(mainIds, R.id.widgetListView)
             }
 
             // 2) D-Day 전용 위젯 갱신
             val ddayOnlyIds = manager.getAppWidgetIds(ComponentName(context, DdayOnlyWidgetProvider::class.java))
             if (ddayOnlyIds.isNotEmpty()) {
-                android.util.Log.d("WIDGET_NOTIFY", "refreshAllWidgets notify D-Day: ids=${ddayOnlyIds.contentToString()}")
                 manager.notifyAppWidgetViewDataChanged(ddayOnlyIds, R.id.widgetListView)
             }
 
             // 3) To-Do 전용 위젯 갱신
             val todoOnlyIds = manager.getAppWidgetIds(ComponentName(context, TodoOnlyWidgetProvider::class.java))
             if (todoOnlyIds.isNotEmpty()) {
-                android.util.Log.d("WIDGET_NOTIFY", "refreshAllWidgets notify To-Do: ids=${todoOnlyIds.contentToString()}")
                 manager.notifyAppWidgetViewDataChanged(todoOnlyIds, R.id.widgetListView)
             }
 
@@ -132,14 +129,10 @@ class DdayWidgetProvider : AppWidgetProvider() {
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int
         ) {
-            // RemoteViewsService Intent with MODE_ALL (통합 위젯)
             val intent = Intent(context, DdayWidgetService::class.java).apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                putExtra(DdayOnlyWidgetProvider.EXTRA_WIDGET_MODE, DdayOnlyWidgetProvider.MODE_ALL)
-                // Unique URI to prevent cache collision (include mode)
-                data = Uri.parse("dayli://widget/$appWidgetId?mode=${DdayOnlyWidgetProvider.MODE_ALL}")
+                data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
             }
-            android.util.Log.d("WIDGET_DEBUG", "updateAppWidget id=$appWidgetId, data=${intent.data}")
 
             // 위젯 배경 투명도 설정 읽기
             val widgetBgOpacity = DdaySettings.getWidgetBgOpacity(context)
@@ -191,10 +184,6 @@ class DdayWidgetProvider : AppWidgetProvider() {
             }
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
-
-            // 핵심: updateAppWidget 직후 notify 호출하여 onDataSetChanged 트리거
-            android.util.Log.d("WIDGET_NOTIFY", "notifyAppWidgetViewDataChanged: appWidgetId=$appWidgetId, viewId=R.id.widgetListView")
-            appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widgetListView)
         }
 
         fun scheduleMidnightUpdate(context: Context) {
