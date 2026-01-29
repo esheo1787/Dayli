@@ -167,7 +167,8 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         memo: String? = null,
         emoji: String = "✅",
         color: Long = 0xFFA8C5DAL,  // Pastel Blue
-        repeatType: RepeatType = RepeatType.NONE
+        repeatType: RepeatType = RepeatType.NONE,
+        subTasks: List<SubTask> = emptyList()
     ) {
         viewModelScope.launch {
             val item = DdayItem(
@@ -178,7 +179,8 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 iconName = emoji,
                 customColor = color,
                 repeatType = repeatType.name,
-                itemType = ItemType.TODO.name
+                itemType = ItemType.TODO.name,
+                subTasks = DdayItem.subTasksToJson(subTasks)
             )
             dao.insert(item)
             loadAll()
@@ -193,6 +195,24 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             loadAll()
             // 위젯 동기화
             DdayWidgetProvider.refreshAllWidgets(getApplication())
+        }
+    }
+
+    // 서브태스크 토글 (체크리스트 내 개별 항목)
+    fun toggleSubTask(item: DdayItem, subTaskIndex: Int) {
+        viewModelScope.launch {
+            val currentSubTasks = item.getSubTaskList().toMutableList()
+            if (subTaskIndex >= 0 && subTaskIndex < currentSubTasks.size) {
+                val subTask = currentSubTasks[subTaskIndex]
+                currentSubTasks[subTaskIndex] = subTask.copy(isChecked = !subTask.isChecked)
+                val updatedItem = item.copy(
+                    subTasks = DdayItem.subTasksToJson(currentSubTasks)
+                )
+                dao.update(updatedItem)
+                loadAll()
+                // 위젯 동기화
+                DdayWidgetProvider.refreshAllWidgets(getApplication())
+            }
         }
     }
 

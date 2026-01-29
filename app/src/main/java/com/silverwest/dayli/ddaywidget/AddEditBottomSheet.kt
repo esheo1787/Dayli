@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,7 +38,7 @@ fun AddEditBottomSheet(
     itemType: ItemType,
     editItem: DdayItem? = null,
     onDismiss: () -> Unit,
-    onSave: (title: String, memo: String?, date: Date?, emoji: String, color: Long, repeatType: RepeatType, itemType: ItemType) -> Unit
+    onSave: (title: String, memo: String?, date: Date?, emoji: String, color: Long, repeatType: RepeatType, itemType: ItemType, subTasks: List<SubTask>) -> Unit
 ) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -59,6 +62,12 @@ fun AddEditBottomSheet(
     var selectedRepeatType by remember(editItem) {
         mutableStateOf(editItem?.repeatTypeEnum() ?: RepeatType.NONE)
     }
+
+    // 체크리스트 상태 (To-Do 전용)
+    var subTasks by remember(editItem) {
+        mutableStateOf(editItem?.getSubTaskList() ?: emptyList())
+    }
+    var newSubTaskText by remember { mutableStateOf("") }
 
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showRepeatPicker by remember { mutableStateOf(false) }
@@ -188,6 +197,98 @@ fun AddEditBottomSheet(
                     maxLines = 3
                 )
 
+                // 체크리스트 섹션 (To-Do 전용)
+                if (actualItemType == ItemType.TODO) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "체크리스트",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    // 기존 서브태스크 목록
+                    subTasks.forEachIndexed { index, subTask ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = subTask.isChecked,
+                                onCheckedChange = { checked ->
+                                    subTasks = subTasks.toMutableList().apply {
+                                        this[index] = subTask.copy(isChecked = checked)
+                                    }
+                                },
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedTextField(
+                                value = subTask.title,
+                                onValueChange = { newTitle ->
+                                    subTasks = subTasks.toMutableList().apply {
+                                        this[index] = subTask.copy(title = newTitle)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodyMedium
+                            )
+                            IconButton(
+                                onClick = {
+                                    subTasks = subTasks.toMutableList().apply {
+                                        removeAt(index)
+                                    }
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "삭제",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // 새 서브태스크 추가
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = newSubTaskText,
+                            onValueChange = { newSubTaskText = it },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("항목 추가...") },
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        FilledIconButton(
+                            onClick = {
+                                if (newSubTaskText.isNotBlank()) {
+                                    subTasks = subTasks + SubTask(title = newSubTaskText.trim())
+                                    newSubTaskText = ""
+                                }
+                            },
+                            enabled = newSubTaskText.isNotBlank(),
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "추가",
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+
                 // D-Day일 때만 날짜 선택 표시
                 if (actualItemType == ItemType.DDAY) {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -242,7 +343,9 @@ fun AddEditBottomSheet(
                 Button(
                     onClick = {
                         if (title.isNotBlank()) {
-                            Log.d("DDAY_WIDGET", "✅ 저장: title=$title, type=$actualItemType, repeat=$selectedRepeatType")
+                            // 빈 제목의 서브태스크 제거
+                            val validSubTasks = subTasks.filter { it.title.isNotBlank() }
+                            Log.d("DDAY_WIDGET", "✅ 저장: title=$title, type=$actualItemType, repeat=$selectedRepeatType, subTasks=${validSubTasks.size}")
                             onSave(
                                 title,
                                 memo.ifBlank { null },
@@ -250,7 +353,8 @@ fun AddEditBottomSheet(
                                 selectedEmoji,
                                 selectedColor,
                                 selectedRepeatType,
-                                actualItemType
+                                actualItemType,
+                                validSubTasks
                             )
                             // 입력 초기화
                             title = ""
@@ -259,6 +363,8 @@ fun AddEditBottomSheet(
                             selectedEmoji = if (actualItemType == ItemType.TODO) "✅" else "📌"
                             selectedColor = 0xFFA8C5DAL  // Pastel Blue
                             selectedRepeatType = RepeatType.NONE
+                            subTasks = emptyList()
+                            newSubTaskText = ""
                         }
                     },
                     modifier = Modifier

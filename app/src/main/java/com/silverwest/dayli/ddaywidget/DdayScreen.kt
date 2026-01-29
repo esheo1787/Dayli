@@ -233,6 +233,9 @@ fun DdayScreen(
                                             onLongPress = {
                                                 selectedItem = it
                                                 showBottomSheet = true
+                                            },
+                                            onSubTaskToggle = { ddayItem, index ->
+                                                viewModel.toggleSubTask(ddayItem, index)
                                             }
                                         )
                                     }
@@ -281,6 +284,9 @@ fun DdayScreen(
                                     onLongPress = {
                                         selectedItem = it
                                         showBottomSheet = true
+                                    },
+                                    onSubTaskToggle = { ddayItem, index ->
+                                        viewModel.toggleSubTask(ddayItem, index)
                                     }
                                 )
                             }
@@ -332,6 +338,9 @@ fun DdayScreen(
                             onLongPress = {
                                 selectedItem = it
                                 showBottomSheet = true
+                            },
+                            onSubTaskToggle = { ddayItem, index ->
+                                viewModel.toggleSubTask(ddayItem, index)
                             }
                         )
                     }
@@ -377,6 +386,9 @@ fun DdayScreen(
                                     onLongPress = {
                                         selectedItem = it
                                         showBottomSheet = true
+                                    },
+                                    onSubTaskToggle = { ddayItem, index ->
+                                        viewModel.toggleSubTask(ddayItem, index)
                                     }
                                 )
                             }
@@ -519,7 +531,8 @@ private fun SwipeableDdayItem(
     item: DdayItem,
     onDelete: () -> Unit,
     onToggle: (DdayItem) -> Unit,
-    onLongPress: (DdayItem) -> Unit
+    onLongPress: (DdayItem) -> Unit,
+    onSubTaskToggle: (DdayItem, Int) -> Unit = { _, _ -> }
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { dismissValue ->
@@ -571,7 +584,8 @@ private fun SwipeableDdayItem(
             DdayListItem(
                 item = item,
                 onToggle = onToggle,
-                onLongPress = onLongPress
+                onLongPress = onLongPress,
+                onSubTaskToggle = onSubTaskToggle
             )
         }
     }

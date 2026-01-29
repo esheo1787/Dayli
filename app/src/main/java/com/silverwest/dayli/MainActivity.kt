@@ -161,7 +161,7 @@ fun MainDdayScreen(
             showAddSheet = false
             editItem = null
         },
-        onSave = { title, memo, date, emoji, color, repeatType, itemType ->
+        onSave = { title, memo, date, emoji, color, repeatType, itemType, subTasks ->
             if (editItem != null) {
                 // 수정 모드
                 val calendar = Calendar.getInstance().apply { date?.let { time = it } }
@@ -178,7 +178,8 @@ fun MainDdayScreen(
                         iconName = emoji,
                         customColor = color,
                         repeatType = repeatType.name,
-                        repeatDay = repeatDay
+                        repeatDay = repeatDay,
+                        subTasks = DdayItem.subTasksToJson(subTasks)
                     )
                 )
             } else {
@@ -186,7 +187,7 @@ fun MainDdayScreen(
                 if (itemType == ItemType.DDAY) {
                     viewModel.insertDday(title, memo ?: "", date!!, emoji, color, repeatType)
                 } else {
-                    viewModel.insertTodo(title, memo, emoji, color, repeatType)
+                    viewModel.insertTodo(title, memo, emoji, color, repeatType, subTasks)
                 }
             }
             showAddSheet = false
