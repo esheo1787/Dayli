@@ -86,16 +86,18 @@
         android:textStyle="bold"
         android:textSize="14sp"
         android:textColor="#FF1A237E"
-        android:layout_marginEnd="4dp"
         android:fontFamily="sans-serif-medium" />
 
-    <!-- 체크박스 - 기본 스타일 (위젯 호환성) -->
+    <!-- 체크박스 - 터치 영역 확대 (48dp 최소 권장) -->
     <CheckBox
         android:id="@+id/item_checkbox"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="48dp"
+        android:layout_height="match_parent"
+        android:gravity="center"
         android:focusable="false"
         android:clickable="false"
         android:minWidth="0dp"
-        android:minHeight="0dp" />
+        android:minHeight="0dp"
+        android:scaleX="1.1"
+        android:scaleY="1.1" />
 </LinearLayout>
