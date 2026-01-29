@@ -12,10 +12,11 @@ import kotlinx.coroutines.runBlocking
 import java.util.*
 import java.text.SimpleDateFormat
 
-// 위젯 행 타입 (헤더 / 아이템)
+// 위젯 행 타입 (헤더 / 그룹헤더 / 아이템)
 sealed class WidgetRow {
     data class Header(val title: String) : WidgetRow()
-    data class Item(val item: DdayItem) : WidgetRow()
+    data class GroupHeader(val groupName: String) : WidgetRow()  // D-Day 그룹 헤더
+    data class Item(val item: DdayItem, val showProgress: Boolean = false) : WidgetRow()  // showProgress: To-Do 진행률 표시
 }
 
 class RemoteViewsFactory(
@@ -33,6 +34,7 @@ class RemoteViewsFactory(
     companion object {
         private const val VIEW_TYPE_HEADER = 0
         private const val VIEW_TYPE_ITEM = 1
+        private const val VIEW_TYPE_GROUP_HEADER = 2
     }
 
     override fun onCreate() {
@@ -63,16 +65,33 @@ class RemoteViewsFactory(
 
                 // 통합 위젯(MODE_ALL)일 때만 섹션 헤더 삽입
                 displayRows = if (mode == DdayOnlyWidgetProvider.MODE_ALL) {
-                    val ddayItems = items.filter { it.isDday() }
-                    val todoItems = items.filter { it.isTodo() }
+                    val ddayItems = items.filter { it.isDday() && !it.isChecked }
+                    val todoItems = items.filter { it.isTodo() && !it.isChecked }
                     buildList {
+                        // D-Day 섹션: 그룹별로 임박순 2개씩
                         if (ddayItems.isNotEmpty()) {
                             add(WidgetRow.Header("D-Day"))
-                            addAll(ddayItems.map { WidgetRow.Item(it) })
+
+                            // 그룹별로 묶기 (미분류는 마지막으로)
+                            val groupedDdays = ddayItems.groupBy { it.groupName ?: "미분류" }
+                                .toSortedMap(compareBy { if (it == "미분류") "zzz" else it })
+
+                            groupedDdays.forEach { (groupName, groupItems) ->
+                                // 그룹 헤더 추가
+                                add(WidgetRow.GroupHeader(groupName))
+                                // 임박순 정렬 후 최대 2개만
+                                val sortedItems = groupItems.sortedBy { it.date }
+                                sortedItems.take(2).forEach { item ->
+                                    add(WidgetRow.Item(item))
+                                }
+                            }
                         }
+                        // To-Do 섹션: 진행현황 표시
                         if (todoItems.isNotEmpty()) {
                             add(WidgetRow.Header("To-Do"))
-                            addAll(todoItems.map { WidgetRow.Item(it) })
+                            todoItems.forEach { item ->
+                                add(WidgetRow.Item(item, showProgress = true))
+                            }
                         }
                     }
                 } else {
@@ -96,11 +115,12 @@ class RemoteViewsFactory(
 
     override fun getCount(): Int = displayRows.size
 
-    override fun getViewTypeCount(): Int = 2
+    override fun getViewTypeCount(): Int = 3
 
     fun getItemViewType(position: Int): Int {
         return when (displayRows.getOrNull(position)) {
             is WidgetRow.Header -> VIEW_TYPE_HEADER
+            is WidgetRow.GroupHeader -> VIEW_TYPE_GROUP_HEADER
             else -> VIEW_TYPE_ITEM
         }
     }
@@ -117,8 +137,15 @@ class RemoteViewsFactory(
             return createHeaderView(row.title)
         }
 
+        // 그룹 헤더 행 처리
+        if (row is WidgetRow.GroupHeader) {
+            return createGroupHeaderView(row.groupName)
+        }
+
         // 아이템 행 처리
-        val item = (row as WidgetRow.Item).item
+        val widgetItem = row as WidgetRow.Item
+        val item = widgetItem.item
+        val showProgress = widgetItem.showProgress
         val views = RemoteViews(context.packageName, R.layout.item_dday_widget)
 
         // 다크모드 확인
@@ -206,10 +233,22 @@ class RemoteViewsFactory(
                 daysUntil <= 1 -> 0xFFE53935.toInt()  // 빨간색 (D-1, D-Day, D+N)
                 else -> if (isDark) 0xFFF5F5F0.toInt() else 0xFF4A4A4A.toInt()  // 기본 (D-4 이상)
             }
+        } else if (showProgress) {
+            // To-Do 아이템 (혼합 위젯): 체크리스트 진행현황 표시
+            val subTasks = item.getSubTaskList()
+            if (subTasks.isNotEmpty()) {
+                val completedCount = subTasks.count { it.isChecked }
+                val totalCount = subTasks.size
+                ddayText = "$completedCount/$totalCount"
+                ddayColor = if (isDark) 0xFFB8B8B8.toInt() else 0xFF7A7A7A.toInt()
+            } else {
+                ddayText = ""
+                ddayColor = itemColor
+            }
         } else {
-            // To-Do 아이템: 빈 텍스트
+            // To-Do 아이템 (전용 위젯): 빈 텍스트
             ddayText = ""
-            ddayColor = itemColor  // To-Do는 ddayText가 빈 값이므로 색상 무관
+            ddayColor = itemColor
         }
         views.setTextViewText(R.id.item_dday, ddayText)
         views.setTextViewTextSize(R.id.item_dday, android.util.TypedValue.COMPLEX_UNIT_SP, 16f * fontSizeMultiplier)
@@ -300,6 +339,20 @@ class RemoteViewsFactory(
         return views
     }
 
+    private fun createGroupHeaderView(groupName: String): RemoteViews {
+        val isDark = isDarkMode(context)
+        val views = RemoteViews(context.packageName, R.layout.item_widget_section_header)
+        // 그룹 헤더: "📁 그룹명" 형식
+        views.setTextViewText(R.id.header_title, "📁 $groupName")
+        // 그룹 헤더는 메인 헤더보다 약간 작은 텍스트 크기
+        views.setTextViewTextSize(R.id.header_title, android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
+        // 다크모드 대응 그룹 헤더 텍스트 색상 (메인 헤더보다 약간 밝게)
+        val groupHeaderColor = if (isDark) 0xCCD0D0D0.toInt() else 0xAA3A3A3A.toInt()
+        views.setTextColor(R.id.header_title, groupHeaderColor)
+        // 그룹 헤더도 클릭 시 아무 동작 안 함
+        return views
+    }
+
     private fun calculateDaysUntil(date: Date): Int {
         val today = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
@@ -324,6 +377,7 @@ class RemoteViewsFactory(
     override fun getItemId(position: Int): Long {
         return when (val row = displayRows.getOrNull(position)) {
             is WidgetRow.Header -> -row.title.hashCode().toLong()  // 헤더는 음수 ID
+            is WidgetRow.GroupHeader -> -(row.groupName.hashCode().toLong() + 10000)  // 그룹 헤더는 다른 범위의 음수 ID
             is WidgetRow.Item -> row.item.id.toLong()
             else -> position.toLong()
         }
