@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -180,7 +181,8 @@ fun DdayScreen(
                     state = reorderableState.listState,
                     modifier = Modifier
                         .weight(1f)
-                        .reorderable(reorderableState)
+                        .reorderable(reorderableState),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     // 진행중 섹션 헤더
                     item(key = "header_pending") {
@@ -202,6 +204,7 @@ fun DdayScreen(
                             val elevation = if (isDragging) 8.dp else 0.dp
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
+                                shape = RectangleShape,
                                 elevation = CardDefaults.cardElevation(defaultElevation = elevation),
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.surface
@@ -286,7 +289,10 @@ fun DdayScreen(
                 }
             } else {
                 // D-Day 탭: 기존 스와이프 삭제만
-                LazyColumn(modifier = Modifier.weight(1f)) {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
                     // 진행중 섹션 헤더
                     item {
                         SectionHeader(
@@ -557,6 +563,7 @@ private fun SwipeableDdayItem(
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
+            shape = RectangleShape,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             )
