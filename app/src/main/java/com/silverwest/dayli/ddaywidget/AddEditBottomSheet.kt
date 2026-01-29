@@ -377,40 +377,37 @@ fun AddEditBottomSheet(
                     onValueChange = { title = it },
                     label = { Text(if (actualItemType == ItemType.TODO) "할 일" else "제목", fontSize = 14.sp) },
                     placeholder = { Text(if (actualItemType == ItemType.TODO) "할 일을 입력하세요" else "제목을 입력하세요", fontSize = 14.sp) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
                     singleLine = true,
                     textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // 메모 입력
                 OutlinedTextField(
                     value = memo,
                     onValueChange = { memo = it },
                     label = { Text("메모 (선택)", fontSize = 14.sp) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                    maxLines = 2,
-                    minLines = 1,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    singleLine = true,
                     textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
                 )
 
                 // 체크리스트 섹션 (To-Do 전용)
                 if (actualItemType == ItemType.TODO) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
                         text = "체크리스트",
                         style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(bottom = 4.dp)
+                        modifier = Modifier.padding(bottom = 2.dp)
                     )
 
                     // 기존 서브태스크 목록
                     subTasks.forEachIndexed { index, subTask ->
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 1.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
@@ -420,9 +417,9 @@ fun AddEditBottomSheet(
                                         this[index] = subTask.copy(isChecked = checked)
                                     }
                                 },
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
                             OutlinedTextField(
                                 value = subTask.title,
                                 onValueChange = { newTitle ->
@@ -430,7 +427,7 @@ fun AddEditBottomSheet(
                                         this[index] = subTask.copy(title = newTitle)
                                     }
                                 },
-                                modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                                modifier = Modifier.weight(1f).height(44.dp),
                                 singleLine = true,
                                 textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
                             )
@@ -440,13 +437,13 @@ fun AddEditBottomSheet(
                                         removeAt(index)
                                     }
                                 },
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "삭제",
                                     tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                         }
@@ -454,20 +451,18 @@ fun AddEditBottomSheet(
 
                     // 새 서브태스크 추가
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 1.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedTextField(
                             value = newSubTaskText,
                             onValueChange = { newSubTaskText = it },
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                            modifier = Modifier.weight(1f).height(44.dp),
                             placeholder = { Text("항목 추가...", fontSize = 14.sp) },
                             singleLine = true,
                             textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         FilledIconButton(
                             onClick = {
                                 if (newSubTaskText.isNotBlank()) {
@@ -476,12 +471,12 @@ fun AddEditBottomSheet(
                                 }
                             },
                             enabled = newSubTaskText.isNotBlank(),
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = "추가",
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
