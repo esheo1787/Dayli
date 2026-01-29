@@ -68,25 +68,25 @@ fun DdayListItem(
                 onClick = { },
                 onLongClick = { onLongPress(item) }
             )
-            .padding(12.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // 이모지 아이콘
         val itemEmoji = item.getEmoji()
         Box(
             modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .size(36.dp)
+                .clip(RoundedCornerShape(8.dp))
                 .background(iconBgColor),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = itemEmoji,
-                fontSize = 22.sp
+                fontSize = 20.sp
             )
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(10.dp))
 
         // 내용
         Column(modifier = Modifier.weight(1f)) {
