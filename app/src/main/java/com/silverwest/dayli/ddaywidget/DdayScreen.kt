@@ -223,7 +223,8 @@ fun DdayScreen(
                     modifier = Modifier
                         .weight(1f)
                         .reorderable(reorderableState),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)  // FAB 겹침 방지
                 ) {
                     // 진행중 섹션 헤더
                     item(key = "header_pending") {
@@ -338,7 +339,8 @@ fun DdayScreen(
                 // D-Day 탭: 그룹별 표시
                 LazyColumn(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)  // FAB 겹침 방지
                 ) {
                     // 그룹별 진행중 항목
                     ddayPendingByGroup.forEach { (groupName, groupItems) ->
