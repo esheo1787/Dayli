@@ -66,7 +66,8 @@ class RemoteViewsFactory(
                 // 통합 위젯(MODE_ALL)일 때만 섹션 헤더 삽입
                 displayRows = if (mode == DdayOnlyWidgetProvider.MODE_ALL) {
                     val ddayItems = items.filter { it.isDday() && !it.isChecked }
-                    val todoItems = items.filter { it.isTodo() && !it.isChecked }
+                    // To-Do: DB에서 이미 24시간 이내 체크된 항목만 포함되므로 추가 필터 불필요
+                    val todoItems = items.filter { it.isTodo() }
                     buildList {
                         // D-Day 섹션: 그룹별로 임박순 2개씩
                         if (ddayItems.isNotEmpty()) {
