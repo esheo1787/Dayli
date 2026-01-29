@@ -8,10 +8,11 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [DdayItem::class], version = 9, exportSchema = false)
+@Database(entities = [DdayItem::class, TodoTemplate::class], version = 13, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class DdayDatabase : RoomDatabase() {
     abstract fun ddayDao(): DdayDao
+    abstract fun todoTemplateDao(): TodoTemplateDao
 
     companion object {
         @Volatile
@@ -443,6 +444,43 @@ abstract class DdayDatabase : RoomDatabase() {
             }
         }
 
+        // 마이그레이션: version 9 → 10 (sortOrder 컬럼 추가)
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE dday_items ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        // 마이그레이션: version 10 → 11 (sub_tasks 컬럼 추가 - 체크리스트)
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE dday_items ADD COLUMN sub_tasks TEXT DEFAULT NULL")
+            }
+        }
+
+        // 마이그레이션: version 11 → 12 (group_name 컬럼 추가 - D-Day 그룹)
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE dday_items ADD COLUMN group_name TEXT DEFAULT NULL")
+            }
+        }
+
+        // 마이그레이션: version 12 → 13 (todo_templates 테이블 추가)
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE todo_templates (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        iconName TEXT NOT NULL DEFAULT '📋',
+                        customColor INTEGER NOT NULL DEFAULT ${0xFFA8C5DAL},
+                        sub_tasks TEXT,
+                        createdAt INTEGER NOT NULL DEFAULT 0
+                    )
+                """)
+            }
+        }
+
         // 마이그레이션: version 7 → 9 (직접 점프)
         private val MIGRATION_7_9 = object : Migration(7, 9) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -487,7 +525,8 @@ abstract class DdayDatabase : RoomDatabase() {
                         MIGRATION_5_6, MIGRATION_1_6, MIGRATION_2_6, MIGRATION_3_6, MIGRATION_4_6,
                         MIGRATION_6_7, MIGRATION_1_7, MIGRATION_2_7, MIGRATION_3_7, MIGRATION_4_7, MIGRATION_5_7,
                         MIGRATION_7_8, MIGRATION_1_8, MIGRATION_2_8, MIGRATION_3_8, MIGRATION_4_8, MIGRATION_5_8, MIGRATION_6_8,
-                        MIGRATION_8_9, MIGRATION_7_9
+                        MIGRATION_8_9, MIGRATION_7_9,
+                        MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13
                     )
                     .build()
                     .also { INSTANCE = it }

@@ -1,8 +1,29 @@
 package com.silverwest.dayli.ddaywidget
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import org.json.JSONArray
+import org.json.JSONObject
 import java.util.*
+
+// SubTask 데이터 클래스 (체크리스트 하위 항목)
+data class SubTask(
+    val title: String,
+    val isChecked: Boolean = false
+) {
+    fun toJson(): JSONObject = JSONObject().apply {
+        put("title", title)
+        put("checked", isChecked)
+    }
+
+    companion object {
+        fun fromJson(json: JSONObject): SubTask = SubTask(
+            title = json.optString("title", ""),
+            isChecked = json.optBoolean("checked", false)
+        )
+    }
+}
 
 @Entity(tableName = "dday_items")
 data class DdayItem(
@@ -17,8 +38,35 @@ data class DdayItem(
     val customColor: Long? = null,  // 커스텀 색상 (null = 카테고리 기본 색상 사용)
     val repeatType: String = RepeatType.NONE.name,  // 반복 타입 (NONE/DAILY/WEEKLY/MONTHLY/YEARLY)
     val repeatDay: Int? = null,  // 반복 기준 (매주: 요일 1-7, 매월: 날짜 1-31)
-    val itemType: String = ItemType.DDAY.name  // 아이템 타입 (DDAY / TODO)
+    val itemType: String = ItemType.DDAY.name,  // 아이템 타입 (DDAY / TODO)
+    val sortOrder: Int = 0,  // To-Do 드래그 순서 (0 = 기본, 작을수록 위)
+    @ColumnInfo(name = "sub_tasks")
+    val subTasks: String? = null,  // 체크리스트 하위 항목 (JSON 형식)
+    @ColumnInfo(name = "group_name")
+    val groupName: String? = null  // D-Day 그룹 이름
 ) {
+    // SubTask 리스트로 변환
+    fun getSubTaskList(): List<SubTask> {
+        if (subTasks.isNullOrBlank()) return emptyList()
+        return try {
+            val jsonArray = JSONArray(subTasks)
+            (0 until jsonArray.length()).map { i ->
+                SubTask.fromJson(jsonArray.getJSONObject(i))
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    // SubTask 리스트를 JSON 문자열로 변환
+    companion object {
+        fun subTasksToJson(subTasks: List<SubTask>): String? {
+            if (subTasks.isEmpty()) return null
+            val jsonArray = JSONArray()
+            subTasks.forEach { jsonArray.put(it.toJson()) }
+            return jsonArray.toString()
+        }
+    }
     // To-Do 여부 확인
     fun isTodo(): Boolean = itemType == ItemType.TODO.name
 

@@ -67,9 +67,21 @@ interface DdayDao {
     @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' ORDER BY id DESC")
     suspend fun getAllTodos(): List<DdayItem>
 
-    // To-Do 아이템만 (체크 안 된 것 먼저, 그 다음 최신순)
-    @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' ORDER BY isChecked ASC, id DESC")
+    // To-Do 아이템만 (체크 안 된 것 먼저, 그 다음 sortOrder, 최신순)
+    @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' ORDER BY isChecked ASC, sortOrder ASC, id DESC")
     suspend fun getAllTodosSorted(): List<DdayItem>
+
+    // sortOrder 업데이트 (드래그 순서 변경용)
+    @Query("UPDATE dday_items SET sortOrder = :sortOrder WHERE id = :id")
+    suspend fun updateSortOrder(id: Int, sortOrder: Int)
+
+    // 여러 아이템의 sortOrder 일괄 업데이트 (트랜잭션)
+    @androidx.room.Transaction
+    suspend fun updateSortOrders(items: List<Pair<Int, Int>>) {
+        items.forEach { (id, order) ->
+            updateSortOrder(id, order)
+        }
+    }
 
     // 위젯용: D-Day + To-Do 함께
     // D-Day: 체크 즉시 숨김
@@ -88,5 +100,21 @@ interface DdayDao {
             id DESC
     """)
     suspend fun getAllForWidgetWithTodos(cutoffTime: Long): List<DdayItem>
+
+    // 기존 그룹 이름 목록 (D-Day만, null 제외)
+    @Query("SELECT DISTINCT group_name FROM dday_items WHERE itemType = 'DDAY' AND group_name IS NOT NULL ORDER BY group_name ASC")
+    suspend fun getDistinctGroupNames(): List<String>
+
+    // 그룹 이름 변경 (해당 그룹의 모든 D-Day 업데이트)
+    @Query("UPDATE dday_items SET group_name = :newName WHERE group_name = :oldName AND itemType = 'DDAY'")
+    suspend fun renameGroup(oldName: String, newName: String)
+
+    // 그룹 삭제 (해당 그룹의 D-Day를 미분류로 이동)
+    @Query("UPDATE dday_items SET group_name = NULL WHERE group_name = :groupName AND itemType = 'DDAY'")
+    suspend fun deleteGroup(groupName: String)
+
+    // 특정 그룹의 D-Day 개수
+    @Query("SELECT COUNT(*) FROM dday_items WHERE group_name = :groupName AND itemType = 'DDAY'")
+    suspend fun getGroupItemCount(groupName: String): Int
 }
 

@@ -1,12 +1,17 @@
 package com.silverwest.dayli.ddaywidget
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,12 +28,20 @@ import androidx.compose.ui.graphics.Color
 fun DdayListItem(
     item: DdayItem,
     onToggle: (DdayItem) -> Unit,
-    onLongPress: (DdayItem) -> Unit = {}
+    onLongPress: (DdayItem) -> Unit = {},
+    onSubTaskToggle: (DdayItem, Int) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val formattedDate = item.date?.let { SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(it) }
     val ddayText = item.date?.let { calculateDday(it) }
     val ddayDiff = item.date?.let { calculateDdayDiff(it) }
+
+    // 체크리스트 상태
+    val subTasks = item.getSubTaskList()
+    val hasSubTasks = subTasks.isNotEmpty()
+    var isExpanded by remember { mutableStateOf(false) }
+    val completedCount = subTasks.count { it.isChecked }
+    val totalCount = subTasks.size
 
     // 커스텀 색상 또는 카테고리 기본 색상 사용
     val itemColor = item.getColorLong().toComposeColor()
@@ -60,33 +73,37 @@ fun DdayListItem(
         Color.Transparent
     }
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(backgroundColor)
-            .combinedClickable(
-                onClick = { },
-                onLongClick = { onLongPress(item) }
-            )
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
     ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = { if (hasSubTasks) isExpanded = !isExpanded },
+                    onLongClick = { onLongPress(item) }
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
         // 이모지 아이콘
         val itemEmoji = item.getEmoji()
         Box(
             modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .size(36.dp)
+                .clip(RoundedCornerShape(8.dp))
                 .background(iconBgColor),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = itemEmoji,
-                fontSize = 22.sp
+                fontSize = 20.sp
             )
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(10.dp))
 
         // 내용
         Column(modifier = Modifier.weight(1f)) {
@@ -100,6 +117,24 @@ fun DdayListItem(
                     color = primaryTextColor,
                     modifier = Modifier.weight(1f, fill = false)
                 )
+                // 체크리스트 진행률 표시 (To-Do만)
+                if (hasSubTasks) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "$completedCount/$totalCount",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = secondaryTextColor
+                    )
+                    // 펼치기/접기 버튼
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = if (isExpanded) "접기" else "펼치기",
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable { isExpanded = !isExpanded },
+                        tint = secondaryTextColor
+                    )
+                }
                 // 반복 태그 표시 (D-Day와 To-Do 모두)
                 if (item.isRepeating()) {
                     val tagText = if (item.isDday()) {
@@ -185,6 +220,43 @@ fun DdayListItem(
                     uncheckedColor = itemColor.copy(alpha = 0.6f)
                 )
             )
+        }
+        }
+
+        // 체크리스트 펼치기 (To-Do 전용)
+        AnimatedVisibility(visible = isExpanded && hasSubTasks) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 58.dp, end = 12.dp, bottom = 8.dp)
+            ) {
+                subTasks.forEachIndexed { index, subTask ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSubTaskToggle(item, index) }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = subTask.isChecked,
+                            onCheckedChange = { onSubTaskToggle(item, index) },
+                            modifier = Modifier.size(20.dp),
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = itemColor,
+                                uncheckedColor = itemColor.copy(alpha = 0.6f)
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = subTask.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textDecoration = if (subTask.isChecked) TextDecoration.LineThrough else TextDecoration.None,
+                            color = if (subTask.isChecked) Color.Gray else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
         }
     }
 }
