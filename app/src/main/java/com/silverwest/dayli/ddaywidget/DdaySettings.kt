@@ -216,4 +216,29 @@ object DdaySettings {
     fun setThemeModeEnum(context: Context, mode: ThemeMode) {
         setThemeMode(context, mode.value)
     }
+
+    // ===== D-Day 위젯 그룹 접기/펼치기 =====
+
+    private const val KEY_COLLAPSED_GROUPS = "collapsed_groups"
+
+    // 접힌 그룹 목록 가져오기
+    fun getCollapsedGroups(context: Context): Set<String> {
+        return getPrefs(context).getStringSet(KEY_COLLAPSED_GROUPS, emptySet()) ?: emptySet()
+    }
+
+    // 그룹 접기/펼치기 토글
+    fun toggleGroupCollapsed(context: Context, groupName: String) {
+        val collapsed = getCollapsedGroups(context).toMutableSet()
+        if (collapsed.contains(groupName)) {
+            collapsed.remove(groupName)
+        } else {
+            collapsed.add(groupName)
+        }
+        getPrefs(context).edit().putStringSet(KEY_COLLAPSED_GROUPS, collapsed).apply()
+    }
+
+    // 그룹이 접혀있는지 확인
+    fun isGroupCollapsed(context: Context, groupName: String): Boolean {
+        return getCollapsedGroups(context).contains(groupName)
+    }
 }

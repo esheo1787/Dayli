@@ -29,12 +29,30 @@ class DdayOnlyWidgetProvider : AppWidgetProvider() {
         }
     }
 
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+
+        when (intent.action) {
+            ACTION_TOGGLE_GROUP -> {
+                val groupName = intent.getStringExtra(EXTRA_GROUP_NAME) ?: return
+                // 그룹 접기/펼치기 토글
+                DdaySettings.toggleGroupCollapsed(context, groupName)
+                // 위젯 새로고침
+                DdayWidgetProvider.refreshAllWidgets(context)
+            }
+        }
+    }
+
     companion object {
         // Widget mode constants (shared with RemoteViewsFactory)
         const val EXTRA_WIDGET_MODE = "widget_mode"
         const val MODE_ALL = "ALL"
         const val MODE_DDAY = "DDAY"
         const val MODE_TODO = "TODO"  // Step 8C에서 사용
+
+        // 그룹 접기/펼치기 액션
+        const val ACTION_TOGGLE_GROUP = "com.silverwest.dayli.ACTION_TOGGLE_GROUP"
+        const val EXTRA_GROUP_NAME = "extra_group_name"
 
         private fun updateAppWidget(
             context: Context,
@@ -69,13 +87,13 @@ class DdayOnlyWidgetProvider : AppWidgetProvider() {
                 val emptyTextColor = if (isDark) 0x80B8B8B8.toInt() else 0x807A7A7A.toInt()
                 setTextColor(R.id.emptyTextView, emptyTextColor)
 
-                // Click template for checkbox (reuse existing action)
-                val clickIntent = Intent(context, DdayWidgetProvider::class.java).apply {
-                    action = DdayWidgetProvider.ACTION_CHECKBOX_CLICK
+                // Click template for group header toggle
+                val clickIntent = Intent(context, DdayOnlyWidgetProvider::class.java).apply {
+                    action = ACTION_TOGGLE_GROUP
                 }
                 val clickPendingIntent = PendingIntent.getBroadcast(
                     context,
-                    0,
+                    appWidgetId + 20000,  // Unique request code
                     clickIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
                 )

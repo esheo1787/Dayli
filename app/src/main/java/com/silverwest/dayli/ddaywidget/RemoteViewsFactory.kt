@@ -15,7 +15,7 @@ import java.text.SimpleDateFormat
 // 위젯 행 타입 (헤더 / 그룹헤더 / 아이템)
 sealed class WidgetRow {
     data class Header(val title: String) : WidgetRow()
-    data class GroupHeader(val groupName: String) : WidgetRow()  // D-Day 그룹 헤더
+    data class GroupHeader(val groupName: String, val isCollapsed: Boolean = false) : WidgetRow()  // D-Day 그룹 헤더
     data class Item(val item: DdayItem, val showProgress: Boolean = false) : WidgetRow()  // showProgress: To-Do 진행률 표시
 }
 
@@ -96,20 +96,24 @@ class RemoteViewsFactory(
                         }
                     }
                 } else if (mode == DdayOnlyWidgetProvider.MODE_DDAY) {
-                    // D-Day 전용 위젯: 그룹별로 표시
+                    // D-Day 전용 위젯: 그룹별로 표시 (접기/펼치기 지원)
                     val ddayItems = items.filter { !it.isChecked }
+                    val collapsedGroups = DdaySettings.getCollapsedGroups(context)
                     buildList {
                         // 그룹별로 묶기 (미분류는 마지막으로)
                         val groupedDdays = ddayItems.groupBy { it.groupName ?: "미분류" }
                             .toSortedMap(compareBy { if (it == "미분류") "zzz" else it })
 
                         groupedDdays.forEach { (groupName, groupItems) ->
-                            // 그룹 헤더 추가
-                            add(WidgetRow.GroupHeader(groupName))
-                            // 임박순 정렬 후 모든 항목 표시
-                            val sortedItems = groupItems.sortedBy { it.date }
-                            sortedItems.forEach { item ->
-                                add(WidgetRow.Item(item))
+                            val isCollapsed = collapsedGroups.contains(groupName)
+                            // 그룹 헤더 추가 (접힘 상태 포함)
+                            add(WidgetRow.GroupHeader(groupName, isCollapsed))
+                            // 접혀있지 않으면 항목들 표시
+                            if (!isCollapsed) {
+                                val sortedItems = groupItems.sortedBy { it.date }
+                                sortedItems.forEach { item ->
+                                    add(WidgetRow.Item(item))
+                                }
                             }
                         }
                     }
@@ -158,7 +162,7 @@ class RemoteViewsFactory(
 
         // 그룹 헤더 행 처리
         if (row is WidgetRow.GroupHeader) {
-            return createGroupHeaderView(row.groupName)
+            return createGroupHeaderView(row.groupName, row.isCollapsed)
         }
 
         // 아이템 행 처리
@@ -358,17 +362,34 @@ class RemoteViewsFactory(
         return views
     }
 
-    private fun createGroupHeaderView(groupName: String): RemoteViews {
+    private fun createGroupHeaderView(groupName: String, isCollapsed: Boolean): RemoteViews {
         val isDark = isDarkMode(context)
+
+        // D-Day 전용 위젯에서만 접기/펼치기 사용 (새 레이아웃 사용)
+        if (mode == DdayOnlyWidgetProvider.MODE_DDAY) {
+            val views = RemoteViews(context.packageName, R.layout.item_widget_group_header)
+            // 그룹 헤더: "📁 그룹명" 형식
+            views.setTextViewText(R.id.group_header_title, "📁 $groupName")
+            // 접기/펼치기 아이콘
+            views.setTextViewText(R.id.group_header_indicator, if (isCollapsed) "▼" else "▲")
+            // 다크모드 대응 색상
+            val groupHeaderColor = if (isDark) 0xCCD0D0D0.toInt() else 0xAA3A3A3A.toInt()
+            views.setTextColor(R.id.group_header_title, groupHeaderColor)
+            views.setTextColor(R.id.group_header_indicator, groupHeaderColor)
+            // 클릭 시 그룹 토글 인텐트
+            val toggleIntent = Intent().apply {
+                putExtra(DdayOnlyWidgetProvider.EXTRA_GROUP_NAME, groupName)
+            }
+            views.setOnClickFillInIntent(R.id.group_header_root, toggleIntent)
+            return views
+        }
+
+        // 혼합 위젯에서는 기존 레이아웃 사용 (접기 없음)
         val views = RemoteViews(context.packageName, R.layout.item_widget_section_header)
-        // 그룹 헤더: "📁 그룹명" 형식
         views.setTextViewText(R.id.header_title, "📁 $groupName")
-        // 그룹 헤더는 메인 헤더보다 약간 작은 텍스트 크기
         views.setTextViewTextSize(R.id.header_title, android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
-        // 다크모드 대응 그룹 헤더 텍스트 색상 (메인 헤더보다 약간 밝게)
         val groupHeaderColor = if (isDark) 0xCCD0D0D0.toInt() else 0xAA3A3A3A.toInt()
         views.setTextColor(R.id.header_title, groupHeaderColor)
-        // 그룹 헤더도 클릭 시 아무 동작 안 함
         return views
     }
 
