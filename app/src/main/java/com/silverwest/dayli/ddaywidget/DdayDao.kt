@@ -67,9 +67,21 @@ interface DdayDao {
     @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' ORDER BY id DESC")
     suspend fun getAllTodos(): List<DdayItem>
 
-    // To-Do 아이템만 (체크 안 된 것 먼저, 그 다음 최신순)
-    @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' ORDER BY isChecked ASC, id DESC")
+    // To-Do 아이템만 (체크 안 된 것 먼저, 그 다음 sortOrder, 최신순)
+    @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' ORDER BY isChecked ASC, sortOrder ASC, id DESC")
     suspend fun getAllTodosSorted(): List<DdayItem>
+
+    // sortOrder 업데이트 (드래그 순서 변경용)
+    @Query("UPDATE dday_items SET sortOrder = :sortOrder WHERE id = :id")
+    suspend fun updateSortOrder(id: Int, sortOrder: Int)
+
+    // 여러 아이템의 sortOrder 일괄 업데이트 (트랜잭션)
+    @androidx.room.Transaction
+    suspend fun updateSortOrders(items: List<Pair<Int, Int>>) {
+        items.forEach { (id, order) ->
+            updateSortOrder(id, order)
+        }
+    }
 
     // 위젯용: D-Day + To-Do 함께
     // D-Day: 체크 즉시 숨김

@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [DdayItem::class], version = 9, exportSchema = false)
+@Database(entities = [DdayItem::class], version = 10, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class DdayDatabase : RoomDatabase() {
     abstract fun ddayDao(): DdayDao
@@ -443,6 +443,13 @@ abstract class DdayDatabase : RoomDatabase() {
             }
         }
 
+        // 마이그레이션: version 9 → 10 (sortOrder 컬럼 추가)
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE dday_items ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         // 마이그레이션: version 7 → 9 (직접 점프)
         private val MIGRATION_7_9 = object : Migration(7, 9) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -487,7 +494,8 @@ abstract class DdayDatabase : RoomDatabase() {
                         MIGRATION_5_6, MIGRATION_1_6, MIGRATION_2_6, MIGRATION_3_6, MIGRATION_4_6,
                         MIGRATION_6_7, MIGRATION_1_7, MIGRATION_2_7, MIGRATION_3_7, MIGRATION_4_7, MIGRATION_5_7,
                         MIGRATION_7_8, MIGRATION_1_8, MIGRATION_2_8, MIGRATION_3_8, MIGRATION_4_8, MIGRATION_5_8, MIGRATION_6_8,
-                        MIGRATION_8_9, MIGRATION_7_9
+                        MIGRATION_8_9, MIGRATION_7_9,
+                        MIGRATION_9_10
                     )
                     .build()
                     .also { INSTANCE = it }

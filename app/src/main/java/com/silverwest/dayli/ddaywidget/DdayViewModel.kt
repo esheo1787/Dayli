@@ -205,6 +205,20 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             DdayWidgetProvider.refreshAllWidgets(getApplication())
         }
     }
+
+    // To-Do 드래그 순서 변경
+    fun updateTodoOrder(reorderedItems: List<DdayItem>) {
+        viewModelScope.launch {
+            // 순서대로 sortOrder 업데이트
+            val updates = reorderedItems.mapIndexed { index, item ->
+                Pair(item.id, index)
+            }
+            dao.updateSortOrders(updates)
+            loadAllTodos()
+            // 위젯 동기화
+            DdayWidgetProvider.refreshAllWidgets(getApplication())
+        }
+    }
 }
 
 

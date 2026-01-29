@@ -66,6 +66,9 @@ dependencies {
     // Material Icons Extended
     implementation("androidx.compose.material:material-icons-extended:1.6.4")
 
+    // Reorderable (드래그 순서 변경)
+    implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
+
     // Lifecycle ViewModel & LiveData
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")

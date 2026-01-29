@@ -17,7 +17,8 @@ data class DdayItem(
     val customColor: Long? = null,  // 커스텀 색상 (null = 카테고리 기본 색상 사용)
     val repeatType: String = RepeatType.NONE.name,  // 반복 타입 (NONE/DAILY/WEEKLY/MONTHLY/YEARLY)
     val repeatDay: Int? = null,  // 반복 기준 (매주: 요일 1-7, 매월: 날짜 1-31)
-    val itemType: String = ItemType.DDAY.name  // 아이템 타입 (DDAY / TODO)
+    val itemType: String = ItemType.DDAY.name,  // 아이템 타입 (DDAY / TODO)
+    val sortOrder: Int = 0  // To-Do 드래그 순서 (0 = 기본, 작을수록 위)
 ) {
     // To-Do 여부 확인
     fun isTodo(): Boolean = itemType == ItemType.TODO.name

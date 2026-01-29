@@ -7,12 +7,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import org.burnoutcrew.reorderable.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -50,6 +53,32 @@ fun DdayScreen(
     // 진행중/완료 항목 분리
     val pendingItems = currentItems.filter { !it.isChecked }
     val completedItems = currentItems.filter { it.isChecked }
+
+    // To-Do 드래그 순서 변경을 위한 상태
+    var todoPendingData by remember { mutableStateOf(pendingItems) }
+    LaunchedEffect(pendingItems, selectedTabIndex) {
+        if (selectedTabIndex == 1) {
+            todoPendingData = pendingItems
+        }
+    }
+
+    // Reorderable 상태 (To-Do 탭 전용)
+    val reorderableState = rememberReorderableLazyListState(
+        onMove = { from, to ->
+            // 헤더가 0번 인덱스이므로 실제 아이템 인덱스는 -1
+            val fromIndex = from.index - 1
+            val toIndex = to.index - 1
+            if (fromIndex >= 0 && toIndex >= 0 && fromIndex < todoPendingData.size && toIndex < todoPendingData.size) {
+                todoPendingData = todoPendingData.toMutableList().apply {
+                    add(toIndex, removeAt(fromIndex))
+                }
+            }
+        },
+        onDragEnd = { _, _ ->
+            // 드래그 완료 시 DB에 순서 저장
+            viewModel.updateTodoOrder(todoPendingData)
+        }
+    )
 
     // 완료 섹션 펼침/접힘 상태 (기본: 접힘)
     var isCompletedExpanded by remember { mutableStateOf(false) }
@@ -135,94 +164,207 @@ fun DdayScreen(
                 }
             }
 
-            // 리스트 with SwipeToDismiss
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                // 진행중 섹션 헤더
-                item {
-                    SectionHeader(
-                        title = "진행중",
-                        count = pendingItems.size,
-                        isExpandable = false,
-                        isExpanded = true,
-                        onToggle = {}
-                    )
-                }
-
-                // 진행중 항목들
-                items(
-                    items = pendingItems,
-                    key = { it.id }
-                ) { item ->
-                    SwipeableDdayItem(
-                        item = item,
-                        onDelete = {
-                            deletedItem = item
-                            viewModel.delete(item)
-                            scope.launch {
-                                val result = snackbarHostState.showSnackbar(
-                                    message = "'${item.title}' 삭제됨",
-                                    actionLabel = "실행취소",
-                                    duration = SnackbarDuration.Short
-                                )
-                                if (result == SnackbarResult.ActionPerformed) {
-                                    deletedItem?.let { deleted ->
-                                        viewModel.restoreItem(deleted)
-                                    }
-                                }
-                                deletedItem = null
-                            }
-                        },
-                        onToggle = { viewModel.toggleChecked(it) },
-                        onLongPress = {
-                            selectedItem = it
-                            showBottomSheet = true
-                        }
-                    )
-                }
-
-                // 완료 섹션 헤더 (접기/펼치기 가능)
-                if (completedItems.isNotEmpty()) {
-                    item {
+            // 리스트 (To-Do 탭: 드래그 가능, D-Day 탭: 일반)
+            if (selectedTabIndex == 1) {
+                // To-Do 탭: 드래그 순서 변경 가능
+                LazyColumn(
+                    state = reorderableState.listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .reorderable(reorderableState)
+                ) {
+                    // 진행중 섹션 헤더
+                    item(key = "header_pending") {
                         SectionHeader(
-                            title = "완료",
-                            count = completedItems.size,
-                            isExpandable = true,
-                            isExpanded = isCompletedExpanded,
-                            onToggle = { isCompletedExpanded = !isCompletedExpanded }
+                            title = "진행중",
+                            count = todoPendingData.size,
+                            isExpandable = false,
+                            isExpanded = true,
+                            onToggle = {}
                         )
                     }
 
-                    // 완료 항목들 (펼쳐진 경우에만 표시)
-                    if (isCompletedExpanded) {
-                        items(
-                            items = completedItems,
-                            key = { it.id }
-                        ) { item ->
-                            SwipeableDdayItem(
-                                item = item,
-                                onDelete = {
-                                    deletedItem = item
-                                    viewModel.delete(item)
-                                    scope.launch {
-                                        val result = snackbarHostState.showSnackbar(
-                                            message = "'${item.title}' 삭제됨",
-                                            actionLabel = "실행취소",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                        if (result == SnackbarResult.ActionPerformed) {
-                                            deletedItem?.let { deleted ->
-                                                viewModel.restoreItem(deleted)
+                    // 진행중 To-Do 항목들 (드래그 가능)
+                    items(
+                        items = todoPendingData,
+                        key = { it.id }
+                    ) { item ->
+                        ReorderableItem(reorderableState, key = item.id) { isDragging ->
+                            val elevation = if (isDragging) 8.dp else 0.dp
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .detectReorderAfterLongPress(reorderableState),
+                                elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // 드래그 핸들
+                                    Icon(
+                                        imageVector = Icons.Default.Menu,
+                                        contentDescription = "드래그",
+                                        modifier = Modifier
+                                            .padding(start = 8.dp)
+                                            .size(20.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                    // 아이템 내용
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        DdayListItem(
+                                            item = item,
+                                            onToggle = { viewModel.toggleChecked(it) },
+                                            onLongPress = {
+                                                selectedItem = it
+                                                showBottomSheet = true
                                             }
-                                        }
-                                        deletedItem = null
+                                        )
                                     }
-                                },
-                                onToggle = { viewModel.toggleChecked(it) },
-                                onLongPress = {
-                                    selectedItem = it
-                                    showBottomSheet = true
                                 }
+                            }
+                        }
+                    }
+
+                    // 완료 섹션 헤더
+                    if (completedItems.isNotEmpty()) {
+                        item(key = "header_completed") {
+                            SectionHeader(
+                                title = "완료",
+                                count = completedItems.size,
+                                isExpandable = true,
+                                isExpanded = isCompletedExpanded,
+                                onToggle = { isCompletedExpanded = !isCompletedExpanded }
                             )
+                        }
+
+                        if (isCompletedExpanded) {
+                            items(
+                                items = completedItems,
+                                key = { it.id }
+                            ) { item ->
+                                SwipeableDdayItem(
+                                    item = item,
+                                    onDelete = {
+                                        deletedItem = item
+                                        viewModel.delete(item)
+                                        scope.launch {
+                                            val result = snackbarHostState.showSnackbar(
+                                                message = "'${item.title}' 삭제됨",
+                                                actionLabel = "실행취소",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                            if (result == SnackbarResult.ActionPerformed) {
+                                                deletedItem?.let { deleted ->
+                                                    viewModel.restoreItem(deleted)
+                                                }
+                                            }
+                                            deletedItem = null
+                                        }
+                                    },
+                                    onToggle = { viewModel.toggleChecked(it) },
+                                    onLongPress = {
+                                        selectedItem = it
+                                        showBottomSheet = true
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // D-Day 탭: 기존 스와이프 삭제만
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    // 진행중 섹션 헤더
+                    item {
+                        SectionHeader(
+                            title = "진행중",
+                            count = pendingItems.size,
+                            isExpandable = false,
+                            isExpanded = true,
+                            onToggle = {}
+                        )
+                    }
+
+                    // 진행중 항목들
+                    items(
+                        items = pendingItems,
+                        key = { it.id }
+                    ) { item ->
+                        SwipeableDdayItem(
+                            item = item,
+                            onDelete = {
+                                deletedItem = item
+                                viewModel.delete(item)
+                                scope.launch {
+                                    val result = snackbarHostState.showSnackbar(
+                                        message = "'${item.title}' 삭제됨",
+                                        actionLabel = "실행취소",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        deletedItem?.let { deleted ->
+                                            viewModel.restoreItem(deleted)
+                                        }
+                                    }
+                                    deletedItem = null
+                                }
+                            },
+                            onToggle = { viewModel.toggleChecked(it) },
+                            onLongPress = {
+                                selectedItem = it
+                                showBottomSheet = true
+                            }
+                        )
+                    }
+
+                    // 완료 섹션 헤더 (접기/펼치기 가능)
+                    if (completedItems.isNotEmpty()) {
+                        item {
+                            SectionHeader(
+                                title = "완료",
+                                count = completedItems.size,
+                                isExpandable = true,
+                                isExpanded = isCompletedExpanded,
+                                onToggle = { isCompletedExpanded = !isCompletedExpanded }
+                            )
+                        }
+
+                        // 완료 항목들 (펼쳐진 경우에만 표시)
+                        if (isCompletedExpanded) {
+                            items(
+                                items = completedItems,
+                                key = { it.id }
+                            ) { item ->
+                                SwipeableDdayItem(
+                                    item = item,
+                                    onDelete = {
+                                        deletedItem = item
+                                        viewModel.delete(item)
+                                        scope.launch {
+                                            val result = snackbarHostState.showSnackbar(
+                                                message = "'${item.title}' 삭제됨",
+                                                actionLabel = "실행취소",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                            if (result == SnackbarResult.ActionPerformed) {
+                                                deletedItem?.let { deleted ->
+                                                    viewModel.restoreItem(deleted)
+                                                }
+                                            }
+                                            deletedItem = null
+                                        }
+                                    },
+                                    onToggle = { viewModel.toggleChecked(it) },
+                                    onLongPress = {
+                                        selectedItem = it
+                                        showBottomSheet = true
+                                    }
+                                )
+                            }
                         }
                     }
                 }
