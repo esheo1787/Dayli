@@ -41,7 +41,9 @@ data class DdayItem(
     val itemType: String = ItemType.DDAY.name,  // 아이템 타입 (DDAY / TODO)
     val sortOrder: Int = 0,  // To-Do 드래그 순서 (0 = 기본, 작을수록 위)
     @ColumnInfo(name = "sub_tasks")
-    val subTasks: String? = null  // 체크리스트 하위 항목 (JSON 형식)
+    val subTasks: String? = null,  // 체크리스트 하위 항목 (JSON 형식)
+    @ColumnInfo(name = "group_name")
+    val groupName: String? = null  // D-Day 그룹 이름
 ) {
     // SubTask 리스트로 변환
     fun getSubTaskList(): List<SubTask> {

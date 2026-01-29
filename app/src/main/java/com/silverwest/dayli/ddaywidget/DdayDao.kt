@@ -100,5 +100,9 @@ interface DdayDao {
             id DESC
     """)
     suspend fun getAllForWidgetWithTodos(cutoffTime: Long): List<DdayItem>
+
+    // 기존 그룹 이름 목록 (D-Day만, null 제외)
+    @Query("SELECT DISTINCT group_name FROM dday_items WHERE itemType = 'DDAY' AND group_name IS NOT NULL ORDER BY group_name ASC")
+    suspend fun getDistinctGroupNames(): List<String>
 }
 

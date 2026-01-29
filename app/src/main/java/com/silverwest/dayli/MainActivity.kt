@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
@@ -99,6 +100,9 @@ fun MainDdayScreen(
     var showAddSheet by remember { mutableStateOf(false) }
     var editItem by remember { mutableStateOf<DdayItem?>(null) }
 
+    // 기존 그룹 목록
+    val existingGroups by viewModel.existingGroups.observeAsState(emptyList())
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -157,11 +161,12 @@ fun MainDdayScreen(
         isVisible = showAddSheet,
         itemType = if (selectedTab == 0) ItemType.DDAY else ItemType.TODO,
         editItem = editItem,
+        existingGroups = existingGroups,
         onDismiss = {
             showAddSheet = false
             editItem = null
         },
-        onSave = { title, memo, date, emoji, color, repeatType, itemType, subTasks ->
+        onSave = { title, memo, date, emoji, color, repeatType, itemType, subTasks, groupName ->
             if (editItem != null) {
                 // 수정 모드
                 val calendar = Calendar.getInstance().apply { date?.let { time = it } }
@@ -179,13 +184,14 @@ fun MainDdayScreen(
                         customColor = color,
                         repeatType = repeatType.name,
                         repeatDay = repeatDay,
-                        subTasks = DdayItem.subTasksToJson(subTasks)
+                        subTasks = DdayItem.subTasksToJson(subTasks),
+                        groupName = groupName
                     )
                 )
             } else {
                 // 추가 모드
                 if (itemType == ItemType.DDAY) {
-                    viewModel.insertDday(title, memo ?: "", date!!, emoji, color, repeatType)
+                    viewModel.insertDday(title, memo ?: "", date!!, emoji, color, repeatType, groupName)
                 } else {
                     viewModel.insertTodo(title, memo, emoji, color, repeatType, subTasks)
                 }

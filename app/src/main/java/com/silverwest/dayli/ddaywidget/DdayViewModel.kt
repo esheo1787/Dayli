@@ -32,9 +32,21 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentTab = MutableLiveData(ItemType.DDAY)
     val currentTab: LiveData<ItemType> = _currentTab
 
+    // 기존 그룹 목록
+    private val _existingGroups = MutableLiveData<List<String>>(emptyList())
+    val existingGroups: LiveData<List<String>> = _existingGroups
+
     init {
         loadAllDdays()
         loadAllTodos()
+        loadGroups()
+    }
+
+    fun loadGroups() {
+        viewModelScope.launch {
+            val groups = dao.getDistinctGroupNames()
+            _existingGroups.postValue(groups)
+        }
     }
 
     fun setCurrentTab(tab: ItemType) {
@@ -132,7 +144,8 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         date: Date,
         emoji: String = "📌",
         color: Long = 0xFFA8C5DAL,  // Pastel Blue
-        repeatType: RepeatType = RepeatType.NONE
+        repeatType: RepeatType = RepeatType.NONE,
+        groupName: String? = null
     ) {
         viewModelScope.launch {
             // 반복 기준 날짜 계산 (매주: 요일, 매월: 날짜)
@@ -152,10 +165,12 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 customColor = color,
                 repeatType = repeatType.name,
                 repeatDay = repeatDay,
-                itemType = ItemType.DDAY.name
+                itemType = ItemType.DDAY.name,
+                groupName = groupName
             )
             dao.insert(item)
             loadAll()
+            loadGroups()  // 그룹 목록 갱신
             // 위젯 동기화
             DdayWidgetProvider.refreshAllWidgets(getApplication())
         }

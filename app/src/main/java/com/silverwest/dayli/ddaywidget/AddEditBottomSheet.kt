@@ -37,8 +37,9 @@ fun AddEditBottomSheet(
     isVisible: Boolean,
     itemType: ItemType,
     editItem: DdayItem? = null,
+    existingGroups: List<String> = emptyList(),
     onDismiss: () -> Unit,
-    onSave: (title: String, memo: String?, date: Date?, emoji: String, color: Long, repeatType: RepeatType, itemType: ItemType, subTasks: List<SubTask>) -> Unit
+    onSave: (title: String, memo: String?, date: Date?, emoji: String, color: Long, repeatType: RepeatType, itemType: ItemType, subTasks: List<SubTask>, groupName: String?) -> Unit
 ) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -62,6 +63,14 @@ fun AddEditBottomSheet(
     var selectedRepeatType by remember(editItem) {
         mutableStateOf(editItem?.repeatTypeEnum() ?: RepeatType.NONE)
     }
+
+    // 그룹 상태 (D-Day 전용)
+    var selectedGroupName by remember(editItem) {
+        mutableStateOf(editItem?.groupName)
+    }
+    var showGroupDialog by remember { mutableStateOf(false) }
+    var newGroupName by remember { mutableStateOf("") }
+    var groupDropdownExpanded by remember { mutableStateOf(false) }
 
     // 체크리스트 상태 (To-Do 전용)
     var subTasks by remember(editItem) {
@@ -106,6 +115,48 @@ fun AddEditBottomSheet(
                 showRepeatPicker = false
             },
             onDismiss = { showRepeatPicker = false }
+        )
+    }
+
+    // 새 그룹 입력 다이얼로그
+    if (showGroupDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showGroupDialog = false
+                newGroupName = ""
+            },
+            title = { Text("새 그룹") },
+            text = {
+                OutlinedTextField(
+                    value = newGroupName,
+                    onValueChange = { newGroupName = it },
+                    label = { Text("그룹 이름") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newGroupName.isNotBlank()) {
+                            selectedGroupName = newGroupName.trim()
+                            newGroupName = ""
+                            showGroupDialog = false
+                        }
+                    },
+                    enabled = newGroupName.isNotBlank()
+                ) {
+                    Text("추가")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showGroupDialog = false
+                    newGroupName = ""
+                }) {
+                    Text("취소")
+                }
+            }
         )
     }
 
@@ -180,9 +231,9 @@ fun AddEditBottomSheet(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text(if (actualItemType == ItemType.TODO) "할 일" else "제목", fontSize = 12.sp) },
-                    placeholder = { Text(if (actualItemType == ItemType.TODO) "할 일을 입력하세요" else "제목을 입력하세요", fontSize = 14.sp) },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    label = { Text(if (actualItemType == ItemType.TODO) "할 일" else "제목") },
+                    placeholder = { Text(if (actualItemType == ItemType.TODO) "할 일을 입력하세요" else "제목을 입력하세요") },
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     textStyle = MaterialTheme.typography.bodyMedium
                 )
@@ -193,10 +244,11 @@ fun AddEditBottomSheet(
                 OutlinedTextField(
                     value = memo,
                     onValueChange = { memo = it },
-                    label = { Text("메모 (선택)", fontSize = 12.sp) },
-                    modifier = Modifier.fillMaxWidth().height(60.dp),
+                    label = { Text("메모 (선택)") },
+                    modifier = Modifier.fillMaxWidth(),
                     maxLines = 2,
-                    textStyle = MaterialTheme.typography.bodySmall
+                    minLines = 1,
+                    textStyle = MaterialTheme.typography.bodyMedium
                 )
 
                 // 체크리스트 섹션 (To-Do 전용)
@@ -224,9 +276,9 @@ fun AddEditBottomSheet(
                                         this[index] = subTask.copy(isChecked = checked)
                                     }
                                 },
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(24.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             OutlinedTextField(
                                 value = subTask.title,
                                 onValueChange = { newTitle ->
@@ -234,9 +286,9 @@ fun AddEditBottomSheet(
                                         this[index] = subTask.copy(title = newTitle)
                                     }
                                 },
-                                modifier = Modifier.weight(1f).height(44.dp),
+                                modifier = Modifier.weight(1f),
                                 singleLine = true,
-                                textStyle = MaterialTheme.typography.bodySmall
+                                textStyle = MaterialTheme.typography.bodyMedium
                             )
                             IconButton(
                                 onClick = {
@@ -244,13 +296,13 @@ fun AddEditBottomSheet(
                                         removeAt(index)
                                     }
                                 },
-                                modifier = Modifier.size(28.dp)
+                                modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "삭제",
                                     tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
@@ -266,12 +318,12 @@ fun AddEditBottomSheet(
                         OutlinedTextField(
                             value = newSubTaskText,
                             onValueChange = { newSubTaskText = it },
-                            modifier = Modifier.weight(1f).height(44.dp),
-                            placeholder = { Text("항목 추가...", fontSize = 13.sp) },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("항목 추가...") },
                             singleLine = true,
-                            textStyle = MaterialTheme.typography.bodySmall
+                            textStyle = MaterialTheme.typography.bodyMedium
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         FilledIconButton(
                             onClick = {
                                 if (newSubTaskText.isNotBlank()) {
@@ -280,12 +332,12 @@ fun AddEditBottomSheet(
                                 }
                             },
                             enabled = newSubTaskText.isNotBlank(),
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = "추가",
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -311,6 +363,54 @@ fun AddEditBottomSheet(
                             )
                             TextButton(onClick = { datePickerDialog.show() }) {
                                 Text("변경")
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // 그룹 선택
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "그룹",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        Box {
+                            TextButton(onClick = { groupDropdownExpanded = true }) {
+                                Text(selectedGroupName ?: "없음")
+                            }
+                            DropdownMenu(
+                                expanded = groupDropdownExpanded,
+                                onDismissRequest = { groupDropdownExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("없음") },
+                                    onClick = {
+                                        selectedGroupName = null
+                                        groupDropdownExpanded = false
+                                    }
+                                )
+                                existingGroups.forEach { group ->
+                                    DropdownMenuItem(
+                                        text = { Text(group) },
+                                        onClick = {
+                                            selectedGroupName = group
+                                            groupDropdownExpanded = false
+                                        }
+                                    )
+                                }
+                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = { Text("+ 새 그룹") },
+                                    onClick = {
+                                        groupDropdownExpanded = false
+                                        showGroupDialog = true
+                                    }
+                                )
                             }
                         }
                     }
@@ -356,7 +456,8 @@ fun AddEditBottomSheet(
                                 selectedColor,
                                 selectedRepeatType,
                                 actualItemType,
-                                validSubTasks
+                                validSubTasks,
+                                if (actualItemType == ItemType.DDAY) selectedGroupName else null
                             )
                             // 입력 초기화
                             title = ""
@@ -367,6 +468,7 @@ fun AddEditBottomSheet(
                             selectedRepeatType = RepeatType.NONE
                             subTasks = emptyList()
                             newSubTaskText = ""
+                            selectedGroupName = null
                         }
                     },
                     modifier = Modifier
