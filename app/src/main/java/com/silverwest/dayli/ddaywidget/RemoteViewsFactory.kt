@@ -95,8 +95,26 @@ class RemoteViewsFactory(
                             }
                         }
                     }
+                } else if (mode == DdayOnlyWidgetProvider.MODE_DDAY) {
+                    // D-Day 전용 위젯: 그룹별로 표시
+                    val ddayItems = items.filter { !it.isChecked }
+                    buildList {
+                        // 그룹별로 묶기 (미분류는 마지막으로)
+                        val groupedDdays = ddayItems.groupBy { it.groupName ?: "미분류" }
+                            .toSortedMap(compareBy { if (it == "미분류") "zzz" else it })
+
+                        groupedDdays.forEach { (groupName, groupItems) ->
+                            // 그룹 헤더 추가
+                            add(WidgetRow.GroupHeader(groupName))
+                            // 임박순 정렬 후 모든 항목 표시
+                            val sortedItems = groupItems.sortedBy { it.date }
+                            sortedItems.forEach { item ->
+                                add(WidgetRow.Item(item))
+                            }
+                        }
+                    }
                 } else {
-                    // D-Day 전용 / To-Do 전용은 헤더 없이 아이템만
+                    // To-Do 전용 위젯: 헤더 없이 아이템만
                     items.map { WidgetRow.Item(it) }
                 }
 
