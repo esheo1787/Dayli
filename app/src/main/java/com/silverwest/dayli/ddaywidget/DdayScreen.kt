@@ -1,5 +1,6 @@
 package com.silverwest.dayli.ddaywidget
 
+import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -65,6 +66,7 @@ fun DdayScreen(
     // Reorderable 상태 (To-Do 탭 전용)
     val reorderableState = rememberReorderableLazyListState(
         onMove = { from, to ->
+            Log.d("DRAG", "🔄 onMove: from=${from.index}, to=${to.index}")
             // 헤더가 0번 인덱스이므로 실제 아이템 인덱스는 -1
             val fromIndex = from.index - 1
             val toIndex = to.index - 1
@@ -72,9 +74,11 @@ fun DdayScreen(
                 todoPendingData = todoPendingData.toMutableList().apply {
                     add(toIndex, removeAt(fromIndex))
                 }
+                Log.d("DRAG", "✅ 순서 변경됨: fromIndex=$fromIndex, toIndex=$toIndex")
             }
         },
         onDragEnd = { _, _ ->
+            Log.d("DRAG", "🏁 onDragEnd: 순서 DB 저장")
             // 드래그 완료 시 DB에 순서 저장
             viewModel.updateTodoOrder(todoPendingData)
         }
@@ -94,7 +98,12 @@ fun DdayScreen(
     var deletedItem by remember { mutableStateOf<DdayItem?>(null) }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = 80.dp)  // FAB 높이만큼 여백
+            )
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -192,9 +201,7 @@ fun DdayScreen(
                         ReorderableItem(reorderableState, key = item.id) { isDragging ->
                             val elevation = if (isDragging) 8.dp else 0.dp
                             Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .detectReorderAfterLongPress(reorderableState),
+                                modifier = Modifier.fillMaxWidth(),
                                 elevation = CardDefaults.cardElevation(defaultElevation = elevation),
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.surface
@@ -204,14 +211,16 @@ fun DdayScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // 드래그 핸들
+                                    // 드래그 핸들 (직접 드래그 가능)
                                     Icon(
                                         imageVector = Icons.Default.Menu,
                                         contentDescription = "드래그",
                                         modifier = Modifier
-                                            .padding(start = 8.dp)
-                                            .size(20.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                            .detectReorder(reorderableState)
+                                            .padding(start = 8.dp, end = 4.dp)
+                                            .padding(vertical = 12.dp)
+                                            .size(24.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                     )
                                     // 아이템 내용
                                     Box(modifier = Modifier.weight(1f)) {
