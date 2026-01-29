@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
@@ -374,24 +375,24 @@ fun AddEditBottomSheet(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text(if (actualItemType == ItemType.TODO) "할 일" else "제목") },
-                    placeholder = { Text(if (actualItemType == ItemType.TODO) "할 일을 입력하세요" else "제목을 입력하세요") },
-                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(if (actualItemType == ItemType.TODO) "할 일" else "제목", fontSize = 14.sp) },
+                    placeholder = { Text(if (actualItemType == ItemType.TODO) "할 일을 입력하세요" else "제목을 입력하세요", fontSize = 14.sp) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                     singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium
+                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // 메모 입력
                 OutlinedTextField(
                     value = memo,
                     onValueChange = { memo = it },
-                    label = { Text("메모 (선택)") },
-                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("메모 (선택)", fontSize = 14.sp) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                     maxLines = 2,
                     minLines = 1,
-                    textStyle = MaterialTheme.typography.bodyMedium
+                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
                 )
 
                 // 체크리스트 섹션 (To-Do 전용)
@@ -409,7 +410,7 @@ fun AddEditBottomSheet(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 2.dp),
+                                .padding(vertical = 1.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
@@ -421,7 +422,7 @@ fun AddEditBottomSheet(
                                 },
                                 modifier = Modifier.size(24.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             OutlinedTextField(
                                 value = subTask.title,
                                 onValueChange = { newTitle ->
@@ -429,9 +430,9 @@ fun AddEditBottomSheet(
                                         this[index] = subTask.copy(title = newTitle)
                                     }
                                 },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                                 singleLine = true,
-                                textStyle = MaterialTheme.typography.bodyMedium
+                                textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
                             )
                             IconButton(
                                 onClick = {
@@ -455,18 +456,18 @@ fun AddEditBottomSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 2.dp),
+                            .padding(vertical = 1.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedTextField(
                             value = newSubTaskText,
                             onValueChange = { newSubTaskText = it },
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("항목 추가...") },
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                            placeholder = { Text("항목 추가...", fontSize = 14.sp) },
                             singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyMedium
+                            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         FilledIconButton(
                             onClick = {
                                 if (newSubTaskText.isNotBlank()) {
