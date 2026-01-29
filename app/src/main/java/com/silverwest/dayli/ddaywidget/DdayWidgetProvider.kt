@@ -77,6 +77,30 @@ class DdayWidgetProvider : AppWidgetProvider() {
                             }
                         launchIntent?.let { context.startActivity(it) }
                     }
+                    CLICK_TYPE_SUBTASK -> {
+                        val itemId = intent.getIntExtra(EXTRA_ITEM_ID, -1)
+                        val subTaskIndex = intent.getIntExtra(EXTRA_SUBTASK_INDEX, -1)
+                        val isChecked = intent.getBooleanExtra(EXTRA_IS_CHECKED, false)
+
+                        android.util.Log.d("DDAY_WIDGET", "☑️ 서브태스크 클릭: itemId=$itemId, index=$subTaskIndex, checked=$isChecked")
+
+                        if (itemId != -1 && subTaskIndex != -1) {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val db = DdayDatabase.getDatabase(context)
+                                val item = db.ddayDao().getById(itemId)
+                                if (item != null) {
+                                    val subTasks = item.getSubTaskList().toMutableList()
+                                    if (subTaskIndex < subTasks.size) {
+                                        subTasks[subTaskIndex] = subTasks[subTaskIndex].copy(isChecked = isChecked)
+                                        db.ddayDao().updateSubTasks(itemId, DdayItem.subTasksToJson(subTasks))
+
+                                        android.util.Log.d("DDAY_WIDGET", "✅ 서브태스크 업데이트 완료")
+                                        refreshAllWidgets(context)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
             ACTION_MIDNIGHT_UPDATE -> {
@@ -94,8 +118,10 @@ class DdayWidgetProvider : AppWidgetProvider() {
         const val EXTRA_ITEM_ID = "extra_item_id"
         const val EXTRA_IS_CHECKED = "extra_is_checked"
         const val EXTRA_CLICK_TYPE = "extra_click_type"
+        const val EXTRA_SUBTASK_INDEX = "extra_subtask_index"
         const val CLICK_TYPE_CHECKBOX = 1
         const val CLICK_TYPE_ITEM = 2
+        const val CLICK_TYPE_SUBTASK = 3
 
         fun refreshAllWidgets(context: Context) {
             val manager = AppWidgetManager.getInstance(context)

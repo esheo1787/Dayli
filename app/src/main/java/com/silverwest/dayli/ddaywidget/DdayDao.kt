@@ -33,6 +33,14 @@ interface DdayDao {
     @Query("UPDATE dday_items SET isChecked = :checked, checkedAt = :checkedAt WHERE id = :id")
     suspend fun updateChecked(id: Int, checked: Boolean, checkedAt: Long?)
 
+    // ID로 단일 아이템 조회
+    @Query("SELECT * FROM dday_items WHERE id = :id")
+    suspend fun getById(id: Int): DdayItem?
+
+    // 서브태스크 JSON 업데이트
+    @Query("UPDATE dday_items SET sub_tasks = :subTasks WHERE id = :id")
+    suspend fun updateSubTasks(id: Int, subTasks: String?)
+
     // 위젯용 쿼리: 체크 안 됨 OR (체크됨 AND 오늘 체크한 것)
     // :todayStart = 오늘 00:00:00의 타임스탬프
     @Query("""

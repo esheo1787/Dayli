@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/subtask_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingStart="52dp"
+    android:paddingEnd="10dp"
+    android:paddingVertical="4dp"
+    android:gravity="center_vertical"
+    android:background="?android:attr/selectableItemBackground">
+
+    <!-- 체크박스 -->
+    <CheckBox
+        android:id="@+id/subtask_checkbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:focusable="false"
+        android:clickable="false"
+        android:minWidth="0dp"
+        android:minHeight="0dp" />
+
+    <!-- 서브태스크 제목 -->
+    <TextView
+        android:id="@+id/subtask_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="4dp"
+        android:textSize="13sp"
+        android:textColor="#CC000000"
+        android:ellipsize="end"
+        android:maxLines="1" />
+
+</LinearLayout>

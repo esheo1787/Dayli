@@ -12,11 +12,13 @@ import kotlinx.coroutines.runBlocking
 import java.util.*
 import java.text.SimpleDateFormat
 
-// 위젯 행 타입 (헤더 / 그룹헤더 / 아이템)
+// 위젯 행 타입 (헤더 / 그룹헤더 / 아이템 / To-Do헤더 / 서브태스크)
 sealed class WidgetRow {
     data class Header(val title: String) : WidgetRow()
     data class GroupHeader(val groupName: String, val isCollapsed: Boolean = false) : WidgetRow()  // D-Day 그룹 헤더
     data class Item(val item: DdayItem, val showProgress: Boolean = false) : WidgetRow()  // showProgress: To-Do 진행률 표시
+    data class TodoHeader(val item: DdayItem, val completedCount: Int, val totalCount: Int) : WidgetRow()  // To-Do 위젯 헤더
+    data class SubTaskItem(val parentItem: DdayItem, val subTask: SubTask, val subTaskIndex: Int) : WidgetRow()  // To-Do 서브태스크
 }
 
 class RemoteViewsFactory(
@@ -35,6 +37,8 @@ class RemoteViewsFactory(
         private const val VIEW_TYPE_HEADER = 0
         private const val VIEW_TYPE_ITEM = 1
         private const val VIEW_TYPE_GROUP_HEADER = 2
+        private const val VIEW_TYPE_TODO_HEADER = 3
+        private const val VIEW_TYPE_SUBTASK = 4
     }
 
     override fun onCreate() {
@@ -118,8 +122,24 @@ class RemoteViewsFactory(
                         }
                     }
                 } else {
-                    // To-Do 전용 위젯: 헤더 없이 아이템만
-                    items.map { WidgetRow.Item(it) }
+                    // To-Do 전용 위젯: 체크리스트 표시
+                    buildList {
+                        items.forEach { item ->
+                            val subTasks = item.getSubTaskList()
+                            if (subTasks.isNotEmpty()) {
+                                // 체크리스트가 있는 To-Do: TodoHeader + SubTaskItem들
+                                val completedCount = subTasks.count { it.isChecked }
+                                add(WidgetRow.TodoHeader(item, completedCount, subTasks.size))
+                                // 서브태스크들 추가
+                                subTasks.forEachIndexed { index, subTask ->
+                                    add(WidgetRow.SubTaskItem(item, subTask, index))
+                                }
+                            } else {
+                                // 체크리스트가 없는 To-Do: 일반 아이템으로 표시
+                                add(WidgetRow.Item(item))
+                            }
+                        }
+                    }
                 }
 
                 android.util.Log.d("DDAY_WIDGET", "📦 위젯 items 개수: ${items.size}, displayRows: ${displayRows.size} (전체: ${allItems.size})")
@@ -138,12 +158,15 @@ class RemoteViewsFactory(
 
     override fun getCount(): Int = displayRows.size
 
-    override fun getViewTypeCount(): Int = 3
+    override fun getViewTypeCount(): Int = 5
 
     fun getItemViewType(position: Int): Int {
         return when (displayRows.getOrNull(position)) {
             is WidgetRow.Header -> VIEW_TYPE_HEADER
             is WidgetRow.GroupHeader -> VIEW_TYPE_GROUP_HEADER
+            is WidgetRow.TodoHeader -> VIEW_TYPE_TODO_HEADER
+            is WidgetRow.SubTaskItem -> VIEW_TYPE_SUBTASK
+            is WidgetRow.Item -> VIEW_TYPE_ITEM
             else -> VIEW_TYPE_ITEM
         }
     }
@@ -163,6 +186,16 @@ class RemoteViewsFactory(
         // 그룹 헤더 행 처리
         if (row is WidgetRow.GroupHeader) {
             return createGroupHeaderView(row.groupName, row.isCollapsed)
+        }
+
+        // To-Do 헤더 행 처리
+        if (row is WidgetRow.TodoHeader) {
+            return createTodoHeaderView(row.item, row.completedCount, row.totalCount)
+        }
+
+        // 서브태스크 행 처리
+        if (row is WidgetRow.SubTaskItem) {
+            return createSubTaskView(row.parentItem, row.subTask, row.subTaskIndex)
         }
 
         // 아이템 행 처리
@@ -393,6 +426,120 @@ class RemoteViewsFactory(
         return views
     }
 
+    private fun createTodoHeaderView(item: DdayItem, completedCount: Int, totalCount: Int): RemoteViews {
+        val isDark = isDarkMode(context)
+        val views = RemoteViews(context.packageName, R.layout.item_widget_todo_header)
+
+        // 설정값 읽기
+        val backgroundEnabled = DdaySettings.isBackgroundEnabled(context)
+        val bgOpacity = DdaySettings.getBackgroundOpacity(context) / 100f
+        val iconBgOpacity = DdaySettings.getIconBgOpacity(context) / 100f
+        val fontSizeMultiplier = when (DdaySettings.getWidgetFontSize(context)) {
+            0 -> 0.85f  // 작게
+            2 -> 1.15f  // 크게
+            else -> 1f  // 보통
+        }
+
+        // 이모지 설정 (📋 대신 아이템의 이모지 사용)
+        val itemEmoji = item.getEmoji()
+        views.setTextViewText(R.id.todo_header_icon, itemEmoji)
+        views.setTextViewTextSize(R.id.todo_header_icon, android.util.TypedValue.COMPLEX_UNIT_SP, 18f * fontSizeMultiplier)
+
+        // 제목 (반복 태그 포함)
+        val repeatTag = if (item.isRepeating()) {
+            when (item.repeatTypeEnum()) {
+                RepeatType.DAILY -> "🔁매일"
+                RepeatType.WEEKLY -> "🔁매주"
+                RepeatType.MONTHLY -> "🔁매월"
+                else -> ""
+            }
+        } else ""
+        val titleText = if (repeatTag.isNotEmpty()) "${item.title} $repeatTag" else item.title
+        views.setTextViewText(R.id.todo_header_title, titleText)
+        views.setTextViewTextSize(R.id.todo_header_title, android.util.TypedValue.COMPLEX_UNIT_SP, 14f * fontSizeMultiplier)
+
+        // 진행현황 (2/5)
+        views.setTextViewText(R.id.todo_header_progress, "($completedCount/$totalCount)")
+        views.setTextViewTextSize(R.id.todo_header_progress, android.util.TypedValue.COMPLEX_UNIT_SP, 13f * fontSizeMultiplier)
+
+        // 커스텀 색상 또는 카테고리 기본 색상
+        val itemColor = item.getColorLong().toInt()
+
+        // 배경 색상 적용
+        if (backgroundEnabled) {
+            val alpha = (bgOpacity * 0.4f * 255).toInt().coerceIn(0, 255)
+            val tintColor = (alpha shl 24) or (itemColor and 0x00FFFFFF)
+            views.setInt(R.id.todo_header_root, "setBackgroundColor", tintColor)
+
+            val iconAlpha = (iconBgOpacity * 0.5f * 255).toInt().coerceIn(0, 255)
+            val iconTintColor = (iconAlpha shl 24) or (itemColor and 0x00FFFFFF)
+            views.setInt(R.id.todo_header_icon_card, "setBackgroundColor", iconTintColor)
+        } else {
+            views.setInt(R.id.todo_header_root, "setBackgroundColor", 0x00000000)
+            if (isDark) {
+                views.setInt(R.id.todo_header_icon_card, "setBackgroundColor", 0x20FFFFFF)
+            } else {
+                views.setInt(R.id.todo_header_icon_card, "setBackgroundColor", 0x15000000)
+            }
+        }
+
+        // 텍스트 색상
+        val titleColor = if (isDark) 0xFFF5F5F0.toInt() else 0xFF4A4A4A.toInt()
+        val progressColor = if (isDark) 0xFFB8B8B8.toInt() else 0xFF7A7A7A.toInt()
+        views.setTextColor(R.id.todo_header_title, titleColor)
+        views.setTextColor(R.id.todo_header_progress, progressColor)
+
+        // 클릭 시 앱 실행
+        val itemIntent = Intent().apply {
+            putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)
+        }
+        views.setOnClickFillInIntent(R.id.todo_header_root, itemIntent)
+
+        return views
+    }
+
+    private fun createSubTaskView(parentItem: DdayItem, subTask: SubTask, subTaskIndex: Int): RemoteViews {
+        val isDark = isDarkMode(context)
+        val views = RemoteViews(context.packageName, R.layout.item_widget_subtask)
+
+        val fontSizeMultiplier = when (DdaySettings.getWidgetFontSize(context)) {
+            0 -> 0.85f  // 작게
+            2 -> 1.15f  // 크게
+            else -> 1f  // 보통
+        }
+
+        // 서브태스크 제목
+        views.setTextViewText(R.id.subtask_title, subTask.title)
+        views.setTextViewTextSize(R.id.subtask_title, android.util.TypedValue.COMPLEX_UNIT_SP, 13f * fontSizeMultiplier)
+
+        // 체크박스 상태
+        views.setCompoundButtonChecked(R.id.subtask_checkbox, subTask.isChecked)
+
+        // 텍스트 색상 (체크 여부에 따라)
+        val titleColor: Int
+        val paintFlags: Int
+        if (subTask.isChecked) {
+            titleColor = if (isDark) 0xFF606060.toInt() else 0xFF9A9A9A.toInt()
+            paintFlags = Paint.STRIKE_THRU_TEXT_FLAG or Paint.ANTI_ALIAS_FLAG
+        } else {
+            titleColor = if (isDark) 0xFFD0D0D0.toInt() else 0xFF5A5A5A.toInt()
+            paintFlags = Paint.ANTI_ALIAS_FLAG
+        }
+        views.setTextColor(R.id.subtask_title, titleColor)
+        views.setInt(R.id.subtask_title, "setPaintFlags", paintFlags)
+
+        // 서브태스크 체크박스 클릭 시 인텐트
+        val checkboxIntent = Intent().apply {
+            putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_SUBTASK)
+            putExtra(DdayWidgetProvider.EXTRA_ITEM_ID, parentItem.id)
+            putExtra(DdayWidgetProvider.EXTRA_SUBTASK_INDEX, subTaskIndex)
+            putExtra(DdayWidgetProvider.EXTRA_IS_CHECKED, !subTask.isChecked)
+        }
+        views.setOnClickFillInIntent(R.id.subtask_root, checkboxIntent)
+
+        return views
+    }
+
     private fun calculateDaysUntil(date: Date): Int {
         val today = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
@@ -418,6 +565,8 @@ class RemoteViewsFactory(
         return when (val row = displayRows.getOrNull(position)) {
             is WidgetRow.Header -> -row.title.hashCode().toLong()  // 헤더는 음수 ID
             is WidgetRow.GroupHeader -> -(row.groupName.hashCode().toLong() + 10000)  // 그룹 헤더는 다른 범위의 음수 ID
+            is WidgetRow.TodoHeader -> row.item.id.toLong() * 1000  // To-Do 헤더: item.id * 1000
+            is WidgetRow.SubTaskItem -> row.parentItem.id.toLong() * 1000 + row.subTaskIndex + 1  // 서브태스크: parentId * 1000 + index + 1
             is WidgetRow.Item -> row.item.id.toLong()
             else -> position.toLong()
         }
