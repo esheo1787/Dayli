@@ -34,11 +34,25 @@ class DdayOnlyWidgetProvider : AppWidgetProvider() {
 
         when (intent.action) {
             ACTION_TOGGLE_GROUP -> {
-                val groupName = intent.getStringExtra(EXTRA_GROUP_NAME) ?: return
-                // 그룹 접기/펼치기 토글
-                DdaySettings.toggleGroupCollapsed(context, groupName)
-                // 위젯 새로고침
-                DdayWidgetProvider.refreshAllWidgets(context)
+                val clickType = intent.getIntExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, 0)
+
+                when (clickType) {
+                    DdayWidgetProvider.CLICK_TYPE_ITEM -> {
+                        // D-Day 아이템 클릭 → 앱 실행
+                        val launchIntent = context.packageManager
+                            .getLaunchIntentForPackage(context.packageName)
+                            ?.apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            }
+                        launchIntent?.let { context.startActivity(it) }
+                    }
+                    else -> {
+                        // 그룹 헤더 클릭 → 접기/펼치기 토글
+                        val groupName = intent.getStringExtra(EXTRA_GROUP_NAME) ?: return
+                        DdaySettings.toggleGroupCollapsed(context, groupName)
+                        DdayWidgetProvider.refreshAllWidgets(context)
+                    }
+                }
             }
         }
     }
