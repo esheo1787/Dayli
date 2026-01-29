@@ -104,5 +104,17 @@ interface DdayDao {
     // 기존 그룹 이름 목록 (D-Day만, null 제외)
     @Query("SELECT DISTINCT group_name FROM dday_items WHERE itemType = 'DDAY' AND group_name IS NOT NULL ORDER BY group_name ASC")
     suspend fun getDistinctGroupNames(): List<String>
+
+    // 그룹 이름 변경 (해당 그룹의 모든 D-Day 업데이트)
+    @Query("UPDATE dday_items SET group_name = :newName WHERE group_name = :oldName AND itemType = 'DDAY'")
+    suspend fun renameGroup(oldName: String, newName: String)
+
+    // 그룹 삭제 (해당 그룹의 D-Day를 미분류로 이동)
+    @Query("UPDATE dday_items SET group_name = NULL WHERE group_name = :groupName AND itemType = 'DDAY'")
+    suspend fun deleteGroup(groupName: String)
+
+    // 특정 그룹의 D-Day 개수
+    @Query("SELECT COUNT(*) FROM dday_items WHERE group_name = :groupName AND itemType = 'DDAY'")
+    suspend fun getGroupItemCount(groupName: String): Int
 }
 

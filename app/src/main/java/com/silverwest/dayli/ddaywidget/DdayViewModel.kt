@@ -14,6 +14,7 @@ enum class SortOption {
 
 class DdayViewModel(application: Application) : AndroidViewModel(application) {
     private val dao = DdayDatabase.getDatabase(application).ddayDao()
+    private val templateDao = DdayDatabase.getDatabase(application).todoTemplateDao()
     private val _ddayList = MutableLiveData<List<DdayItem>>()
     val ddayList: LiveData<List<DdayItem>> = _ddayList
 
@@ -40,6 +41,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         loadAllDdays()
         loadAllTodos()
         loadGroups()
+        loadTemplates()
     }
 
     fun loadGroups() {
@@ -253,6 +255,115 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             // 위젯 동기화
             DdayWidgetProvider.refreshAllWidgets(getApplication())
         }
+    }
+
+    // 그룹 이름 변경
+    fun renameGroup(oldName: String, newName: String) {
+        viewModelScope.launch {
+            dao.renameGroup(oldName, newName)
+            loadGroups()
+            loadAllDdays()
+            // 위젯 동기화
+            DdayWidgetProvider.refreshAllWidgets(getApplication())
+        }
+    }
+
+    // 그룹 삭제 (해당 그룹의 D-Day는 미분류로 이동)
+    fun deleteGroup(groupName: String) {
+        viewModelScope.launch {
+            dao.deleteGroup(groupName)
+            loadGroups()
+            loadAllDdays()
+            // 위젯 동기화
+            DdayWidgetProvider.refreshAllWidgets(getApplication())
+        }
+    }
+
+    // 특정 그룹의 D-Day 개수 조회
+    suspend fun getGroupItemCount(groupName: String): Int {
+        return dao.getGroupItemCount(groupName)
+    }
+
+    // === To-Do 템플릿 관련 ===
+
+    // 템플릿 목록
+    private val _templates = MutableLiveData<List<TodoTemplate>>(emptyList())
+    val templates: LiveData<List<TodoTemplate>> = _templates
+
+    fun loadTemplates() {
+        viewModelScope.launch {
+            val templateList = templateDao.getAll()
+            _templates.postValue(templateList)
+        }
+    }
+
+    // 템플릿 저장
+    fun saveAsTemplate(
+        name: String,
+        iconName: String,
+        customColor: Long,
+        subTasks: List<SubTask>
+    ) {
+        viewModelScope.launch {
+            val template = TodoTemplate(
+                name = name,
+                iconName = iconName,
+                customColor = customColor,
+                subTasks = TodoTemplate.subTasksToJson(subTasks)
+            )
+            templateDao.insert(template)
+            loadTemplates()
+        }
+    }
+
+    // 템플릿에서 To-Do 생성
+    fun createTodoFromTemplate(template: TodoTemplate, title: String) {
+        viewModelScope.launch {
+            val subTasks = template.getSubTaskList()
+            val item = DdayItem(
+                title = title,
+                memo = null,
+                date = null,
+                category = DdayCategory.OTHER.name,
+                iconName = template.iconName,
+                customColor = template.customColor,
+                repeatType = RepeatType.NONE.name,
+                itemType = ItemType.TODO.name,
+                subTasks = DdayItem.subTasksToJson(subTasks)
+            )
+            dao.insert(item)
+            loadAll()
+            DdayWidgetProvider.refreshAllWidgets(getApplication())
+        }
+    }
+
+    // 템플릿 삭제
+    fun deleteTemplate(template: TodoTemplate) {
+        viewModelScope.launch {
+            templateDao.delete(template)
+            loadTemplates()
+        }
+    }
+
+    // 템플릿 이름 변경
+    fun renameTemplate(template: TodoTemplate, newName: String) {
+        viewModelScope.launch {
+            templateDao.rename(template.id, newName)
+            loadTemplates()
+        }
+    }
+
+    // 템플릿 업데이트
+    fun updateTemplate(template: TodoTemplate) {
+        viewModelScope.launch {
+            templateDao.update(template)
+            loadTemplates()
+        }
+    }
+
+    // 템플릿 ID로 조회
+    suspend fun getTemplateById(id: Int): TodoTemplate? {
+        return templateDao.getById(id)
     }
 }
 

@@ -34,7 +34,10 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     onSettingsChanged: () -> Unit = {},
-    onThemeChanged: (DdaySettings.ThemeMode) -> Unit = {}
+    onThemeChanged: (DdaySettings.ThemeMode) -> Unit = {},
+    templates: List<TodoTemplate> = emptyList(),
+    onDeleteTemplate: ((TodoTemplate) -> Unit)? = null,
+    onRenameTemplate: ((TodoTemplate, String) -> Unit)? = null
 ) {
     val context = LocalContext.current
 
@@ -510,6 +513,36 @@ fun SettingsScreen(
                     DdaySettings.setNotifyVibrateEnabled(context, enabled)
                 }
             )
+        }
+
+        // ===== 템플릿 관리 섹션 =====
+        if (templates.isNotEmpty() || onDeleteTemplate != null) {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+            Text(
+                text = "템플릿 관리",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            if (templates.isEmpty()) {
+                Text(
+                    text = "저장된 템플릿이 없습니다",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                templates.forEach { template ->
+                    TemplateManageItem(
+                        template = template,
+                        onDelete = { onDeleteTemplate?.invoke(template) },
+                        onRename = { newName -> onRenameTemplate?.invoke(template, newName) }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
         }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
@@ -1055,5 +1088,138 @@ private fun formatTime(hour: Int, minute: Int): String {
         "$amPm ${displayHour}시"
     } else {
         "$amPm ${displayHour}시 ${minute}분"
+    }
+}
+
+@Composable
+private fun TemplateManageItem(
+    template: TodoTemplate,
+    onDelete: () -> Unit,
+    onRename: (String) -> Unit
+) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf(template.name) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = template.customColor.toComposeColor().copy(alpha = 0.15f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 아이콘
+            Text(
+                text = template.iconName,
+                fontSize = 24.sp
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // 이름
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = template.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium
+                )
+                val subTaskCount = template.getSubTaskList().size
+                if (subTaskCount > 0) {
+                    Text(
+                        text = "체크리스트 ${subTaskCount}개 항목",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+            }
+
+            // 수정 버튼
+            TextButton(
+                onClick = {
+                    newName = template.name
+                    showRenameDialog = true
+                },
+                contentPadding = PaddingValues(horizontal = 8.dp)
+            ) {
+                Text("수정", style = MaterialTheme.typography.bodySmall)
+            }
+
+            // 삭제 버튼
+            TextButton(
+                onClick = { showDeleteConfirm = true },
+                contentPadding = PaddingValues(horizontal = 8.dp),
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text("삭제", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+
+    // 삭제 확인 다이얼로그
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("템플릿 삭제") },
+            text = { Text("'${template.name}' 템플릿을 삭제하시겠습니까?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete()
+                        showDeleteConfirm = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("삭제")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+
+    // 이름 변경 다이얼로그
+    if (showRenameDialog) {
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text("템플릿 이름 변경") },
+            text = {
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    label = { Text("템플릿 이름") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newName.isNotBlank() && newName != template.name) {
+                            onRename(newName.trim())
+                        }
+                        showRenameDialog = false
+                    },
+                    enabled = newName.isNotBlank()
+                ) {
+                    Text("저장")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRenameDialog = false }) {
+                    Text("취소")
+                }
+            }
+        )
     }
 }

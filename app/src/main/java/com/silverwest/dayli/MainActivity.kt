@@ -103,6 +103,9 @@ fun MainDdayScreen(
     // 기존 그룹 목록
     val existingGroups by viewModel.existingGroups.observeAsState(emptyList())
 
+    // 템플릿 목록
+    val templates by viewModel.templates.observeAsState(emptyList())
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -162,6 +165,7 @@ fun MainDdayScreen(
         itemType = if (selectedTab == 0) ItemType.DDAY else ItemType.TODO,
         editItem = editItem,
         existingGroups = existingGroups,
+        templates = templates,
         onDismiss = {
             showAddSheet = false
             editItem = null
@@ -198,6 +202,9 @@ fun MainDdayScreen(
             }
             showAddSheet = false
             editItem = null
+        },
+        onSaveAsTemplate = { name, iconName, customColor, subTasks ->
+            viewModel.saveAsTemplate(name, iconName, customColor, subTasks)
         }
     )
 
@@ -217,7 +224,14 @@ fun MainDdayScreen(
                             // 앱 리스트 새로고침
                             settingsKey++
                         },
-                        onThemeChanged = onThemeChanged
+                        onThemeChanged = onThemeChanged,
+                        templates = templates,
+                        onDeleteTemplate = { template ->
+                            viewModel.deleteTemplate(template)
+                        },
+                        onRenameTemplate = { template, newName ->
+                            viewModel.renameTemplate(template, newName)
+                        }
                     )
                 }
             },
