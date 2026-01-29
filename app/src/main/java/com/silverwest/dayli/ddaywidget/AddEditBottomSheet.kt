@@ -180,31 +180,33 @@ fun AddEditBottomSheet(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text(if (actualItemType == ItemType.TODO) "할 일" else "제목") },
-                    placeholder = { Text(if (actualItemType == ItemType.TODO) "할 일을 입력하세요" else "제목을 입력하세요") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    label = { Text(if (actualItemType == ItemType.TODO) "할 일" else "제목", fontSize = 12.sp) },
+                    placeholder = { Text(if (actualItemType == ItemType.TODO) "할 일을 입력하세요" else "제목을 입력하세요", fontSize = 14.sp) },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // 메모 입력
                 OutlinedTextField(
                     value = memo,
                     onValueChange = { memo = it },
-                    label = { Text("메모 (선택)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3
+                    label = { Text("메모 (선택)", fontSize = 12.sp) },
+                    modifier = Modifier.fillMaxWidth().height(60.dp),
+                    maxLines = 2,
+                    textStyle = MaterialTheme.typography.bodySmall
                 )
 
                 // 체크리스트 섹션 (To-Do 전용)
                 if (actualItemType == ItemType.TODO) {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
                         text = "체크리스트",
                         style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 4.dp)
                     )
 
                     // 기존 서브태스크 목록
@@ -212,7 +214,7 @@ fun AddEditBottomSheet(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp),
+                                .padding(vertical = 2.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
@@ -222,9 +224,9 @@ fun AddEditBottomSheet(
                                         this[index] = subTask.copy(isChecked = checked)
                                     }
                                 },
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
                             OutlinedTextField(
                                 value = subTask.title,
                                 onValueChange = { newTitle ->
@@ -232,9 +234,9 @@ fun AddEditBottomSheet(
                                         this[index] = subTask.copy(title = newTitle)
                                     }
                                 },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).height(44.dp),
                                 singleLine = true,
-                                textStyle = MaterialTheme.typography.bodyMedium
+                                textStyle = MaterialTheme.typography.bodySmall
                             )
                             IconButton(
                                 onClick = {
@@ -242,13 +244,13 @@ fun AddEditBottomSheet(
                                         removeAt(index)
                                     }
                                 },
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "삭제",
                                     tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                         }
@@ -258,18 +260,18 @@ fun AddEditBottomSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                            .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedTextField(
                             value = newSubTaskText,
                             onValueChange = { newSubTaskText = it },
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("항목 추가...") },
+                            modifier = Modifier.weight(1f).height(44.dp),
+                            placeholder = { Text("항목 추가...", fontSize = 13.sp) },
                             singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyMedium
+                            textStyle = MaterialTheme.typography.bodySmall
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         FilledIconButton(
                             onClick = {
                                 if (newSubTaskText.isNotBlank()) {
@@ -278,12 +280,12 @@ fun AddEditBottomSheet(
                                 }
                             },
                             enabled = newSubTaskText.isNotBlank(),
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = "추가",
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
