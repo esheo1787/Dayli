@@ -377,7 +377,7 @@ fun AddEditBottomSheet(
                     onValueChange = { title = it },
                     label = { Text(if (actualItemType == ItemType.TODO) "할 일" else "제목", fontSize = 14.sp) },
                     placeholder = { Text(if (actualItemType == ItemType.TODO) "할 일을 입력하세요" else "제목을 입력하세요", fontSize = 14.sp) },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
                 )
@@ -389,7 +389,7 @@ fun AddEditBottomSheet(
                     value = memo,
                     onValueChange = { memo = it },
                     label = { Text("메모 (선택)", fontSize = 14.sp) },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
                 )
@@ -427,7 +427,7 @@ fun AddEditBottomSheet(
                                         this[index] = subTask.copy(title = newTitle)
                                     }
                                 },
-                                modifier = Modifier.weight(1f).height(44.dp),
+                                modifier = Modifier.weight(1f),
                                 singleLine = true,
                                 textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
                             )
@@ -457,7 +457,7 @@ fun AddEditBottomSheet(
                         OutlinedTextField(
                             value = newSubTaskText,
                             onValueChange = { newSubTaskText = it },
-                            modifier = Modifier.weight(1f).height(44.dp),
+                            modifier = Modifier.weight(1f),
                             placeholder = { Text("항목 추가...", fontSize = 14.sp) },
                             singleLine = true,
                             textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
