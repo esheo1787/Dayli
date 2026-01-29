@@ -126,11 +126,8 @@ class DdayWidgetProvider : AppWidgetProvider() {
         fun refreshAllWidgets(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
 
-            // 1) 통합 위젯 갱신
+            // 1) 통합 위젯 갱신 (notifyAppWidgetViewDataChanged만 호출하여 스크롤 위치 유지)
             val mainIds = manager.getAppWidgetIds(ComponentName(context, DdayWidgetProvider::class.java))
-            for (id in mainIds) {
-                updateAppWidget(context, manager, id)
-            }
             if (mainIds.isNotEmpty()) {
                 manager.notifyAppWidgetViewDataChanged(mainIds, R.id.widgetListView)
             }
