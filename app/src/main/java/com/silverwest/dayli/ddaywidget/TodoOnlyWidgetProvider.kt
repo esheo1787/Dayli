@@ -56,6 +56,9 @@ class TodoOnlyWidgetProvider : AppWidgetProvider() {
                 setRemoteAdapter(R.id.widgetListView, intent)
                 setEmptyView(R.id.widgetListView, R.id.emptyTextView)
 
+                // To-Do widget empty text
+                setTextViewText(R.id.emptyTextView, "등록된 To-Do 없음")
+
                 // Widget container background
                 setInt(R.id.widget_container, "setBackgroundColor", widgetBgColor)
 
