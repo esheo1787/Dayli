@@ -410,34 +410,25 @@ fun DdayScreen(
                                 items = groupItems,
                                 key = { it.id }
                             ) { item ->
-                                SwipeableDdayItem(
-                                    item = item,
-                                    onDelete = {
-                                        deletedItem = item
-                                        viewModel.delete(item)
-                                        scope.launch {
-                                            val result = snackbarHostState.showSnackbar(
-                                                message = "'${item.title}' 삭제됨",
-                                                actionLabel = "실행취소",
-                                                duration = SnackbarDuration.Short
-                                            )
-                                            if (result == SnackbarResult.ActionPerformed) {
-                                                deletedItem?.let { deleted ->
-                                                    viewModel.restoreItem(deleted)
-                                                }
-                                            }
-                                            deletedItem = null
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RectangleShape,
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface
+                                    )
+                                ) {
+                                    DdayListItem(
+                                        item = item,
+                                        onToggle = { viewModel.toggleChecked(it) },
+                                        onLongPress = {
+                                            selectedItem = it
+                                            showBottomSheet = true
+                                        },
+                                        onSubTaskToggle = { ddayItem, index ->
+                                            viewModel.toggleSubTask(ddayItem, index)
                                         }
-                                    },
-                                    onToggle = { viewModel.toggleChecked(it) },
-                                    onLongPress = {
-                                        selectedItem = it
-                                        showBottomSheet = true
-                                    },
-                                    onSubTaskToggle = { ddayItem, index ->
-                                        viewModel.toggleSubTask(ddayItem, index)
-                                    }
-                                )
+                                    )
+                                }
                             }
                         }
                     }
@@ -460,34 +451,25 @@ fun DdayScreen(
                                 items = completedItems,
                                 key = { it.id }
                             ) { item ->
-                                SwipeableDdayItem(
-                                    item = item,
-                                    onDelete = {
-                                        deletedItem = item
-                                        viewModel.delete(item)
-                                        scope.launch {
-                                            val result = snackbarHostState.showSnackbar(
-                                                message = "'${item.title}' 삭제됨",
-                                                actionLabel = "실행취소",
-                                                duration = SnackbarDuration.Short
-                                            )
-                                            if (result == SnackbarResult.ActionPerformed) {
-                                                deletedItem?.let { deleted ->
-                                                    viewModel.restoreItem(deleted)
-                                                }
-                                            }
-                                            deletedItem = null
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RectangleShape,
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface
+                                    )
+                                ) {
+                                    DdayListItem(
+                                        item = item,
+                                        onToggle = { viewModel.toggleChecked(it) },
+                                        onLongPress = {
+                                            selectedItem = it
+                                            showBottomSheet = true
+                                        },
+                                        onSubTaskToggle = { ddayItem, index ->
+                                            viewModel.toggleSubTask(ddayItem, index)
                                         }
-                                    },
-                                    onToggle = { viewModel.toggleChecked(it) },
-                                    onLongPress = {
-                                        selectedItem = it
-                                        showBottomSheet = true
-                                    },
-                                    onSubTaskToggle = { ddayItem, index ->
-                                        viewModel.toggleSubTask(ddayItem, index)
-                                    }
-                                )
+                                    )
+                                }
                             }
                         }
                     }
