@@ -8,6 +8,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.widget.RemoteViews
 import com.silverwest.dayli.MainActivity
 import com.silverwest.dayli.R
@@ -126,20 +127,23 @@ class DdayWidgetProvider : AppWidgetProvider() {
         fun refreshAllWidgets(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
 
-            // 1) 통합 위젯 갱신 (notifyAppWidgetViewDataChanged만 호출하여 스크롤 위치 유지)
+            // 1) 통합 위젯: RemoteViews 재설정 + 데이터 갱신
             val mainIds = manager.getAppWidgetIds(ComponentName(context, DdayWidgetProvider::class.java))
+            mainIds.forEach { updateAppWidget(context, manager, it) }
             if (mainIds.isNotEmpty()) {
                 manager.notifyAppWidgetViewDataChanged(mainIds, R.id.widgetListView)
             }
 
-            // 2) D-Day 전용 위젯 갱신
+            // 2) D-Day 전용 위젯
             val ddayOnlyIds = manager.getAppWidgetIds(ComponentName(context, DdayOnlyWidgetProvider::class.java))
+            ddayOnlyIds.forEach { DdayOnlyWidgetProvider.updateAppWidget(context, manager, it) }
             if (ddayOnlyIds.isNotEmpty()) {
                 manager.notifyAppWidgetViewDataChanged(ddayOnlyIds, R.id.widgetListView)
             }
 
-            // 3) To-Do 전용 위젯 갱신
+            // 3) To-Do 전용 위젯
             val todoOnlyIds = manager.getAppWidgetIds(ComponentName(context, TodoOnlyWidgetProvider::class.java))
+            todoOnlyIds.forEach { TodoOnlyWidgetProvider.updateAppWidget(context, manager, it) }
             if (todoOnlyIds.isNotEmpty()) {
                 manager.notifyAppWidgetViewDataChanged(todoOnlyIds, R.id.widgetListView)
             }
@@ -231,14 +235,33 @@ class DdayWidgetProvider : AppWidgetProvider() {
                 set(Calendar.MILLISECOND, 0)
             }
 
-            // 정확한 시간에 알람 설정
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
-                pendingIntent
-            )
-
-            android.util.Log.d("DDAY_WIDGET", "⏰ 자정 알람 설정: ${calendar.time}")
+            // 정확한 시간에 알람 설정 (API 31+ 권한 확인)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                    // 권한 없으면 비정확 알람으로 대체
+                    alarmManager.setAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        calendar.timeInMillis,
+                        pendingIntent
+                    )
+                    android.util.Log.d("DDAY_WIDGET", "⏰ 자정 알람 설정 (비정확): ${calendar.time}")
+                } else {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        calendar.timeInMillis,
+                        pendingIntent
+                    )
+                    android.util.Log.d("DDAY_WIDGET", "⏰ 자정 알람 설정 (정확): ${calendar.time}")
+                }
+            } catch (e: SecurityException) {
+                // Fallback: 비정확 알람
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
+                android.util.Log.w("DDAY_WIDGET", "⏰ 정확 알람 권한 없음, 비정확 알람 사용: ${calendar.time}")
+            }
         }
 
         private fun cancelMidnightUpdate(context: Context) {

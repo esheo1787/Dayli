@@ -30,7 +30,7 @@ class TodoOnlyWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
-        private fun updateAppWidget(
+        fun updateAppWidget(
             context: Context,
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int

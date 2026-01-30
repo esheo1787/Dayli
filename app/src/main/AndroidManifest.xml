@@ -38,7 +38,7 @@
         <!-- ✅ D-Day 위젯 Provider 등록 (통합: D-Day + To-Do) -->
         <receiver
             android:name="com.silverwest.dayli.ddaywidget.DdayWidgetProvider"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.silverwest.dayli.ACTION_CHECKBOX_CLICK" />
@@ -53,10 +53,11 @@
         <!-- ✅ D-Day 전용 위젯 Provider 등록 -->
         <receiver
             android:name="com.silverwest.dayli.ddaywidget.DdayOnlyWidgetProvider"
-            android:exported="false"
+            android:exported="true"
             android:label="D-Day 전용">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.silverwest.dayli.ACTION_TOGGLE_GROUP" />
             </intent-filter>
 
             <meta-data
@@ -67,7 +68,7 @@
         <!-- ✅ To-Do 전용 위젯 Provider 등록 -->
         <receiver
             android:name="com.silverwest.dayli.ddaywidget.TodoOnlyWidgetProvider"
-            android:exported="false"
+            android:exported="true"
             android:label="To-Do 전용">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

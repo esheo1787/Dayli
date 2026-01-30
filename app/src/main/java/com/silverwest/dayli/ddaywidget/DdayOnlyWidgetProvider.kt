@@ -68,7 +68,7 @@ class DdayOnlyWidgetProvider : AppWidgetProvider() {
         const val ACTION_TOGGLE_GROUP = "com.silverwest.dayli.ACTION_TOGGLE_GROUP"
         const val EXTRA_GROUP_NAME = "extra_group_name"
 
-        private fun updateAppWidget(
+        fun updateAppWidget(
             context: Context,
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int
