@@ -81,7 +81,23 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val items = when (_todoSortOption.value) {
                 TodoSortOption.MY_ORDER -> dao.getAllTodosSorted()
-                TodoSortOption.INCOMPLETE_FIRST -> dao.getAllTodosIncompleteFirst()
+                TodoSortOption.INCOMPLETE_FIRST -> {
+                    // 하위 체크리스트 완료율 낮은 순 (in-memory 정렬)
+                    // SQL로는 JSON 파싱 불가 → 메모리에서 정렬
+                    val allItems = dao.getAllTodosSorted()
+                    allItems.sortedWith(
+                        compareBy<DdayItem> { it.isChecked }
+                            .thenBy { item ->
+                                val subTasks = item.getSubTaskList()
+                                if (subTasks.isEmpty()) {
+                                    Float.MAX_VALUE  // 체크리스트 없는 항목은 맨 뒤
+                                } else {
+                                    subTasks.count { it.isChecked }.toFloat() / subTasks.size
+                                }
+                            }
+                            .thenByDescending { it.id }
+                    )
+                }
                 TodoSortOption.LATEST -> dao.getAllTodos()
                 else -> dao.getAllTodosSorted()
             }
