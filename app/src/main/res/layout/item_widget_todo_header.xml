@@ -40,22 +40,31 @@
         android:maxLines="1"
         android:fontFamily="sans-serif-medium" />
 
-    <!-- 진행현황 (2/5) -->
-    <TextView
-        android:id="@+id/todo_header_progress"
+    <!-- 접기/펼치기 영역 (넓은 터치 영역) -->
+    <LinearLayout
+        android:id="@+id/todo_header_toggle_area"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="13sp"
-        android:textColor="#88000000"
-        android:layout_marginStart="8dp" />
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="10dp">
 
-    <!-- 접기/펼치기 표시 -->
-    <TextView
-        android:id="@+id/todo_header_indicator"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="12sp"
-        android:textColor="#88000000"
-        android:paddingStart="8dp" />
+        <!-- 진행현황 (2/5) -->
+        <TextView
+            android:id="@+id/todo_header_progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textColor="#88000000" />
+
+        <!-- 접기/펼치기 표시 -->
+        <TextView
+            android:id="@+id/todo_header_indicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="#88000000"
+            android:paddingStart="4dp" />
+    </LinearLayout>
 
 </LinearLayout>

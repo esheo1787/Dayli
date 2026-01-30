@@ -399,26 +399,31 @@ class RemoteViewsFactory(
             views.setTextColor(R.id.item_memo, memoColor)
         }
 
-        // 앱 실행 인텐트 (공통)
+        // 앱 실행 인텐트
         val itemIntent = Intent().apply {
             putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)
         }
-        views.setOnClickFillInIntent(R.id.item_card, itemIntent)
 
         when (mode) {
             DdayOnlyWidgetProvider.MODE_ALL -> {
                 // 혼합 위젯: 어디를 눌러도 앱 열기
+                views.setOnClickFillInIntent(R.id.item_card, itemIntent)
                 views.setOnClickFillInIntent(R.id.item_checkbox, itemIntent)
             }
             DdayOnlyWidgetProvider.MODE_DDAY -> {
-                // D-Day 전용: 숫자 영역(D-2 등) → 그룹 접기/펼치기
+                // D-Day 전용: 개별 영역 클릭 (부모-자식 충돌 방지)
+                // 아이콘+내용 영역 → 앱 열기
+                views.setOnClickFillInIntent(R.id.item_icon_card, itemIntent)
+                views.setOnClickFillInIntent(R.id.item_content_area, itemIntent)
+                // 숫자 영역(D-2 등) → 그룹 접기/펼치기
                 val groupToggleIntent = Intent().apply {
                     putExtra(DdayOnlyWidgetProvider.EXTRA_GROUP_NAME, item.groupName ?: "미분류")
                 }
                 views.setOnClickFillInIntent(R.id.item_dday, groupToggleIntent)
             }
             else -> {
-                // To-Do 전용: 체크박스 → 체크 토글
+                // To-Do 전용: 카드 → 앱 열기, 체크박스 → 체크 토글
+                views.setOnClickFillInIntent(R.id.item_card, itemIntent)
                 val checkboxIntent = Intent().apply {
                     putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_CHECKBOX)
                     putExtra(DdayWidgetProvider.EXTRA_ITEM_ID, item.id)
@@ -438,7 +443,11 @@ class RemoteViewsFactory(
         // 다크모드 대응 헤더 텍스트 색상
         val headerColor = if (isDark) 0xAAB8B8B8.toInt() else 0x88000000.toInt()
         views.setTextColor(R.id.header_title, headerColor)
-        // 헤더는 클릭 시 아무 동작 안 함 (setOnClickFillInIntent 설정 안 함)
+        // 혼합 위젯: 헤더 클릭 시 앱 열기
+        val itemIntent = Intent().apply {
+            putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)
+        }
+        views.setOnClickFillInIntent(R.id.header_title, itemIntent)
         return views
     }
 
@@ -464,12 +473,17 @@ class RemoteViewsFactory(
             return views
         }
 
-        // 혼합 위젯에서는 기존 레이아웃 사용 (접기 없음)
+        // 혼합 위젯에서는 기존 레이아웃 사용 (접기 없음, 클릭 시 앱 열기)
         val views = RemoteViews(context.packageName, R.layout.item_widget_section_header)
         views.setTextViewText(R.id.header_title, "📁 $groupName")
         views.setTextViewTextSize(R.id.header_title, android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
         val groupHeaderColor = if (isDark) 0xCCD0D0D0.toInt() else 0xAA3A3A3A.toInt()
         views.setTextColor(R.id.header_title, groupHeaderColor)
+        // 그룹 헤더 클릭 시 앱 열기
+        val itemIntent = Intent().apply {
+            putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)
+        }
+        views.setOnClickFillInIntent(R.id.header_title, itemIntent)
         return views
     }
 
@@ -540,13 +554,12 @@ class RemoteViewsFactory(
         views.setTextViewText(R.id.todo_header_indicator, if (isCollapsed) "▼" else "▲")
         views.setTextColor(R.id.todo_header_indicator, progressColor)
 
-        // 숫자 영역(진행현황/접기표시) → 접기/펼치기 토글
+        // 접기/펼치기 영역 (넓은 터치) → 접기/펼치기 토글
         val toggleIntent = Intent().apply {
             putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_TODO_TOGGLE)
             putExtra(DdayWidgetProvider.EXTRA_ITEM_ID, item.id)
         }
-        views.setOnClickFillInIntent(R.id.todo_header_progress, toggleIntent)
-        views.setOnClickFillInIntent(R.id.todo_header_indicator, toggleIntent)
+        views.setOnClickFillInIntent(R.id.todo_header_toggle_area, toggleIntent)
 
         // 나머지 영역(제목 등) → 앱 열기
         val itemIntent = Intent().apply {
