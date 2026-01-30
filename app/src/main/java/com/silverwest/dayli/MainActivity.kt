@@ -224,14 +224,7 @@ fun MainDdayScreen(
                             // 앱 리스트 새로고침
                             settingsKey++
                         },
-                        onThemeChanged = onThemeChanged,
-                        templates = templates,
-                        onDeleteTemplate = { template ->
-                            viewModel.deleteTemplate(template)
-                        },
-                        onRenameTemplate = { template, newName ->
-                            viewModel.renameTemplate(template, newName)
-                        }
+                        onThemeChanged = onThemeChanged
                     )
                 }
             },
