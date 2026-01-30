@@ -49,6 +49,14 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     val existingGroups: LiveData<List<String>> = _existingGroups
 
     init {
+        // SharedPreferences에서 정렬 설정 복원
+        _sortOption.value = try {
+            SortOption.valueOf(DdaySettings.getDdaySort(application))
+        } catch (e: Exception) { SortOption.NEAREST }
+        _todoSortOption.value = try {
+            TodoSortOption.valueOf(DdaySettings.getTodoSort(application))
+        } catch (e: Exception) { TodoSortOption.MY_ORDER }
+
         loadAllDdays()
         loadAllTodos()
         loadGroups()
@@ -112,11 +120,13 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setSortOption(option: SortOption) {
         _sortOption.value = option
+        DdaySettings.setDdaySort(getApplication(), option.name)
         loadAllDdays()
     }
 
     fun setTodoSortOption(option: TodoSortOption) {
         _todoSortOption.value = option
+        DdaySettings.setTodoSort(getApplication(), option.name)
         loadAllTodos()
     }
 

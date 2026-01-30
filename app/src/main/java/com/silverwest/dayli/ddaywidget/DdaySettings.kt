@@ -217,6 +217,32 @@ object DdaySettings {
         setThemeMode(context, mode.value)
     }
 
+    // ===== 정렬 설정 (앱 ↔ 위젯 공유) =====
+
+    // D-Day 정렬 (NEAREST / FARTHEST)
+    private const val KEY_DDAY_SORT = "dday_sort"
+    private const val DEFAULT_DDAY_SORT = "NEAREST"
+
+    fun getDdaySort(context: Context): String {
+        return getPrefs(context).getString(KEY_DDAY_SORT, DEFAULT_DDAY_SORT) ?: DEFAULT_DDAY_SORT
+    }
+
+    fun setDdaySort(context: Context, sort: String) {
+        getPrefs(context).edit().putString(KEY_DDAY_SORT, sort).apply()
+    }
+
+    // To-Do 정렬 (MY_ORDER / INCOMPLETE_FIRST / LATEST)
+    private const val KEY_TODO_SORT = "todo_sort"
+    private const val DEFAULT_TODO_SORT = "MY_ORDER"
+
+    fun getTodoSort(context: Context): String {
+        return getPrefs(context).getString(KEY_TODO_SORT, DEFAULT_TODO_SORT) ?: DEFAULT_TODO_SORT
+    }
+
+    fun setTodoSort(context: Context, sort: String) {
+        getPrefs(context).edit().putString(KEY_TODO_SORT, sort).apply()
+    }
+
     // ===== D-Day 위젯 그룹 접기/펼치기 =====
 
     private const val KEY_COLLAPSED_GROUPS = "collapsed_groups"

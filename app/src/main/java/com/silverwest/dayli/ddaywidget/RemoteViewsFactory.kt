@@ -67,13 +67,17 @@ class RemoteViewsFactory(
                     else -> allItems  // MODE_ALL: 전체 표시
                 }
 
+                // 앱 정렬 설정 읽기 (SharedPreferences)
+                val ddaySort = DdaySettings.getDdaySort(context)   // NEAREST / FARTHEST
+                val todoSort = DdaySettings.getTodoSort(context)   // MY_ORDER / INCOMPLETE_FIRST / LATEST
+
                 // 통합 위젯(MODE_ALL)일 때만 섹션 헤더 삽입
                 displayRows = if (mode == DdayOnlyWidgetProvider.MODE_ALL) {
                     val ddayItems = items.filter { it.isDday() && !it.isChecked }
                     // To-Do: DB에서 이미 24시간 이내 체크된 항목만 포함되므로 추가 필터 불필요
-                    val todoItems = items.filter { it.isTodo() }
+                    val todoItems = sortTodoItems(items.filter { it.isTodo() }, todoSort)
                     buildList {
-                        // D-Day 섹션: 그룹별로 임박순 2개씩
+                        // D-Day 섹션: 그룹별로 2개씩
                         if (ddayItems.isNotEmpty()) {
                             add(WidgetRow.Header("D-Day"))
 
@@ -84,8 +88,8 @@ class RemoteViewsFactory(
                             groupedDdays.forEach { (groupName, groupItems) ->
                                 // 그룹 헤더 추가
                                 add(WidgetRow.GroupHeader(groupName))
-                                // 임박순 정렬 후 최대 2개만
-                                val sortedItems = groupItems.sortedBy { it.date }
+                                // 정렬 설정에 따라 정렬 후 최대 2개만
+                                val sortedItems = sortDdayItems(groupItems, ddaySort)
                                 sortedItems.take(2).forEach { item ->
                                     add(WidgetRow.Item(item))
                                 }
@@ -114,7 +118,7 @@ class RemoteViewsFactory(
                             add(WidgetRow.GroupHeader(groupName, isCollapsed))
                             // 접혀있지 않으면 항목들 표시
                             if (!isCollapsed) {
-                                val sortedItems = groupItems.sortedBy { it.date }
+                                val sortedItems = sortDdayItems(groupItems, ddaySort)
                                 sortedItems.forEach { item ->
                                     add(WidgetRow.Item(item))
                                 }
@@ -123,8 +127,9 @@ class RemoteViewsFactory(
                     }
                 } else {
                     // To-Do 전용 위젯: 체크리스트 표시
+                    val sortedItems = sortTodoItems(items, todoSort)
                     buildList {
-                        items.forEach { item ->
+                        sortedItems.forEach { item ->
                             val subTasks = item.getSubTaskList()
                             if (subTasks.isNotEmpty()) {
                                 // 체크리스트가 있는 To-Do: TodoHeader + SubTaskItem들
@@ -538,6 +543,39 @@ class RemoteViewsFactory(
         views.setOnClickFillInIntent(R.id.subtask_root, checkboxIntent)
 
         return views
+    }
+
+    // D-Day 정렬 (NEAREST=임박순, FARTHEST=여유순)
+    private fun sortDdayItems(items: List<DdayItem>, sort: String): List<DdayItem> {
+        return if (sort == "FARTHEST") {
+            items.sortedByDescending { it.date }
+        } else {
+            items.sortedBy { it.date }
+        }
+    }
+
+    // To-Do 정렬 (MY_ORDER / INCOMPLETE_FIRST / LATEST)
+    private fun sortTodoItems(items: List<DdayItem>, sort: String): List<DdayItem> {
+        return when (sort) {
+            "INCOMPLETE_FIRST" -> items.sortedWith(
+                compareBy<DdayItem> { it.isChecked }
+                    .thenBy { item ->
+                        val subTasks = item.getSubTaskList()
+                        if (subTasks.isEmpty()) Float.MAX_VALUE
+                        else subTasks.count { it.isChecked }.toFloat() / subTasks.size
+                    }
+                    .thenByDescending { it.id }
+            )
+            "LATEST" -> items.sortedWith(
+                compareBy<DdayItem> { it.isChecked }
+                    .thenByDescending { it.id }
+            )
+            else -> items.sortedWith(  // MY_ORDER
+                compareBy<DdayItem> { it.isChecked }
+                    .thenBy { it.sortOrder }
+                    .thenByDescending { it.id }
+            )
+        }
     }
 
     private fun calculateDaysUntil(date: Date): Int {
