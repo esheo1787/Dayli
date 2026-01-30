@@ -135,11 +135,9 @@ fun DdayScreen(
         groupOrder = ordered
     }
 
-    // 정렬된 그룹 리스트
-    val orderedGroupList = if (currentSort == SortOption.MY_ORDER) {
-        groupOrder.mapNotNull { name -> ddayPendingByGroup[name]?.let { name to it } }
-    } else {
-        ddayPendingByGroup.toList()
+    // 정렬된 그룹 리스트 (항상 드래그 순서 사용)
+    val orderedGroupList = groupOrder.mapNotNull { name ->
+        ddayPendingByGroup[name]?.let { name to it }
     }
 
     // BottomSheet 상태 (수정/삭제 옵션용)
@@ -228,12 +226,6 @@ fun DdayScreen(
                         Text(
                             text = "정렬: ",
                             style = MaterialTheme.typography.bodySmall
-                        )
-                        FilterChip(
-                            selected = currentSort == SortOption.MY_ORDER,
-                            onClick = { viewModel.setSortOption(SortOption.MY_ORDER) },
-                            label = { Text("내 순서", style = MaterialTheme.typography.bodySmall) },
-                            modifier = Modifier.padding(end = 4.dp)
                         )
                         FilterChip(
                             selected = currentSort == SortOption.NEAREST,
@@ -408,8 +400,8 @@ fun DdayScreen(
                         }
                     }
                 }
-            } else if (currentSort == SortOption.MY_ORDER) {
-                // D-Day 탭: 내 순서 (그룹 드래그 가능)
+            } else {
+                // D-Day 탭: 그룹 드래그 가능, 그룹 내 아이템은 정렬 옵션에 따라
                 LazyColumn(
                     state = groupReorderableState.listState,
                     modifier = Modifier
@@ -494,98 +486,6 @@ fun DdayScreen(
                     }
 
                     // 완료 섹션
-                    if (completedItems.isNotEmpty()) {
-                        item(key = "header_completed_dday") {
-                            SectionHeader(
-                                title = "완료",
-                                count = completedItems.size,
-                                isExpandable = true,
-                                isExpanded = isCompletedExpanded,
-                                onToggle = { isCompletedExpanded = !isCompletedExpanded }
-                            )
-                        }
-
-                        if (isCompletedExpanded) {
-                            items(
-                                items = completedItems,
-                                key = { it.id }
-                            ) { item ->
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RectangleShape,
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surface
-                                    )
-                                ) {
-                                    DdayListItem(
-                                        item = item,
-                                        onToggle = { viewModel.toggleChecked(it) },
-                                        onLongPress = {
-                                            selectedItem = it
-                                            showBottomSheet = true
-                                        },
-                                        onSubTaskToggle = { ddayItem, index ->
-                                            viewModel.toggleSubTask(ddayItem, index)
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                // D-Day 탭: 임박순/여유순 (그룹별 표시, 드래그 없음)
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
-                ) {
-                    orderedGroupList.forEach { (groupName, groupItems) ->
-                        val isGroupExpanded = expandedGroups.contains(groupName)
-
-                        item(key = "group_header_$groupName") {
-                            GroupHeader(
-                                groupName = groupName,
-                                count = groupItems.size,
-                                isExpanded = isGroupExpanded,
-                                onToggle = {
-                                    expandedGroups = if (isGroupExpanded) {
-                                        expandedGroups - groupName
-                                    } else {
-                                        expandedGroups + groupName
-                                    }
-                                }
-                            )
-                        }
-
-                        if (isGroupExpanded) {
-                            items(
-                                items = groupItems,
-                                key = { it.id }
-                            ) { item ->
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RectangleShape,
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surface
-                                    )
-                                ) {
-                                    DdayListItem(
-                                        item = item,
-                                        onToggle = { viewModel.toggleChecked(it) },
-                                        onLongPress = {
-                                            selectedItem = it
-                                            showBottomSheet = true
-                                        },
-                                        onSubTaskToggle = { ddayItem, index ->
-                                            viewModel.toggleSubTask(ddayItem, index)
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-
                     if (completedItems.isNotEmpty()) {
                         item(key = "header_completed_dday") {
                             SectionHeader(

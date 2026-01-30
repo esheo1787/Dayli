@@ -219,9 +219,9 @@ object DdaySettings {
 
     // ===== 정렬 설정 (앱 ↔ 위젯 공유) =====
 
-    // D-Day 정렬 (MY_ORDER / NEAREST / FARTHEST)
+    // D-Day 정렬 (NEAREST / FARTHEST)
     private const val KEY_DDAY_SORT = "dday_sort"
-    private const val DEFAULT_DDAY_SORT = "MY_ORDER"
+    private const val DEFAULT_DDAY_SORT = "NEAREST"
 
     fun getDdaySort(context: Context): String {
         return getPrefs(context).getString(KEY_DDAY_SORT, DEFAULT_DDAY_SORT) ?: DEFAULT_DDAY_SORT

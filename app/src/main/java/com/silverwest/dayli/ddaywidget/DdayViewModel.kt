@@ -6,9 +6,8 @@ import androidx.lifecycle.*
 import kotlinx.coroutines.launch
 import java.util.Date
 
-// D-Day 정렬 옵션
+// D-Day 정렬 옵션 (그룹 내 아이템 정렬, 그룹 순서는 항상 드래그)
 enum class SortOption {
-    MY_ORDER,  // 내 순서 (드래그 순서)
     NEAREST,   // 임박순 (가까운 날짜 먼저)
     FARTHEST   // 여유순 (먼 날짜 먼저)
 }
@@ -30,7 +29,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     private val _todoList = MutableLiveData<List<DdayItem>>()
     val todoList: LiveData<List<DdayItem>> = _todoList
 
-    private val _sortOption = MutableLiveData(SortOption.MY_ORDER)
+    private val _sortOption = MutableLiveData(SortOption.NEAREST)
     val sortOption: LiveData<SortOption> = _sortOption
 
     // To-Do 정렬
@@ -53,7 +52,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         // SharedPreferences에서 정렬 설정 복원
         _sortOption.value = try {
             SortOption.valueOf(DdaySettings.getDdaySort(application))
-        } catch (e: Exception) { SortOption.MY_ORDER }
+        } catch (e: Exception) { SortOption.NEAREST }
         _todoSortOption.value = try {
             TodoSortOption.valueOf(DdaySettings.getTodoSort(application))
         } catch (e: Exception) { TodoSortOption.MY_ORDER }
@@ -78,7 +77,6 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     fun loadAllDdays() {
         viewModelScope.launch {
             val items = when (_sortOption.value) {
-                SortOption.MY_ORDER -> dao.getAllDdaysByDateAsc()  // 그룹 순서는 UI에서 처리
                 SortOption.NEAREST -> dao.getAllDdaysByDateAsc()
                 SortOption.FARTHEST -> dao.getAllDdaysByDateDesc()
                 else -> dao.getAllDdaysByDateAsc()
