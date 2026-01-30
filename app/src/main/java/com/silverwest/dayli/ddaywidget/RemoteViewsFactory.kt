@@ -67,17 +67,16 @@ class RemoteViewsFactory(
                     else -> allItems  // MODE_ALL: 전체 표시
                 }
 
-                // 앱 정렬 설정 읽기 (SharedPreferences)
-                val ddaySort = DdaySettings.getDdaySort(context)   // NEAREST / FARTHEST
-                val todoSort = DdaySettings.getTodoSort(context)   // MY_ORDER / INCOMPLETE_FIRST / LATEST
-
                 // 통합 위젯(MODE_ALL)일 때만 섹션 헤더 삽입
+                // 위젯은 앱 정렬 설정과 무관하게 항상 사용자 순서로 표시
+                // D-Day: 임박순 (date ASC), To-Do: 드래그 순서 (sortOrder ASC)
                 displayRows = if (mode == DdayOnlyWidgetProvider.MODE_ALL) {
                     val ddayItems = items.filter { it.isDday() && !it.isChecked }
                     // To-Do: DB에서 이미 24시간 이내 체크된 항목만 포함되므로 추가 필터 불필요
-                    val todoItems = sortTodoItems(items.filter { it.isTodo() }, todoSort)
+                    val todoItems = items.filter { it.isTodo() }
+                        .sortedWith(compareBy<DdayItem> { it.isChecked }.thenBy { it.sortOrder }.thenByDescending { it.id })
                     buildList {
-                        // D-Day 섹션: 그룹별로 2개씩
+                        // D-Day 섹션: 그룹별로 임박순 2개씩
                         if (ddayItems.isNotEmpty()) {
                             add(WidgetRow.Header("D-Day"))
 
@@ -88,8 +87,8 @@ class RemoteViewsFactory(
                             groupedDdays.forEach { (groupName, groupItems) ->
                                 // 그룹 헤더 추가
                                 add(WidgetRow.GroupHeader(groupName))
-                                // 정렬 설정에 따라 정렬 후 최대 2개만
-                                val sortedItems = sortDdayItems(groupItems, ddaySort)
+                                // 임박순 정렬 후 최대 2개만
+                                val sortedItems = groupItems.sortedBy { it.date }
                                 sortedItems.take(2).forEach { item ->
                                     add(WidgetRow.Item(item))
                                 }
@@ -116,9 +115,9 @@ class RemoteViewsFactory(
                             val isCollapsed = collapsedGroups.contains(groupName)
                             // 그룹 헤더 추가 (접힘 상태 포함)
                             add(WidgetRow.GroupHeader(groupName, isCollapsed))
-                            // 접혀있지 않으면 항목들 표시
+                            // 접혀있지 않으면 항목들 표시 (임박순)
                             if (!isCollapsed) {
-                                val sortedItems = sortDdayItems(groupItems, ddaySort)
+                                val sortedItems = groupItems.sortedBy { it.date }
                                 sortedItems.forEach { item ->
                                     add(WidgetRow.Item(item))
                                 }
@@ -126,8 +125,10 @@ class RemoteViewsFactory(
                         }
                     }
                 } else {
-                    // To-Do 전용 위젯: 체크리스트 표시
-                    val sortedItems = sortTodoItems(items, todoSort)
+                    // To-Do 전용 위젯: 체크리스트 표시 (드래그 순서)
+                    val sortedItems = items.sortedWith(
+                        compareBy<DdayItem> { it.isChecked }.thenBy { it.sortOrder }.thenByDescending { it.id }
+                    )
                     buildList {
                         sortedItems.forEach { item ->
                             val subTasks = item.getSubTaskList()
@@ -543,39 +544,6 @@ class RemoteViewsFactory(
         views.setOnClickFillInIntent(R.id.subtask_root, checkboxIntent)
 
         return views
-    }
-
-    // D-Day 정렬 (NEAREST=임박순, FARTHEST=여유순)
-    private fun sortDdayItems(items: List<DdayItem>, sort: String): List<DdayItem> {
-        return if (sort == "FARTHEST") {
-            items.sortedByDescending { it.date }
-        } else {
-            items.sortedBy { it.date }
-        }
-    }
-
-    // To-Do 정렬 (MY_ORDER / INCOMPLETE_FIRST / LATEST)
-    private fun sortTodoItems(items: List<DdayItem>, sort: String): List<DdayItem> {
-        return when (sort) {
-            "INCOMPLETE_FIRST" -> items.sortedWith(
-                compareBy<DdayItem> { it.isChecked }
-                    .thenBy { item ->
-                        val subTasks = item.getSubTaskList()
-                        if (subTasks.isEmpty()) Float.MAX_VALUE
-                        else subTasks.count { it.isChecked }.toFloat() / subTasks.size
-                    }
-                    .thenByDescending { it.id }
-            )
-            "LATEST" -> items.sortedWith(
-                compareBy<DdayItem> { it.isChecked }
-                    .thenByDescending { it.id }
-            )
-            else -> items.sortedWith(  // MY_ORDER
-                compareBy<DdayItem> { it.isChecked }
-                    .thenBy { it.sortOrder }
-                    .thenByDescending { it.id }
-            )
-        }
     }
 
     private fun calculateDaysUntil(date: Date): Int {
