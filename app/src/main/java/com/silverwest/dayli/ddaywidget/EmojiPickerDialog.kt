@@ -3,10 +3,12 @@ package com.silverwest.dayli.ddaywidget
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,35 +20,77 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 
-// D-Day/To-Do 용도에 맞는 이모지 목록
-val ddayEmojis = listOf(
-    // 공부/시험
-    "📚", "📖", "📝", "✏️", "🎓", "📕", "📗", "📘",
-    // 일정/약속
-    "📅", "📆", "⏰", "🕐", "📋", "✅", "☑️", "📌",
-    // 기념일/축하
-    "🎂", "🎉", "🎊", "🎁", "🎈", "🥳", "🎀", "🏆",
-    // 업무
-    "💼", "🏢", "💻", "⌨️", "📊", "📈", "📁", "🗂️",
-    // 개인/집
-    "🏠", "🏡", "🛋️", "🛏️", "🧹", "🧺", "📦", "🔑",
-    // 여행
-    "✈️", "🚗", "🚆", "🚢", "🏖️", "🏔️", "🗺️", "🧳",
-    // 운동
-    "💪", "🏃", "🚴", "🏊", "⚽", "🏀", "🎾", "🏋️",
-    // 건강
-    "💊", "🏥", "💉", "🩺", "🦷", "👁️", "❤️‍🩹", "🧘",
-    // 쇼핑/금융
-    "🛒", "🛍️", "💰", "💳", "🏦", "💵", "🧾", "💎",
-    // 취미
-    "🎮", "🎬", "🎵", "🎨", "📷", "🎸", "🎤", "🎧",
-    // 음식
-    "🍽️", "🍕", "🍔", "🍣", "🍰", "☕", "🍺", "🥗",
-    // 사람/관계
-    "❤️", "💕", "👨‍👩‍👧", "👪", "👫", "🤝", "💑", "👶",
-    // 기타
-    "⭐", "🔥", "💡", "🎯", "🚀", "🌟", "✨", "🔔"
+// 이모지 카테고리 정의
+data class EmojiCategory(val icon: String, val name: String, val emojis: List<String>)
+
+val emojiCategories = listOf(
+    EmojiCategory("😀", "표정", listOf(
+        "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂",
+        "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩",
+        "😘", "😗", "😋", "😛", "😜", "🤪", "😝", "🤑",
+        "🤗", "🤭", "🤫", "🤔", "😐", "😑", "😶", "😏",
+        "😒", "🙄", "😬", "😌", "😔", "😪", "🤤", "😴",
+        "😷", "🤒", "🤕", "🤢", "🤮", "🥵", "🥶", "🤯"
+    )),
+    EmojiCategory("🐶", "동물", listOf(
+        "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼",
+        "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🙈",
+        "🙉", "🙊", "🐔", "🐧", "🐦", "🐤", "🦆", "🦅",
+        "🦉", "🦇", "🐺", "🐗", "🐴", "🦄", "🐝", "🐛",
+        "🦋", "🐌", "🐞", "🐜", "🐢", "🐍", "🦎", "🦖",
+        "🐙", "🦑", "🦐", "🦀", "🐠", "🐟", "🐡", "🐬"
+    )),
+    EmojiCategory("🍎", "음식", listOf(
+        "🍎", "🍐", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓",
+        "🍈", "🍒", "🍑", "🥭", "🍍", "🥥", "🥝", "🍅",
+        "🍆", "🥑", "🥦", "🥬", "🥒", "🌶", "🌽", "🥕",
+        "🥔", "🍠", "🍞", "🧀", "🍖", "🍗", "🥩", "🌭",
+        "🍔", "🍟", "🍕", "🥪", "🌮", "🌯", "🥙", "🍣",
+        "🍰", "🍩", "🍪", "🎂", "☕", "🍵", "🍺", "🥤"
+    )),
+    EmojiCategory("⚽", "활동", listOf(
+        "⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉",
+        "🎱", "🏓", "🏸", "🏒", "🥍", "🏏", "⛳", "🎣",
+        "🥊", "🥋", "🎽", "🛹", "🛼", "🛷", "⛸", "🥌",
+        "🎿", "🏂", "🏋️", "🤸", "🤺", "🤾", "🏌️", "🏇",
+        "🧘", "🏄", "🏊", "🤽", "🧗", "🚴", "🚵", "🏃",
+        "💪", "🎮", "🎲", "🎯", "🎳", "🎪", "🎨", "🎬"
+    )),
+    EmojiCategory("🚗", "여행", listOf(
+        "🚗", "🚕", "🚙", "🚌", "🚎", "🏎", "🚓", "🚑",
+        "🚒", "🚐", "🚚", "🚛", "🚜", "🛵", "🏍", "🚲",
+        "🛴", "🚏", "🚅", "🚆", "🚇", "🚊", "🚉", "✈️",
+        "🛫", "🛬", "🚀", "🛸", "🚁", "🛶", "⛵", "🚤",
+        "🛥", "🛳", "🚢", "⚓", "🏖", "🏝", "🏔", "⛰",
+        "🌋", "🗻", "🏕", "🏠", "🏡", "🏢", "🏣", "🏥"
+    )),
+    EmojiCategory("💼", "사물", listOf(
+        "💼", "📱", "💻", "⌨️", "🖥", "🖨", "💾", "📀",
+        "🎥", "📷", "📸", "📹", "🔍", "🔎", "💡", "🔦",
+        "📔", "📕", "📖", "📗", "📘", "📙", "📚", "📓",
+        "📒", "📃", "📄", "📰", "📑", "🔖", "🏷", "💰",
+        "💵", "💳", "🧾", "✉", "📧", "📦", "🔑", "🔒",
+        "🔓", "🛒", "💎", "⏰", "⌚", "📌", "📎", "✂️"
+    )),
+    EmojiCategory("❤️", "기호", listOf(
+        "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍",
+        "🤎", "💔", "❣", "💕", "💞", "💟", "💗", "💖",
+        "💝", "💘", "✅", "❌", "⭕", "❗", "❓", "⚡",
+        "🔥", "💥", "✨", "⭐", "🌟", "💫", "🎵", "🎶",
+        "🔔", "📣", "📢", "🏁", "☮", "☯", "♻", "⚜",
+        "🔰", "💠", "🔷", "🔶", "🔵", "🟢", "🔴", "🟡"
+    )),
+    EmojiCategory("🚩", "깃발", listOf(
+        "🏳", "🏴", "🏁", "🚩", "🎌", "🏴‍☠️", "🇰🇷", "🇺🇸",
+        "🇯🇵", "🇨🇳", "🇬🇧", "🇫🇷", "🇩🇪", "🇮🇹", "🇪🇸", "🇷🇺",
+        "🇧🇷", "🇦🇺", "🇨🇦", "🇲🇽", "🇮🇳", "🇮🇩", "🇹🇷", "🇸🇦",
+        "🇦🇪", "🇹🇭", "🇻🇳", "🇵🇭", "🇲🇾", "🇸🇬", "🇳🇿", "🇨🇭",
+        "🇸🇪", "🇳🇴", "🇩🇰", "🇫🇮", "🇳🇱", "🇧🇪", "🇵🇱", "🇦🇹"
+    ))
 )
+
+// 하위 호환성
+val ddayEmojis = emojiCategories.flatMap { it.emojis }
 
 @Composable
 fun EmojiPickerDialog(
@@ -56,6 +100,13 @@ fun EmojiPickerDialog(
     onDismiss: () -> Unit
 ) {
     var selectedEmoji by remember { mutableStateOf(currentEmoji) }
+    // 현재 이모지가 속한 카테고리 자동 선택
+    var selectedCategoryIndex by remember {
+        val index = emojiCategories.indexOfFirst { category ->
+            currentEmoji in category.emojis
+        }
+        mutableStateOf(if (index >= 0) index else 0)
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -96,18 +147,48 @@ fun EmojiPickerDialog(
                     }
                 }
 
+                // 카테고리 탭
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    emojiCategories.forEachIndexed { index, category ->
+                        val isSelected = index == selectedCategoryIndex
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    if (isSelected) categoryColor.copy(alpha = 0.2f)
+                                    else Color.Transparent
+                                )
+                                .border(
+                                    width = if (isSelected) 2.dp else 0.dp,
+                                    color = if (isSelected) categoryColor else Color.Transparent,
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .clickable { selectedCategoryIndex = index },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = category.icon, fontSize = 20.sp)
+                        }
+                    }
+                }
+
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // 이모지 그리드
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(6),
+                    columns = GridCells.Fixed(8),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(280.dp),
+                        .height(300.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    items(ddayEmojis) { emoji ->
+                    items(emojiCategories[selectedCategoryIndex].emojis) { emoji ->
                         EmojiGridItem(
                             emoji = emoji,
                             isSelected = emoji == selectedEmoji,
