@@ -70,25 +70,38 @@ class RemoteViewsFactory(
                 // 통합 위젯(MODE_ALL)일 때만 섹션 헤더 삽입
                 // 위젯은 앱 정렬 설정과 무관하게 항상 사용자 순서로 표시
                 // D-Day: 임박순 (date ASC), To-Do: 드래그 순서 (sortOrder ASC)
+                // 앱 정렬 설정 읽기
+                val savedGroupOrder = DdaySettings.getGroupOrder(context)
+                val ddaySortOption = DdaySettings.getDdaySort(context)
+
                 displayRows = if (mode == DdayOnlyWidgetProvider.MODE_ALL) {
                     val ddayItems = items.filter { it.isDday() && !it.isChecked }
                     // To-Do: DB에서 이미 24시간 이내 체크된 항목만 포함되므로 추가 필터 불필요
                     val todoItems = items.filter { it.isTodo() }
                         .sortedWith(compareBy<DdayItem> { it.isChecked }.thenBy { it.sortOrder }.thenByDescending { it.id })
                     buildList {
-                        // D-Day 섹션: 그룹별로 임박순 2개씩
+                        // D-Day 섹션: 그룹별로 2개씩
                         if (ddayItems.isNotEmpty()) {
                             add(WidgetRow.Header("D-Day"))
 
-                            // 그룹별로 묶기 (미분류는 마지막으로)
+                            // 그룹별로 묶기
                             val groupedDdays = ddayItems.groupBy { it.groupName ?: "미분류" }
-                                .toSortedMap(compareBy { if (it == "미분류") "zzz" else it })
 
-                            groupedDdays.forEach { (groupName, groupItems) ->
+                            // 앱 드래그 순서로 그룹 정렬
+                            val orderedGroups = mutableListOf<String>()
+                            savedGroupOrder.forEach { name -> if (name in groupedDdays) orderedGroups.add(name) }
+                            groupedDdays.keys.forEach { name -> if (name !in orderedGroups) orderedGroups.add(name) }
+
+                            orderedGroups.forEach { groupName ->
+                                val groupItems = groupedDdays[groupName] ?: return@forEach
                                 // 그룹 헤더 추가
                                 add(WidgetRow.GroupHeader(groupName))
-                                // 임박순 정렬 후 최대 2개만
-                                val sortedItems = groupItems.sortedBy { it.date }
+                                // 정렬 옵션에 따라 그룹 내 아이템 정렬 후 최대 2개만
+                                val sortedItems = if (ddaySortOption == "FARTHEST") {
+                                    groupItems.sortedByDescending { it.date }
+                                } else {
+                                    groupItems.sortedBy { it.date }
+                                }
                                 sortedItems.take(2).forEach { item ->
                                     add(WidgetRow.Item(item))
                                 }
@@ -107,17 +120,26 @@ class RemoteViewsFactory(
                     val ddayItems = items.filter { !it.isChecked }
                     val collapsedGroups = DdaySettings.getCollapsedGroups(context)
                     buildList {
-                        // 그룹별로 묶기 (미분류는 마지막으로)
+                        // 그룹별로 묶기
                         val groupedDdays = ddayItems.groupBy { it.groupName ?: "미분류" }
-                            .toSortedMap(compareBy { if (it == "미분류") "zzz" else it })
 
-                        groupedDdays.forEach { (groupName, groupItems) ->
+                        // 앱 드래그 순서로 그룹 정렬
+                        val orderedGroups = mutableListOf<String>()
+                        savedGroupOrder.forEach { name -> if (name in groupedDdays) orderedGroups.add(name) }
+                        groupedDdays.keys.forEach { name -> if (name !in orderedGroups) orderedGroups.add(name) }
+
+                        orderedGroups.forEach { groupName ->
+                            val groupItems = groupedDdays[groupName] ?: return@forEach
                             val isCollapsed = collapsedGroups.contains(groupName)
                             // 그룹 헤더 추가 (접힘 상태 포함)
                             add(WidgetRow.GroupHeader(groupName, isCollapsed))
-                            // 접혀있지 않으면 항목들 표시 (임박순)
+                            // 접혀있지 않으면 항목들 표시 (정렬 옵션 적용)
                             if (!isCollapsed) {
-                                val sortedItems = groupItems.sortedBy { it.date }
+                                val sortedItems = if (ddaySortOption == "FARTHEST") {
+                                    groupItems.sortedByDescending { it.date }
+                                } else {
+                                    groupItems.sortedBy { it.date }
+                                }
                                 sortedItems.forEach { item ->
                                     add(WidgetRow.Item(item))
                                 }

@@ -97,6 +97,8 @@ fun DdayScreen(
         },
         onDragEnd = { _, _ ->
             DdaySettings.setGroupOrder(context, groupOrder)
+            // 위젯 동기화
+            DdayWidgetProvider.refreshAllWidgets(context)
         }
     )
 
