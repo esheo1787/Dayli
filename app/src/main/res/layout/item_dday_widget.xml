@@ -94,7 +94,7 @@
     <!-- 체크박스 - 터치 영역 확대 (48dp 최소 권장) -->
     <CheckBox
         android:id="@+id/item_checkbox"
-        android:layout_width="80dp"
+        android:layout_width="48dp"
         android:layout_height="match_parent"
         android:gravity="center"
         android:focusable="false"
