@@ -79,6 +79,10 @@ interface DdayDao {
     @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' ORDER BY isChecked ASC, sortOrder ASC, id DESC")
     suspend fun getAllTodosSorted(): List<DdayItem>
 
+    // To-Do 미완료순 (isChecked ASC, id DESC - sortOrder 무시)
+    @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' ORDER BY isChecked ASC, id DESC")
+    suspend fun getAllTodosIncompleteFirst(): List<DdayItem>
+
     // sortOrder 업데이트 (드래그 순서 변경용)
     @Query("UPDATE dday_items SET sortOrder = :sortOrder WHERE id = :id")
     suspend fun updateSortOrder(id: Int, sortOrder: Int)

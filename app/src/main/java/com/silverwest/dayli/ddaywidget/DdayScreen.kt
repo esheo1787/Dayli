@@ -45,6 +45,7 @@ fun DdayScreen(
     val ddays by viewModel.ddayList.observeAsState(emptyList())
     val todos by viewModel.todoList.observeAsState(emptyList())
     val currentSort by viewModel.sortOption.observeAsState(SortOption.NEAREST)
+    val currentTodoSort by viewModel.todoSortOption.observeAsState(TodoSortOption.MY_ORDER)
     val currentCategory by viewModel.categoryFilter.observeAsState(null)
     val currentTab by viewModel.currentTab.observeAsState(ItemType.DDAY)
 
@@ -96,6 +97,10 @@ fun DdayScreen(
     // 그룹 관리 다이얼로그 상태
     var showGroupManageDialog by remember { mutableStateOf(false) }
     val existingGroups by viewModel.existingGroups.observeAsState(emptyList())
+
+    // 템플릿 관리 다이얼로그 상태
+    var showTemplateManageDialog by remember { mutableStateOf(false) }
+    val templates by viewModel.templates.observeAsState(emptyList())
 
     // D-Day 그룹별 분류
     val ddayPendingByGroup = remember(pendingItems, selectedTabIndex) {
@@ -214,6 +219,51 @@ fun DdayScreen(
                 }
             }
 
+            // To-Do 탭일 때 정렬 옵션 + 템플릿 관리 표시
+            if (selectedTabIndex == 1) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 템플릿 관리 버튼
+                    AssistChip(
+                        onClick = { showTemplateManageDialog = true },
+                        label = { Text("템플릿 관리", style = MaterialTheme.typography.bodySmall) },
+                        leadingIcon = {
+                            Text("📋", fontSize = 14.sp)
+                        }
+                    )
+
+                    // 정렬 옵션
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "정렬: ",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        FilterChip(
+                            selected = currentTodoSort == TodoSortOption.MY_ORDER,
+                            onClick = { viewModel.setTodoSortOption(TodoSortOption.MY_ORDER) },
+                            label = { Text("내 순서", style = MaterialTheme.typography.bodySmall) },
+                            modifier = Modifier.padding(end = 4.dp)
+                        )
+                        FilterChip(
+                            selected = currentTodoSort == TodoSortOption.INCOMPLETE_FIRST,
+                            onClick = { viewModel.setTodoSortOption(TodoSortOption.INCOMPLETE_FIRST) },
+                            label = { Text("미완료순", style = MaterialTheme.typography.bodySmall) },
+                            modifier = Modifier.padding(end = 4.dp)
+                        )
+                        FilterChip(
+                            selected = currentTodoSort == TodoSortOption.LATEST,
+                            onClick = { viewModel.setTodoSortOption(TodoSortOption.LATEST) },
+                            label = { Text("최근 추가", style = MaterialTheme.typography.bodySmall) }
+                        )
+                    }
+                }
+            }
+
             // 리스트 (To-Do 탭: 드래그 가능, D-Day 탭: 일반)
             if (selectedTabIndex == 1) {
                 // To-Do 탭: 드래그 순서 변경 가능
@@ -255,17 +305,19 @@ fun DdayScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // 드래그 핸들 (직접 드래그 가능)
-                                    Icon(
-                                        imageVector = Icons.Default.Menu,
-                                        contentDescription = "드래그",
-                                        modifier = Modifier
-                                            .detectReorder(reorderableState)
-                                            .padding(start = 8.dp, end = 4.dp)
-                                            .padding(vertical = 12.dp)
-                                            .size(24.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                    )
+                                    // 드래그 핸들 (내 순서일 때만 표시)
+                                    if (currentTodoSort == TodoSortOption.MY_ORDER) {
+                                        Icon(
+                                            imageVector = Icons.Default.Menu,
+                                            contentDescription = "드래그",
+                                            modifier = Modifier
+                                                .detectReorder(reorderableState)
+                                                .padding(start = 8.dp, end = 4.dp)
+                                                .padding(vertical = 12.dp)
+                                                .size(24.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    }
                                     // 아이템 내용
                                     Box(modifier = Modifier.weight(1f)) {
                                         DdayListItem(
@@ -545,6 +597,20 @@ fun DdayScreen(
                     viewModel.deleteGroup(groupName)
                 },
                 viewModel = viewModel
+            )
+        }
+
+        // 템플릿 관리 다이얼로그
+        if (showTemplateManageDialog) {
+            TemplateManageDialog(
+                templates = templates,
+                onDismiss = { showTemplateManageDialog = false },
+                onRenameTemplate = { template, newName ->
+                    viewModel.renameTemplate(template, newName)
+                },
+                onDeleteTemplate = { template ->
+                    viewModel.deleteTemplate(template)
+                }
             )
         }
     }
@@ -936,6 +1002,222 @@ private fun GroupManageItem(
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f)
                 )
+                // 수정 버튼
+                IconButton(
+                    onClick = onEditStart,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "수정",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                // 삭제 버튼
+                IconButton(
+                    onClick = onDeleteClick,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "삭제",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 템플릿 관리 다이얼로그
+ * - 템플릿 목록 표시
+ * - 템플릿 이름 변경
+ * - 템플릿 삭제
+ */
+@Composable
+private fun TemplateManageDialog(
+    templates: List<TodoTemplate>,
+    onDismiss: () -> Unit,
+    onRenameTemplate: (TodoTemplate, String) -> Unit,
+    onDeleteTemplate: (TodoTemplate) -> Unit
+) {
+    var editingTemplate by remember { mutableStateOf<TodoTemplate?>(null) }
+    var editingName by remember { mutableStateOf("") }
+    var deleteConfirmTemplate by remember { mutableStateOf<TodoTemplate?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("📋", fontSize = 20.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("템플릿 관리")
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 400.dp)
+            ) {
+                if (templates.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "저장된 템플릿이 없습니다",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(templates) { template ->
+                            TemplateManageItem(
+                                template = template,
+                                isEditing = editingTemplate?.id == template.id,
+                                editingName = if (editingTemplate?.id == template.id) editingName else template.name,
+                                onEditStart = {
+                                    editingTemplate = template
+                                    editingName = template.name
+                                },
+                                onEditChange = { editingName = it },
+                                onEditConfirm = {
+                                    if (editingName.isNotBlank() && editingName != template.name) {
+                                        onRenameTemplate(template, editingName.trim())
+                                    }
+                                    editingTemplate = null
+                                    editingName = ""
+                                },
+                                onEditCancel = {
+                                    editingTemplate = null
+                                    editingName = ""
+                                },
+                                onDeleteClick = {
+                                    deleteConfirmTemplate = template
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("닫기")
+            }
+        }
+    )
+
+    // 삭제 확인 다이얼로그
+    if (deleteConfirmTemplate != null) {
+        AlertDialog(
+            onDismissRequest = { deleteConfirmTemplate = null },
+            title = { Text("템플릿 삭제") },
+            text = {
+                Text("'${deleteConfirmTemplate?.name}' 템플릿을 삭제하시겠습니까?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        deleteConfirmTemplate?.let { onDeleteTemplate(it) }
+                        deleteConfirmTemplate = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("삭제")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirmTemplate = null }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun TemplateManageItem(
+    template: TodoTemplate,
+    isEditing: Boolean,
+    editingName: String,
+    onEditStart: () -> Unit,
+    onEditChange: (String) -> Unit,
+    onEditConfirm: () -> Unit,
+    onEditCancel: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 템플릿 아이콘
+            Text(template.iconName, fontSize = 18.sp)
+            Spacer(modifier = Modifier.width(8.dp))
+
+            if (isEditing) {
+                // 편집 모드
+                OutlinedTextField(
+                    value = editingName,
+                    onValueChange = onEditChange,
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(
+                    onClick = onEditConfirm,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Text("✓", fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+                }
+                IconButton(
+                    onClick = onEditCancel,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "취소",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                // 보기 모드
+                Text(
+                    text = template.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                // 서브태스크 개수 표시
+                val subTaskCount = template.getSubTaskList().size
+                if (subTaskCount > 0) {
+                    Text(
+                        text = "${subTaskCount}개",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
                 // 수정 버튼
                 IconButton(
                     onClick = onEditStart,

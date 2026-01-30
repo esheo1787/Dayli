@@ -6,10 +6,17 @@ import androidx.lifecycle.*
 import kotlinx.coroutines.launch
 import java.util.Date
 
-// 정렬 옵션
+// D-Day 정렬 옵션
 enum class SortOption {
     NEAREST,   // 임박순 (가까운 날짜 먼저)
     FARTHEST   // 여유순 (먼 날짜 먼저)
+}
+
+// To-Do 정렬 옵션
+enum class TodoSortOption {
+    MY_ORDER,          // 내 순서 (드래그 순서)
+    INCOMPLETE_FIRST,  // 미완료순
+    LATEST             // 최근 추가순
 }
 
 class DdayViewModel(application: Application) : AndroidViewModel(application) {
@@ -24,6 +31,10 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _sortOption = MutableLiveData(SortOption.NEAREST)
     val sortOption: LiveData<SortOption> = _sortOption
+
+    // To-Do 정렬
+    private val _todoSortOption = MutableLiveData(TodoSortOption.MY_ORDER)
+    val todoSortOption: LiveData<TodoSortOption> = _todoSortOption
 
     // 카테고리 필터 (null = 전체)
     private val _categoryFilter = MutableLiveData<DdayCategory?>(null)
@@ -68,7 +79,12 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadAllTodos() {
         viewModelScope.launch {
-            val items = dao.getAllTodosSorted()
+            val items = when (_todoSortOption.value) {
+                TodoSortOption.MY_ORDER -> dao.getAllTodosSorted()
+                TodoSortOption.INCOMPLETE_FIRST -> dao.getAllTodosIncompleteFirst()
+                TodoSortOption.LATEST -> dao.getAllTodos()
+                else -> dao.getAllTodosSorted()
+            }
             _todoList.postValue(items)
         }
     }
@@ -81,6 +97,11 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     fun setSortOption(option: SortOption) {
         _sortOption.value = option
         loadAllDdays()
+    }
+
+    fun setTodoSortOption(option: TodoSortOption) {
+        _todoSortOption.value = option
+        loadAllTodos()
     }
 
     fun setCategoryFilter(category: DdayCategory?) {
