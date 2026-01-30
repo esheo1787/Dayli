@@ -8,6 +8,7 @@ import java.util.Date
 
 // D-Day 정렬 옵션
 enum class SortOption {
+    MY_ORDER,  // 내 순서 (드래그 순서)
     NEAREST,   // 임박순 (가까운 날짜 먼저)
     FARTHEST   // 여유순 (먼 날짜 먼저)
 }
@@ -29,7 +30,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     private val _todoList = MutableLiveData<List<DdayItem>>()
     val todoList: LiveData<List<DdayItem>> = _todoList
 
-    private val _sortOption = MutableLiveData(SortOption.NEAREST)
+    private val _sortOption = MutableLiveData(SortOption.MY_ORDER)
     val sortOption: LiveData<SortOption> = _sortOption
 
     // To-Do 정렬
@@ -52,7 +53,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         // SharedPreferences에서 정렬 설정 복원
         _sortOption.value = try {
             SortOption.valueOf(DdaySettings.getDdaySort(application))
-        } catch (e: Exception) { SortOption.NEAREST }
+        } catch (e: Exception) { SortOption.MY_ORDER }
         _todoSortOption.value = try {
             TodoSortOption.valueOf(DdaySettings.getTodoSort(application))
         } catch (e: Exception) { TodoSortOption.MY_ORDER }
@@ -77,9 +78,10 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     fun loadAllDdays() {
         viewModelScope.launch {
             val items = when (_sortOption.value) {
+                SortOption.MY_ORDER -> dao.getAllDdaysSorted()
                 SortOption.NEAREST -> dao.getAllDdaysByDateAsc()
                 SortOption.FARTHEST -> dao.getAllDdaysByDateDesc()
-                else -> dao.getAllDdaysByDateAsc()
+                else -> dao.getAllDdaysSorted()
             }
             _ddayList.postValue(items)
         }
@@ -300,6 +302,18 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             dao.updateSortOrders(updates)
             loadAllTodos()
             // 위젯 동기화
+            DdayWidgetProvider.refreshAllWidgets(getApplication())
+        }
+    }
+
+    // D-Day 드래그 순서 변경
+    fun updateDdayOrder(reorderedItems: List<DdayItem>) {
+        viewModelScope.launch {
+            val updates = reorderedItems.mapIndexed { index, item ->
+                Pair(item.id, index)
+            }
+            dao.updateSortOrders(updates)
+            loadAllDdays()
             DdayWidgetProvider.refreshAllWidgets(getApplication())
         }
     }

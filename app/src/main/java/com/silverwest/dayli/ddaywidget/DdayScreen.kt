@@ -70,21 +70,40 @@ fun DdayScreen(
     // Reorderable 상태 (To-Do 탭 전용)
     val reorderableState = rememberReorderableLazyListState(
         onMove = { from, to ->
-            Log.d("DRAG", "🔄 onMove: from=${from.index}, to=${to.index}")
-            // 헤더가 0번 인덱스이므로 실제 아이템 인덱스는 -1
             val fromIndex = from.index - 1
             val toIndex = to.index - 1
             if (fromIndex >= 0 && toIndex >= 0 && fromIndex < todoPendingData.size && toIndex < todoPendingData.size) {
                 todoPendingData = todoPendingData.toMutableList().apply {
                     add(toIndex, removeAt(fromIndex))
                 }
-                Log.d("DRAG", "✅ 순서 변경됨: fromIndex=$fromIndex, toIndex=$toIndex")
             }
         },
         onDragEnd = { _, _ ->
-            Log.d("DRAG", "🏁 onDragEnd: 순서 DB 저장")
-            // 드래그 완료 시 DB에 순서 저장
             viewModel.updateTodoOrder(todoPendingData)
+        }
+    )
+
+    // D-Day 드래그 순서 변경을 위한 상태
+    var ddayPendingData by remember { mutableStateOf(pendingItems) }
+    LaunchedEffect(pendingItems, selectedTabIndex) {
+        if (selectedTabIndex == 0) {
+            ddayPendingData = pendingItems
+        }
+    }
+
+    // Reorderable 상태 (D-Day 탭 - 내 순서 모드)
+    val ddayReorderableState = rememberReorderableLazyListState(
+        onMove = { from, to ->
+            val fromIndex = from.index - 1
+            val toIndex = to.index - 1
+            if (fromIndex >= 0 && toIndex >= 0 && fromIndex < ddayPendingData.size && toIndex < ddayPendingData.size) {
+                ddayPendingData = ddayPendingData.toMutableList().apply {
+                    add(toIndex, removeAt(fromIndex))
+                }
+            }
+        },
+        onDragEnd = { _, _ ->
+            viewModel.updateDdayOrder(ddayPendingData)
         }
     )
 
@@ -203,6 +222,12 @@ fun DdayScreen(
                         Text(
                             text = "정렬: ",
                             style = MaterialTheme.typography.bodySmall
+                        )
+                        FilterChip(
+                            selected = currentSort == SortOption.MY_ORDER,
+                            onClick = { viewModel.setSortOption(SortOption.MY_ORDER) },
+                            label = { Text("내 순서", style = MaterialTheme.typography.bodySmall) },
+                            modifier = Modifier.padding(end = 4.dp)
                         )
                         FilterChip(
                             selected = currentSort == SortOption.NEAREST,
@@ -377,12 +402,122 @@ fun DdayScreen(
                         }
                     }
                 }
+            } else if (currentSort == SortOption.MY_ORDER) {
+                // D-Day 탭: 내 순서 (드래그 가능한 flat list)
+                LazyColumn(
+                    state = ddayReorderableState.listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .reorderable(ddayReorderableState),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    // 진행중 섹션 헤더
+                    item(key = "header_pending_dday") {
+                        SectionHeader(
+                            title = "진행중",
+                            count = ddayPendingData.size,
+                            isExpandable = false,
+                            isExpanded = true,
+                            onToggle = {}
+                        )
+                    }
+
+                    // 진행중 D-Day 항목들 (드래그 가능)
+                    items(
+                        items = ddayPendingData,
+                        key = { it.id }
+                    ) { item ->
+                        ReorderableItem(ddayReorderableState, key = item.id) { isDragging ->
+                            val elevation = if (isDragging) 8.dp else 0.dp
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RectangleShape,
+                                elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // 드래그 핸들
+                                    Icon(
+                                        imageVector = Icons.Default.Menu,
+                                        contentDescription = "드래그",
+                                        modifier = Modifier
+                                            .detectReorder(ddayReorderableState)
+                                            .padding(start = 8.dp, end = 4.dp)
+                                            .padding(vertical = 12.dp)
+                                            .size(24.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                    // 아이템 내용
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        DdayListItem(
+                                            item = item,
+                                            onToggle = { viewModel.toggleChecked(it) },
+                                            onLongPress = {
+                                                selectedItem = it
+                                                showBottomSheet = true
+                                            },
+                                            onSubTaskToggle = { ddayItem, index ->
+                                                viewModel.toggleSubTask(ddayItem, index)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 완료 섹션
+                    if (completedItems.isNotEmpty()) {
+                        item(key = "header_completed_dday") {
+                            SectionHeader(
+                                title = "완료",
+                                count = completedItems.size,
+                                isExpandable = true,
+                                isExpanded = isCompletedExpanded,
+                                onToggle = { isCompletedExpanded = !isCompletedExpanded }
+                            )
+                        }
+
+                        if (isCompletedExpanded) {
+                            items(
+                                items = completedItems,
+                                key = { it.id }
+                            ) { item ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RectangleShape,
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface
+                                    )
+                                ) {
+                                    DdayListItem(
+                                        item = item,
+                                        onToggle = { viewModel.toggleChecked(it) },
+                                        onLongPress = {
+                                            selectedItem = it
+                                            showBottomSheet = true
+                                        },
+                                        onSubTaskToggle = { ddayItem, index ->
+                                            viewModel.toggleSubTask(ddayItem, index)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             } else {
-                // D-Day 탭: 그룹별 표시
+                // D-Day 탭: 임박순/여유순 (그룹별 표시)
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(3.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)  // FAB 겹침 방지
+                    contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
                     // 그룹별 진행중 항목
                     ddayPendingByGroup.forEach { (groupName, groupItems) ->
