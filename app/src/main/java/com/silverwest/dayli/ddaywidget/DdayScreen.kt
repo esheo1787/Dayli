@@ -181,18 +181,17 @@ fun DdayScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // 그룹 관리 버튼
-                    TextButton(
+                    AssistChip(
                         onClick = { showGroupManageDialog = true },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Folder,
-                            contentDescription = "그룹 관리",
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("그룹 관리", style = MaterialTheme.typography.bodySmall)
-                    }
+                        label = { Text("그룹 관리", style = MaterialTheme.typography.bodySmall) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.Folder,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    )
 
                     // 정렬 옵션
                     Row(verticalAlignment = Alignment.CenterVertically) {
