@@ -405,18 +405,17 @@ class RemoteViewsFactory(
         }
 
         when (mode) {
-            DdayOnlyWidgetProvider.MODE_ALL -> {
-                // 혼합 위젯: 어디를 눌러도 앱 열기
-                views.setOnClickFillInIntent(R.id.item_card, itemIntent)
-                views.setOnClickFillInIntent(R.id.item_checkbox, itemIntent)
-            }
             DdayOnlyWidgetProvider.MODE_DDAY -> {
                 // D-Day 전용: 모든 영역 → 앱 열기 (접기/펼치기는 그룹 헤더에서만)
                 views.setOnClickFillInIntent(R.id.item_card, itemIntent)
             }
             else -> {
-                // To-Do 전용: 카드 → 앱 열기, 체크박스 → 체크 토글
-                views.setOnClickFillInIntent(R.id.item_card, itemIntent)
+                // 혼합/To-Do 위젯: 형제 레벨 클릭 (부모-자식 충돌 방지)
+                // 왼쪽 영역 → 앱 열기
+                views.setOnClickFillInIntent(R.id.item_icon_card, itemIntent)
+                views.setOnClickFillInIntent(R.id.item_content_area, itemIntent)
+                views.setOnClickFillInIntent(R.id.item_dday, itemIntent)
+                // 오른쪽 체크박스 → 체크 토글
                 val checkboxIntent = Intent().apply {
                     putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_CHECKBOX)
                     putExtra(DdayWidgetProvider.EXTRA_ITEM_ID, item.id)
@@ -463,11 +462,11 @@ class RemoteViewsFactory(
                 putExtra(DdayOnlyWidgetProvider.EXTRA_GROUP_NAME, groupName)
             }
             views.setOnClickFillInIntent(R.id.group_header_toggle_area, toggleIntent)
-            // 나머지 영역(그룹명 등) → 앱 열기
+            // 나머지 영역(그룹명) → 앱 열기 (형제 레벨, 부모 클릭 제거)
             val itemIntent = Intent().apply {
                 putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)
             }
-            views.setOnClickFillInIntent(R.id.group_header_root, itemIntent)
+            views.setOnClickFillInIntent(R.id.group_header_title, itemIntent)
             return views
         }
 
@@ -559,11 +558,12 @@ class RemoteViewsFactory(
         }
         views.setOnClickFillInIntent(R.id.todo_header_toggle_area, toggleIntent)
 
-        // 나머지 영역(제목 등) → 앱 열기
+        // 나머지 영역(아이콘+제목) → 앱 열기 (형제 레벨, 부모 클릭 제거)
         val itemIntent = Intent().apply {
             putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)
         }
-        views.setOnClickFillInIntent(R.id.todo_header_root, itemIntent)
+        views.setOnClickFillInIntent(R.id.todo_header_icon_card, itemIntent)
+        views.setOnClickFillInIntent(R.id.todo_header_title, itemIntent)
 
         return views
     }

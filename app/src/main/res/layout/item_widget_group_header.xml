@@ -24,6 +24,7 @@
         android:id="@+id/group_header_toggle_area"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
+        android:minWidth="96dp"
         android:gravity="center"
         android:paddingStart="16dp"
         android:paddingEnd="4dp">
