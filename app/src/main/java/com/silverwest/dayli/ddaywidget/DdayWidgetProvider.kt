@@ -127,23 +127,20 @@ class DdayWidgetProvider : AppWidgetProvider() {
         fun refreshAllWidgets(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
 
-            // 1) 통합 위젯: RemoteViews 재설정 + 데이터 갱신
+            // 1) 통합 위젯 갱신 (notifyAppWidgetViewDataChanged만 호출하여 스크롤 위치 유지)
             val mainIds = manager.getAppWidgetIds(ComponentName(context, DdayWidgetProvider::class.java))
-            mainIds.forEach { updateAppWidget(context, manager, it) }
             if (mainIds.isNotEmpty()) {
                 manager.notifyAppWidgetViewDataChanged(mainIds, R.id.widgetListView)
             }
 
-            // 2) D-Day 전용 위젯
+            // 2) D-Day 전용 위젯 갱신
             val ddayOnlyIds = manager.getAppWidgetIds(ComponentName(context, DdayOnlyWidgetProvider::class.java))
-            ddayOnlyIds.forEach { DdayOnlyWidgetProvider.updateAppWidget(context, manager, it) }
             if (ddayOnlyIds.isNotEmpty()) {
                 manager.notifyAppWidgetViewDataChanged(ddayOnlyIds, R.id.widgetListView)
             }
 
-            // 3) To-Do 전용 위젯
+            // 3) To-Do 전용 위젯 갱신
             val todoOnlyIds = manager.getAppWidgetIds(ComponentName(context, TodoOnlyWidgetProvider::class.java))
-            todoOnlyIds.forEach { TodoOnlyWidgetProvider.updateAppWidget(context, manager, it) }
             if (todoOnlyIds.isNotEmpty()) {
                 manager.notifyAppWidgetViewDataChanged(todoOnlyIds, R.id.widgetListView)
             }
