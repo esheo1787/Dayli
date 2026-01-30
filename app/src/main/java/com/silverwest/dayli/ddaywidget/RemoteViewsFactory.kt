@@ -399,19 +399,34 @@ class RemoteViewsFactory(
             views.setTextColor(R.id.item_memo, memoColor)
         }
 
-        // 체크박스 클릭 시 전달할 인텐트
-        val checkboxIntent = Intent().apply {
-            putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_CHECKBOX)
-            putExtra(DdayWidgetProvider.EXTRA_ITEM_ID, item.id)
-            putExtra(DdayWidgetProvider.EXTRA_IS_CHECKED, !item.isChecked)
-        }
-        views.setOnClickFillInIntent(R.id.item_checkbox, checkboxIntent)
-
-        // 아이템(체크박스 외 영역) 클릭 시 앱 실행 인텐트
+        // 앱 실행 인텐트 (공통)
         val itemIntent = Intent().apply {
             putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)
         }
         views.setOnClickFillInIntent(R.id.item_card, itemIntent)
+
+        when (mode) {
+            DdayOnlyWidgetProvider.MODE_ALL -> {
+                // 혼합 위젯: 어디를 눌러도 앱 열기
+                views.setOnClickFillInIntent(R.id.item_checkbox, itemIntent)
+            }
+            DdayOnlyWidgetProvider.MODE_DDAY -> {
+                // D-Day 전용: 숫자 영역(D-2 등) → 그룹 접기/펼치기
+                val groupToggleIntent = Intent().apply {
+                    putExtra(DdayOnlyWidgetProvider.EXTRA_GROUP_NAME, item.groupName ?: "미분류")
+                }
+                views.setOnClickFillInIntent(R.id.item_dday, groupToggleIntent)
+            }
+            else -> {
+                // To-Do 전용: 체크박스 → 체크 토글
+                val checkboxIntent = Intent().apply {
+                    putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_CHECKBOX)
+                    putExtra(DdayWidgetProvider.EXTRA_ITEM_ID, item.id)
+                    putExtra(DdayWidgetProvider.EXTRA_IS_CHECKED, !item.isChecked)
+                }
+                views.setOnClickFillInIntent(R.id.item_checkbox, checkboxIntent)
+            }
+        }
 
         return views
     }
@@ -525,12 +540,19 @@ class RemoteViewsFactory(
         views.setTextViewText(R.id.todo_header_indicator, if (isCollapsed) "▼" else "▲")
         views.setTextColor(R.id.todo_header_indicator, progressColor)
 
-        // 클릭 시 접기/펼치기 토글
+        // 숫자 영역(진행현황/접기표시) → 접기/펼치기 토글
         val toggleIntent = Intent().apply {
             putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_TODO_TOGGLE)
             putExtra(DdayWidgetProvider.EXTRA_ITEM_ID, item.id)
         }
-        views.setOnClickFillInIntent(R.id.todo_header_root, toggleIntent)
+        views.setOnClickFillInIntent(R.id.todo_header_progress, toggleIntent)
+        views.setOnClickFillInIntent(R.id.todo_header_indicator, toggleIntent)
+
+        // 나머지 영역(제목 등) → 앱 열기
+        val itemIntent = Intent().apply {
+            putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)
+        }
+        views.setOnClickFillInIntent(R.id.todo_header_root, itemIntent)
 
         return views
     }
