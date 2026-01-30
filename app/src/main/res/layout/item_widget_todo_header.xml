@@ -49,4 +49,13 @@
         android:textColor="#88000000"
         android:layout_marginStart="8dp" />
 
+    <!-- 접기/펼치기 표시 -->
+    <TextView
+        android:id="@+id/todo_header_indicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textColor="#88000000"
+        android:paddingStart="8dp" />
+
 </LinearLayout>

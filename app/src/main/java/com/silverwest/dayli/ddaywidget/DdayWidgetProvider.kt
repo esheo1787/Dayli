@@ -102,6 +102,14 @@ class DdayWidgetProvider : AppWidgetProvider() {
                             }
                         }
                     }
+                    CLICK_TYPE_TODO_TOGGLE -> {
+                        // To-Do 헤더 접기/펼치기
+                        val itemId = intent.getIntExtra(EXTRA_ITEM_ID, -1)
+                        if (itemId != -1) {
+                            DdaySettings.toggleTodoCollapsed(context, itemId)
+                            refreshAllWidgets(context)
+                        }
+                    }
                 }
             }
             ACTION_MIDNIGHT_UPDATE -> {
@@ -123,6 +131,7 @@ class DdayWidgetProvider : AppWidgetProvider() {
         const val CLICK_TYPE_CHECKBOX = 1
         const val CLICK_TYPE_ITEM = 2
         const val CLICK_TYPE_SUBTASK = 3
+        const val CLICK_TYPE_TODO_TOGGLE = 4
 
         fun refreshAllWidgets(context: Context) {
             val manager = AppWidgetManager.getInstance(context)

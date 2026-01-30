@@ -17,7 +17,7 @@ sealed class WidgetRow {
     data class Header(val title: String) : WidgetRow()
     data class GroupHeader(val groupName: String, val isCollapsed: Boolean = false) : WidgetRow()  // D-Day 그룹 헤더
     data class Item(val item: DdayItem, val showProgress: Boolean = false) : WidgetRow()  // showProgress: To-Do 진행률 표시
-    data class TodoHeader(val item: DdayItem, val completedCount: Int, val totalCount: Int) : WidgetRow()  // To-Do 위젯 헤더
+    data class TodoHeader(val item: DdayItem, val completedCount: Int, val totalCount: Int, val isCollapsed: Boolean = false) : WidgetRow()  // To-Do 위젯 헤더
     data class SubTaskItem(val parentItem: DdayItem, val subTask: SubTask, val subTaskIndex: Int) : WidgetRow()  // To-Do 서브태스크
 }
 
@@ -151,16 +151,20 @@ class RemoteViewsFactory(
                     val sortedItems = items.sortedWith(
                         compareBy<DdayItem> { it.isChecked }.thenBy { it.sortOrder }.thenByDescending { it.id }
                     )
+                    val collapsedTodos = DdaySettings.getCollapsedTodos(context)
                     buildList {
                         sortedItems.forEach { item ->
                             val subTasks = item.getSubTaskList()
                             if (subTasks.isNotEmpty()) {
                                 // 체크리스트가 있는 To-Do: TodoHeader + SubTaskItem들
                                 val completedCount = subTasks.count { it.isChecked }
-                                add(WidgetRow.TodoHeader(item, completedCount, subTasks.size))
-                                // 서브태스크들 추가 (체크 안 된 것 먼저, 체크된 것 아래로)
-                                subTasks.withIndex().sortedBy { it.value.isChecked }.forEach { (originalIndex, subTask) ->
-                                    add(WidgetRow.SubTaskItem(item, subTask, originalIndex))
+                                val isCollapsed = collapsedTodos.contains(item.id.toString())
+                                add(WidgetRow.TodoHeader(item, completedCount, subTasks.size, isCollapsed))
+                                // 접혀있지 않으면 서브태스크 표시
+                                if (!isCollapsed) {
+                                    subTasks.withIndex().sortedBy { it.value.isChecked }.forEach { (originalIndex, subTask) ->
+                                        add(WidgetRow.SubTaskItem(item, subTask, originalIndex))
+                                    }
                                 }
                             } else {
                                 // 체크리스트가 없는 To-Do: 일반 아이템으로 표시
@@ -218,7 +222,7 @@ class RemoteViewsFactory(
 
         // To-Do 헤더 행 처리
         if (row is WidgetRow.TodoHeader) {
-            return createTodoHeaderView(row.item, row.completedCount, row.totalCount)
+            return createTodoHeaderView(row.item, row.completedCount, row.totalCount, row.isCollapsed)
         }
 
         // 서브태스크 행 처리
@@ -454,7 +458,7 @@ class RemoteViewsFactory(
         return views
     }
 
-    private fun createTodoHeaderView(item: DdayItem, completedCount: Int, totalCount: Int): RemoteViews {
+    private fun createTodoHeaderView(item: DdayItem, completedCount: Int, totalCount: Int, isCollapsed: Boolean = false): RemoteViews {
         val isDark = isDarkMode(context)
         val views = RemoteViews(context.packageName, R.layout.item_widget_todo_header)
 
@@ -517,11 +521,16 @@ class RemoteViewsFactory(
         views.setTextColor(R.id.todo_header_title, titleColor)
         views.setTextColor(R.id.todo_header_progress, progressColor)
 
-        // 클릭 시 앱 실행
-        val itemIntent = Intent().apply {
-            putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)
+        // 접기/펼치기 표시
+        views.setTextViewText(R.id.todo_header_indicator, if (isCollapsed) "▼" else "▲")
+        views.setTextColor(R.id.todo_header_indicator, progressColor)
+
+        // 클릭 시 접기/펼치기 토글
+        val toggleIntent = Intent().apply {
+            putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_TODO_TOGGLE)
+            putExtra(DdayWidgetProvider.EXTRA_ITEM_ID, item.id)
         }
-        views.setOnClickFillInIntent(R.id.todo_header_root, itemIntent)
+        views.setOnClickFillInIntent(R.id.todo_header_root, toggleIntent)
 
         return views
     }

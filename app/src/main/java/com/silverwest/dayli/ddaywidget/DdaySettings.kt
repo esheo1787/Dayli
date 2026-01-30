@@ -284,4 +284,25 @@ object DdaySettings {
     fun isGroupCollapsed(context: Context, groupName: String): Boolean {
         return getCollapsedGroups(context).contains(groupName)
     }
+
+    // ===== To-Do 위젯 접기/펼치기 =====
+
+    private const val KEY_COLLAPSED_TODOS = "collapsed_todos"
+
+    // 접힌 To-Do 아이템 ID 목록
+    fun getCollapsedTodos(context: Context): Set<String> {
+        return getPrefs(context).getStringSet(KEY_COLLAPSED_TODOS, emptySet()) ?: emptySet()
+    }
+
+    // To-Do 접기/펼치기 토글
+    fun toggleTodoCollapsed(context: Context, itemId: Int) {
+        val collapsed = getCollapsedTodos(context).toMutableSet()
+        val idStr = itemId.toString()
+        if (collapsed.contains(idStr)) {
+            collapsed.remove(idStr)
+        } else {
+            collapsed.add(idStr)
+        }
+        getPrefs(context).edit().putStringSet(KEY_COLLAPSED_TODOS, collapsed).apply()
+    }
 }
