@@ -158,9 +158,9 @@ class RemoteViewsFactory(
                                 // 체크리스트가 있는 To-Do: TodoHeader + SubTaskItem들
                                 val completedCount = subTasks.count { it.isChecked }
                                 add(WidgetRow.TodoHeader(item, completedCount, subTasks.size))
-                                // 서브태스크들 추가
-                                subTasks.forEachIndexed { index, subTask ->
-                                    add(WidgetRow.SubTaskItem(item, subTask, index))
+                                // 서브태스크들 추가 (체크 안 된 것 먼저, 체크된 것 아래로)
+                                subTasks.withIndex().sortedBy { it.value.isChecked }.forEach { (originalIndex, subTask) ->
+                                    add(WidgetRow.SubTaskItem(item, subTask, originalIndex))
                                 }
                             } else {
                                 // 체크리스트가 없는 To-Do: 일반 아이템으로 표시
