@@ -19,12 +19,21 @@
         android:textStyle="bold"
         android:textColor="#AA3A3A3A" />
 
-    <TextView
-        android:id="@+id/group_header_indicator"
+    <!-- 접기/펼치기 영역 (넓은 터치) -->
+    <LinearLayout
+        android:id="@+id/group_header_toggle_area"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="12sp"
-        android:textColor="#AA3A3A3A"
-        android:paddingStart="8dp" />
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:paddingStart="16dp"
+        android:paddingEnd="4dp">
+
+        <TextView
+            android:id="@+id/group_header_indicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="#AA3A3A3A" />
+    </LinearLayout>
 
 </LinearLayout>

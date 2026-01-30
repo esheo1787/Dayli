@@ -411,15 +411,8 @@ class RemoteViewsFactory(
                 views.setOnClickFillInIntent(R.id.item_checkbox, itemIntent)
             }
             DdayOnlyWidgetProvider.MODE_DDAY -> {
-                // D-Day 전용: 개별 영역 클릭 (부모-자식 충돌 방지)
-                // 아이콘+내용 영역 → 앱 열기
-                views.setOnClickFillInIntent(R.id.item_icon_card, itemIntent)
-                views.setOnClickFillInIntent(R.id.item_content_area, itemIntent)
-                // 숫자 영역(D-2 등) → 그룹 접기/펼치기
-                val groupToggleIntent = Intent().apply {
-                    putExtra(DdayOnlyWidgetProvider.EXTRA_GROUP_NAME, item.groupName ?: "미분류")
-                }
-                views.setOnClickFillInIntent(R.id.item_dday, groupToggleIntent)
+                // D-Day 전용: 모든 영역 → 앱 열기 (접기/펼치기는 그룹 헤더에서만)
+                views.setOnClickFillInIntent(R.id.item_card, itemIntent)
             }
             else -> {
                 // To-Do 전용: 카드 → 앱 열기, 체크박스 → 체크 토글
@@ -465,11 +458,16 @@ class RemoteViewsFactory(
             val groupHeaderColor = if (isDark) 0xCCD0D0D0.toInt() else 0xAA3A3A3A.toInt()
             views.setTextColor(R.id.group_header_title, groupHeaderColor)
             views.setTextColor(R.id.group_header_indicator, groupHeaderColor)
-            // 클릭 시 그룹 토글 인텐트
+            // 오른쪽 영역(화살표) → 접기/펼치기
             val toggleIntent = Intent().apply {
                 putExtra(DdayOnlyWidgetProvider.EXTRA_GROUP_NAME, groupName)
             }
-            views.setOnClickFillInIntent(R.id.group_header_root, toggleIntent)
+            views.setOnClickFillInIntent(R.id.group_header_toggle_area, toggleIntent)
+            // 나머지 영역(그룹명 등) → 앱 열기
+            val itemIntent = Intent().apply {
+                putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)
+            }
+            views.setOnClickFillInIntent(R.id.group_header_root, itemIntent)
             return views
         }
 
