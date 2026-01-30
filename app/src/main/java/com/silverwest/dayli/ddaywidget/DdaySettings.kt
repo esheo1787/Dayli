@@ -243,6 +243,23 @@ object DdaySettings {
         getPrefs(context).edit().putString(KEY_TODO_SORT, sort).apply()
     }
 
+    // ===== D-Day 그룹 순서 =====
+
+    private const val KEY_GROUP_ORDER = "dday_group_order"
+
+    fun getGroupOrder(context: Context): List<String> {
+        val json = getPrefs(context).getString(KEY_GROUP_ORDER, null) ?: return emptyList()
+        return try {
+            val arr = org.json.JSONArray(json)
+            (0 until arr.length()).map { arr.getString(it) }
+        } catch (e: Exception) { emptyList() }
+    }
+
+    fun setGroupOrder(context: Context, order: List<String>) {
+        val arr = org.json.JSONArray(order)
+        getPrefs(context).edit().putString(KEY_GROUP_ORDER, arr.toString()).apply()
+    }
+
     // ===== D-Day 위젯 그룹 접기/펼치기 =====
 
     private const val KEY_COLLAPSED_GROUPS = "collapsed_groups"

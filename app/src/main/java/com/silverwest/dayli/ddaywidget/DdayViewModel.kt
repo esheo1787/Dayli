@@ -78,10 +78,10 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     fun loadAllDdays() {
         viewModelScope.launch {
             val items = when (_sortOption.value) {
-                SortOption.MY_ORDER -> dao.getAllDdaysSorted()
+                SortOption.MY_ORDER -> dao.getAllDdaysByDateAsc()  // 그룹 순서는 UI에서 처리
                 SortOption.NEAREST -> dao.getAllDdaysByDateAsc()
                 SortOption.FARTHEST -> dao.getAllDdaysByDateDesc()
-                else -> dao.getAllDdaysSorted()
+                else -> dao.getAllDdaysByDateAsc()
             }
             _ddayList.postValue(items)
         }
@@ -302,18 +302,6 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             dao.updateSortOrders(updates)
             loadAllTodos()
             // 위젯 동기화
-            DdayWidgetProvider.refreshAllWidgets(getApplication())
-        }
-    }
-
-    // D-Day 드래그 순서 변경
-    fun updateDdayOrder(reorderedItems: List<DdayItem>) {
-        viewModelScope.launch {
-            val updates = reorderedItems.mapIndexed { index, item ->
-                Pair(item.id, index)
-            }
-            dao.updateSortOrders(updates)
-            loadAllDdays()
             DdayWidgetProvider.refreshAllWidgets(getApplication())
         }
     }
