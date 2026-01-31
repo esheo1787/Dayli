@@ -95,7 +95,15 @@ class DdayWidgetProvider : AppWidgetProvider() {
                                         subTasks[subTaskIndex] = subTasks[subTaskIndex].copy(isChecked = isChecked)
                                         db.ddayDao().updateSubTasks(itemId, DdayItem.subTasksToJson(subTasks))
 
-                                        android.util.Log.d("DDAY_WIDGET", "✅ 서브태스크 업데이트 완료")
+                                        // 하위 항목 전체 완료 시 상위 자동 완료/복귀
+                                        val allChecked = subTasks.all { it.isChecked }
+                                        db.ddayDao().updateChecked(
+                                            itemId,
+                                            allChecked,
+                                            if (allChecked) System.currentTimeMillis() else null
+                                        )
+
+                                        android.util.Log.d("DDAY_WIDGET", "✅ 서브태스크 업데이트 완료 (auto=${if (allChecked) "완료" else "미완료"})")
                                         refreshAllWidgets(context)
                                     }
                                 }

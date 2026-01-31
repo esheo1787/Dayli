@@ -269,8 +269,13 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             if (subTaskIndex >= 0 && subTaskIndex < currentSubTasks.size) {
                 val subTask = currentSubTasks[subTaskIndex]
                 currentSubTasks[subTaskIndex] = subTask.copy(isChecked = !subTask.isChecked)
+
+                // 하위 항목 전체 완료 여부에 따라 상위 아이템 자동 완료/복귀
+                val allChecked = currentSubTasks.all { it.isChecked }
                 val updatedItem = item.copy(
-                    subTasks = DdayItem.subTasksToJson(currentSubTasks)
+                    subTasks = DdayItem.subTasksToJson(currentSubTasks),
+                    isChecked = allChecked,
+                    checkedAt = if (allChecked) System.currentTimeMillis() else null
                 )
                 dao.update(updatedItem)
                 loadAll()
