@@ -97,6 +97,7 @@
         android:layout_width="48dp"
         android:layout_height="match_parent"
         android:gravity="center"
+        android:layoutDirection="rtl"
         android:focusable="false"
         android:clickable="false"
         android:minWidth="0dp"

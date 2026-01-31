@@ -352,6 +352,8 @@ class RemoteViewsFactory(
         }
         views.setTextViewText(R.id.item_dday, ddayText)
         views.setTextViewTextSize(R.id.item_dday, android.util.TypedValue.COMPLEX_UNIT_SP, 16f * fontSizeMultiplier)
+        // D-Day 텍스트가 비어있으면 숨김 (To-Do 체크박스 오른쪽 정렬)
+        views.setViewVisibility(R.id.item_dday, if (ddayText.isEmpty()) View.GONE else View.VISIBLE)
 
         // 메모 표시/숨김
         if (!item.memo.isNullOrBlank()) {
