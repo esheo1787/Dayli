@@ -430,21 +430,19 @@ class RemoteViewsFactory(
 
     private fun createHeaderView(title: String): RemoteViews {
         val isDark = isDarkMode(context)
-        val views = RemoteViews(context.packageName, R.layout.item_widget_section_divider_header)
-        views.setTextViewText(R.id.header_title, title)
-        // 혼합 위젯 섹션 헤더: 크고 진한 텍스트
+        val views = RemoteViews(context.packageName, R.layout.item_widget_section_header)
+        // 구분선 스타일: ── D-Day ──
+        views.setTextViewText(R.id.header_title, "── $title ──")
+        // 혼합 위젯 섹션 헤더: 크고 진한 텍스트, 투명 배경
         views.setTextViewTextSize(R.id.header_title, android.util.TypedValue.COMPLEX_UNIT_SP, 15f)
         val headerColor = if (isDark) 0xDDF5F5F0.toInt() else 0xDD4A4A4A.toInt()
         views.setTextColor(R.id.header_title, headerColor)
-        // 구분선 색상 (텍스트보다 연하게)
-        val lineColor = if (isDark) 0x55F5F5F0.toInt() else 0x55000000
-        views.setInt(R.id.header_line_left, "setBackgroundColor", lineColor)
-        views.setInt(R.id.header_line_right, "setBackgroundColor", lineColor)
+        views.setInt(R.id.header_title, "setBackgroundColor", 0x00000000)
         // 혼합 위젯: 헤더 클릭 시 앱 열기
         val itemIntent = Intent().apply {
             putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)
         }
-        views.setOnClickFillInIntent(R.id.header_root, itemIntent)
+        views.setOnClickFillInIntent(R.id.header_title, itemIntent)
         return views
     }
 
