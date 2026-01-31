@@ -261,14 +261,14 @@ class RemoteViewsFactory(
         views.setTextViewText(R.id.item_category_icon, itemEmoji)
         views.setTextViewTextSize(R.id.item_category_icon, android.util.TypedValue.COMPLEX_UNIT_SP, 22f * fontSizeMultiplier)
 
-        // 배경 틴트 적용 (카테고리 색상 반투명)
+        // 배경 틴트 적용 (앱과 동일한 투명도 공식)
         if (backgroundEnabled && !item.isChecked) {
-            val alpha = (bgOpacity * 0.4f * 255).toInt().coerceIn(0, 255)
+            val alpha = (bgOpacity * 255).toInt().coerceIn(0, 255)
             val tintColor = (alpha shl 24) or (itemColor and 0x00FFFFFF)
             views.setInt(R.id.item_card, "setBackgroundColor", tintColor)
 
             // 아이콘 배경도 색상 적용
-            val iconAlpha = (iconBgOpacity * 0.5f * 255).toInt().coerceIn(0, 255)
+            val iconAlpha = (iconBgOpacity * 255).toInt().coerceIn(0, 255)
             val iconTintColor = (iconAlpha shl 24) or (itemColor and 0x00FFFFFF)
             views.setInt(R.id.item_icon_card, "setBackgroundColor", iconTintColor)
         } else {
@@ -525,13 +525,13 @@ class RemoteViewsFactory(
         // 커스텀 색상 또는 카테고리 기본 색상
         val itemColor = item.getColorLong().toInt()
 
-        // 배경 색상 적용
+        // 배경 색상 적용 (앱과 동일한 투명도 공식)
         if (backgroundEnabled) {
-            val alpha = (bgOpacity * 0.4f * 255).toInt().coerceIn(0, 255)
+            val alpha = (bgOpacity * 255).toInt().coerceIn(0, 255)
             val tintColor = (alpha shl 24) or (itemColor and 0x00FFFFFF)
             views.setInt(R.id.todo_header_root, "setBackgroundColor", tintColor)
 
-            val iconAlpha = (iconBgOpacity * 0.5f * 255).toInt().coerceIn(0, 255)
+            val iconAlpha = (iconBgOpacity * 255).toInt().coerceIn(0, 255)
             val iconTintColor = (iconAlpha shl 24) or (itemColor and 0x00FFFFFF)
             views.setInt(R.id.todo_header_icon_card, "setBackgroundColor", iconTintColor)
         } else {
