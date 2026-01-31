@@ -431,8 +431,8 @@ class RemoteViewsFactory(
     private fun createHeaderView(title: String): RemoteViews {
         val isDark = isDarkMode(context)
         val views = RemoteViews(context.packageName, R.layout.item_widget_section_header)
-        // 구분선 스타일: ────────── D-Day ──────────
-        views.setTextViewText(R.id.header_title, "────────── $title ──────────")
+        // 구분선 스타일: ──────── D-Day ────────
+        views.setTextViewText(R.id.header_title, "──────── $title ────────")
         // 혼합 위젯 섹션 헤더: 크고 진한 텍스트, 투명 배경
         views.setTextViewTextSize(R.id.header_title, android.util.TypedValue.COMPLEX_UNIT_SP, 15f)
         val headerColor = if (isDark) 0xDDF5F5F0.toInt() else 0xDD4A4A4A.toInt()
