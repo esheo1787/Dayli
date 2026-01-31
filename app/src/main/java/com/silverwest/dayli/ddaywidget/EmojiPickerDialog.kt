@@ -1,97 +1,26 @@
 package com.silverwest.dayli.ddaywidget
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.delay
 
-// 이모지 카테고리 정의
-data class EmojiCategory(val icon: String, val name: String, val emojis: List<String>)
-
-val emojiCategories = listOf(
-    EmojiCategory("😀", "표정", listOf(
-        "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂",
-        "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩",
-        "😘", "😗", "😋", "😛", "😜", "🤪", "😝", "🤑",
-        "🤗", "🤭", "🤫", "🤔", "😐", "😑", "😶", "😏",
-        "😒", "🙄", "😬", "😌", "😔", "😪", "🤤", "😴",
-        "😷", "🤒", "🤕", "🤢", "🤮", "🥵", "🥶", "🤯"
-    )),
-    EmojiCategory("🐶", "동물", listOf(
-        "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼",
-        "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🙈",
-        "🙉", "🙊", "🐔", "🐧", "🐦", "🐤", "🦆", "🦅",
-        "🦉", "🦇", "🐺", "🐗", "🐴", "🦄", "🐝", "🐛",
-        "🦋", "🐌", "🐞", "🐜", "🐢", "🐍", "🦎", "🦖",
-        "🐙", "🦑", "🦐", "🦀", "🐠", "🐟", "🐡", "🐬"
-    )),
-    EmojiCategory("🍎", "음식", listOf(
-        "🍎", "🍐", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓",
-        "🍈", "🍒", "🍑", "🥭", "🍍", "🥥", "🥝", "🍅",
-        "🍆", "🥑", "🥦", "🥬", "🥒", "🌶", "🌽", "🥕",
-        "🥔", "🍠", "🍞", "🧀", "🍖", "🍗", "🥩", "🌭",
-        "🍔", "🍟", "🍕", "🥪", "🌮", "🌯", "🥙", "🍣",
-        "🍰", "🍩", "🍪", "🎂", "☕", "🍵", "🍺", "🥤"
-    )),
-    EmojiCategory("⚽", "활동", listOf(
-        "⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉",
-        "🎱", "🏓", "🏸", "🏒", "🥍", "🏏", "⛳", "🎣",
-        "🥊", "🥋", "🎽", "🛹", "🛼", "🛷", "⛸", "🥌",
-        "🎿", "🏂", "🏋️", "🤸", "🤺", "🤾", "🏌️", "🏇",
-        "🧘", "🏄", "🏊", "🤽", "🧗", "🚴", "🚵", "🏃",
-        "💪", "🎮", "🎲", "🎯", "🎳", "🎪", "🎨", "🎬"
-    )),
-    EmojiCategory("🚗", "여행", listOf(
-        "🚗", "🚕", "🚙", "🚌", "🚎", "🏎", "🚓", "🚑",
-        "🚒", "🚐", "🚚", "🚛", "🚜", "🛵", "🏍", "🚲",
-        "🛴", "🚏", "🚅", "🚆", "🚇", "🚊", "🚉", "✈️",
-        "🛫", "🛬", "🚀", "🛸", "🚁", "🛶", "⛵", "🚤",
-        "🛥", "🛳", "🚢", "⚓", "🏖", "🏝", "🏔", "⛰",
-        "🌋", "🗻", "🏕", "🏠", "🏡", "🏢", "🏣", "🏥"
-    )),
-    EmojiCategory("💼", "사물", listOf(
-        "💼", "📱", "💻", "⌨️", "🖥", "🖨", "💾", "📀",
-        "🎥", "📷", "📸", "📹", "🔍", "🔎", "💡", "🔦",
-        "📔", "📕", "📖", "📗", "📘", "📙", "📚", "📓",
-        "📒", "📃", "📄", "📰", "📑", "🔖", "🏷", "💰",
-        "💵", "💳", "🧾", "✉", "📧", "📦", "🔑", "🔒",
-        "🔓", "🛒", "💎", "⏰", "⌚", "📌", "📎", "✂️"
-    )),
-    EmojiCategory("❤️", "기호", listOf(
-        "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍",
-        "🤎", "💔", "❣", "💕", "💞", "💟", "💗", "💖",
-        "💝", "💘", "✅", "❌", "⭕", "❗", "❓", "⚡",
-        "🔥", "💥", "✨", "⭐", "🌟", "💫", "🎵", "🎶",
-        "🔔", "📣", "📢", "🏁", "☮", "☯", "♻", "⚜",
-        "🔰", "💠", "🔷", "🔶", "🔵", "🟢", "🔴", "🟡"
-    )),
-    EmojiCategory("🚩", "깃발", listOf(
-        "🏳", "🏴", "🏁", "🚩", "🎌", "🏴‍☠️", "🇰🇷", "🇺🇸",
-        "🇯🇵", "🇨🇳", "🇬🇧", "🇫🇷", "🇩🇪", "🇮🇹", "🇪🇸", "🇷🇺",
-        "🇧🇷", "🇦🇺", "🇨🇦", "🇲🇽", "🇮🇳", "🇮🇩", "🇹🇷", "🇸🇦",
-        "🇦🇪", "🇹🇭", "🇻🇳", "🇵🇭", "🇲🇾", "🇸🇬", "🇳🇿", "🇨🇭",
-        "🇸🇪", "🇳🇴", "🇩🇰", "🇫🇮", "🇳🇱", "🇧🇪", "🇵🇱", "🇦🇹"
-    ))
-)
-
-// 하위 호환성
-val ddayEmojis = emojiCategories.flatMap { it.emojis }
-
+/**
+ * 시스템 이모지 키보드를 사용한 이모지 선택 다이얼로그.
+ * 텍스트 입력 필드에서 시스템 키보드(이모지 탭)를 열어 선택.
+ */
 @Composable
 fun EmojiPickerDialog(
     currentEmoji: String,
@@ -100,13 +29,9 @@ fun EmojiPickerDialog(
     onDismiss: () -> Unit
 ) {
     var selectedEmoji by remember { mutableStateOf(currentEmoji) }
-    // 현재 이모지가 속한 카테고리 자동 선택
-    var selectedCategoryIndex by remember {
-        val index = emojiCategories.indexOfFirst { category ->
-            currentEmoji in category.emojis
-        }
-        mutableStateOf(if (index >= 0) index else 0)
-    }
+    var inputText by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -116,7 +41,8 @@ fun EmojiPickerDialog(
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // 제목
                 Text(
@@ -126,83 +52,54 @@ fun EmojiPickerDialog(
                 )
 
                 // 미리보기
-                Row(
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                        .size(72.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(categoryColor.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(categoryColor.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = selectedEmoji,
-                            fontSize = 32.sp
-                        )
-                    }
+                    Text(
+                        text = selectedEmoji,
+                        fontSize = 36.sp
+                    )
                 }
 
-                // 카테고리 탭
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    emojiCategories.forEachIndexed { index, category ->
-                        val isSelected = index == selectedCategoryIndex
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(
-                                    if (isSelected) categoryColor.copy(alpha = 0.2f)
-                                    else Color.Transparent
-                                )
-                                .border(
-                                    width = if (isSelected) 2.dp else 0.dp,
-                                    color = if (isSelected) categoryColor else Color.Transparent,
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .clickable { selectedCategoryIndex = index },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(text = category.icon, fontSize = 20.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 안내 텍스트
+                Text(
+                    text = "키보드에서 이모지를 선택하세요",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 이모지 입력 필드
+                OutlinedTextField(
+                    value = inputText,
+                    onValueChange = { newText ->
+                        if (newText.isNotEmpty()) {
+                            val emoji = extractLastGrapheme(newText)
+                            if (emoji != null) {
+                                selectedEmoji = emoji
+                            }
+                            inputText = ""
                         }
-                    }
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                // 이모지 그리드
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(8),
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(emojiCategories[selectedCategoryIndex].emojis) { emoji ->
-                        EmojiGridItem(
-                            emoji = emoji,
-                            isSelected = emoji == selectedEmoji,
-                            categoryColor = categoryColor,
-                            onClick = { selectedEmoji = emoji }
-                        )
-                    }
-                }
+                        .focusRequester(focusRequester),
+                    placeholder = { Text("이모지 입력...", fontSize = 14.sp) },
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // 버튼
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
@@ -222,43 +119,27 @@ fun EmojiPickerDialog(
             }
         }
     }
+
+    // 자동 포커스로 키보드 표시
+    LaunchedEffect(Unit) {
+        delay(100)
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
 }
 
-@Composable
-private fun EmojiGridItem(
-    emoji: String,
-    isSelected: Boolean,
-    categoryColor: Color,
-    onClick: () -> Unit
-) {
-    val backgroundColor = if (isSelected) {
-        categoryColor.copy(alpha = 0.2f)
+/**
+ * 텍스트에서 마지막 그래핌 클러스터(이모지 단위) 추출
+ */
+private fun extractLastGrapheme(text: String): String? {
+    if (text.isEmpty()) return null
+    val iterator = java.text.BreakIterator.getCharacterInstance()
+    iterator.setText(text)
+    val end = iterator.last()
+    val start = iterator.previous()
+    return if (start != java.text.BreakIterator.DONE) {
+        text.substring(start, end)
     } else {
-        Color.Transparent
-    }
-
-    val borderColor = if (isSelected) {
-        categoryColor
-    } else {
-        Color.Gray.copy(alpha = 0.2f)
-    }
-
-    Box(
-        modifier = Modifier
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(8.dp))
-            .background(backgroundColor)
-            .border(
-                width = if (isSelected) 2.dp else 1.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(8.dp)
-            )
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = emoji,
-            fontSize = 22.sp
-        )
+        text
     }
 }
