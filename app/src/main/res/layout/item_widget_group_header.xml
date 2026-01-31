@@ -6,10 +6,11 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:paddingHorizontal="14dp"
-    android:paddingVertical="10dp"
+    android:paddingVertical="8dp"
     android:gravity="center_vertical"
     android:background="?android:attr/selectableItemBackground">
 
+    <!-- 왼쪽: 그룹명 → 앱 열기 -->
     <TextView
         android:id="@+id/group_header_title"
         android:layout_width="0dp"
@@ -19,22 +20,18 @@
         android:textStyle="bold"
         android:textColor="#AA3A3A3A" />
 
-    <!-- 접기/펼치기 영역 (넓은 터치) -->
+    <!-- 오른쪽: 접기/펼치기 (고정 너비로 확실한 터치 영역) -->
     <LinearLayout
         android:id="@+id/group_header_toggle_area"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:gravity="center"
-        android:paddingStart="40dp"
-        android:paddingEnd="12dp"
-        android:paddingVertical="4dp"
-        android:minHeight="44dp">
+        android:layout_width="56dp"
+        android:layout_height="40dp"
+        android:gravity="center">
 
         <TextView
             android:id="@+id/group_header_indicator"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
+            android:textSize="14sp"
             android:textColor="#AA3A3A3A" />
     </LinearLayout>
 
