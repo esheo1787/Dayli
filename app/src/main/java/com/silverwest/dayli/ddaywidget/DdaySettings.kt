@@ -30,6 +30,10 @@ object DdaySettings {
     private const val KEY_WIDGET_FONT_SIZE = "widget_font_size"
     private const val DEFAULT_WIDGET_FONT_SIZE = 1  // 보통
 
+    // 앱 글씨 크기 (0=작게, 1=보통, 2=크게)
+    private const val KEY_APP_FONT_SIZE = "app_font_size"
+    private const val DEFAULT_APP_FONT_SIZE = 1  // 보통
+
     // 알림 설정
     private const val KEY_NOTIFY_DAY_BEFORE = "notify_day_before"
     private const val DEFAULT_NOTIFY_DAY_BEFORE = true
@@ -100,6 +104,24 @@ object DdaySettings {
 
     fun setWidgetFontSize(context: Context, size: Int) {
         getPrefs(context).edit().putInt(KEY_WIDGET_FONT_SIZE, size.coerceIn(0, 2)).apply()
+    }
+
+    // 앱 글씨 크기 (0=작게, 1=보통, 2=크게)
+    fun getAppFontSize(context: Context): Int {
+        return getPrefs(context).getInt(KEY_APP_FONT_SIZE, DEFAULT_APP_FONT_SIZE)
+    }
+
+    fun setAppFontSize(context: Context, size: Int) {
+        getPrefs(context).edit().putInt(KEY_APP_FONT_SIZE, size.coerceIn(0, 2)).apply()
+    }
+
+    // 앱 글씨 크기 → 배율 변환
+    fun getAppFontScale(context: Context): Float {
+        return when (getAppFontSize(context)) {
+            0 -> 0.85f  // 작게
+            2 -> 1.2f   // 크게
+            else -> 1f  // 보통
+        }
     }
 
     // 글씨 크기 → sp 값 변환

@@ -55,6 +55,9 @@ fun SettingsScreen(
     var widgetFontSize by remember {
         mutableStateOf(DdaySettings.getWidgetFontSize(context))
     }
+    var appFontSize by remember {
+        mutableStateOf(DdaySettings.getAppFontSize(context))
+    }
 
     // 테마 설정 상태
     var themeMode by remember {
@@ -462,6 +465,43 @@ fun SettingsScreen(
             iconBgOpacity = iconBgOpacity
         )
 
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        // 앱 글씨 크기
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Text(
+                text = "앱 글씨 크기",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = "앱에 표시되는 텍스트 크기",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf("작게" to 0, "보통" to 1, "크게" to 2).forEach { (label, value) ->
+                    FilterChip(
+                        selected = appFontSize == value,
+                        onClick = {
+                            appFontSize = value
+                            DdaySettings.setAppFontSize(context, value)
+                            onSettingsChanged()
+                        },
+                        label = { Text(label) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
         // ===== 🧩 위젯 섹션 =====
@@ -658,11 +698,13 @@ fun SettingsScreen(
                 iconBgOpacity = 20
                 widgetBgOpacity = 20
                 widgetFontSize = 1  // 보통
+                appFontSize = 1  // 보통
                 DdaySettings.setBackgroundEnabled(context, true)
                 DdaySettings.setBackgroundOpacity(context, 15)
                 DdaySettings.setIconBgOpacity(context, 20)
                 DdaySettings.setWidgetBgOpacity(context, 20)
                 DdaySettings.setWidgetFontSize(context, 1)
+                DdaySettings.setAppFontSize(context, 1)
                 onSettingsChanged()
             },
             modifier = Modifier.align(Alignment.CenterHorizontally)

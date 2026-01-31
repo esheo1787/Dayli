@@ -680,6 +680,9 @@ private fun SectionHeader(
     isExpanded: Boolean,
     onToggle: () -> Unit
 ) {
+    val context = LocalContext.current
+    val fontScale = DdaySettings.getAppFontScale(context)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -696,12 +699,14 @@ private fun SectionHeader(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
+                fontSize = (14 * fontScale).sp,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "($count)",
                 style = MaterialTheme.typography.bodySmall,
+                fontSize = (12 * fontScale).sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -724,6 +729,7 @@ private fun GroupHeader(
 ) {
     val context = LocalContext.current
     val groupEmoji = DdaySettings.getGroupEmoji(context, groupName)
+    val fontScale = DdaySettings.getAppFontScale(context)
 
     Row(
         modifier = Modifier
@@ -737,18 +743,20 @@ private fun GroupHeader(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = groupEmoji,
-                fontSize = 16.sp
+                fontSize = (16 * fontScale).sp
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = groupName,
                 style = MaterialTheme.typography.titleSmall,
+                fontSize = (14 * fontScale).sp,
                 fontWeight = FontWeight.Medium
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "($count)",
                 style = MaterialTheme.typography.bodySmall,
+                fontSize = (12 * fontScale).sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }

@@ -51,6 +51,9 @@ fun DdayListItem(
     val bgOpacity = DdaySettings.getBackgroundOpacity(context) / 100f
     val iconBgOpacity = DdaySettings.getIconBgOpacity(context) / 100f
 
+    // 앱 글씨 크기 배율
+    val fontScale = DdaySettings.getAppFontScale(context)
+
     // 체크 시 스타일
     val textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None
     // 다크모드 대응: 체크되면 회색, 아니면 기본 텍스트 색상 (다크모드에서 자동으로 흰색)
@@ -113,6 +116,7 @@ fun DdayListItem(
                 Text(
                     text = item.title,
                     style = MaterialTheme.typography.titleMedium,
+                    fontSize = (16 * fontScale).sp,
                     textDecoration = textDecoration,
                     color = primaryTextColor,
                     modifier = Modifier.weight(1f, fill = false)
@@ -123,6 +127,7 @@ fun DdayListItem(
                     Text(
                         text = "$completedCount/$totalCount",
                         style = MaterialTheme.typography.bodySmall,
+                        fontSize = (12 * fontScale).sp,
                         color = secondaryTextColor
                     )
                     // 펼치기/접기 버튼
@@ -161,7 +166,7 @@ fun DdayListItem(
                         ) {
                             Text(
                                 text = text,
-                                fontSize = 10.sp,
+                                fontSize = (10 * fontScale).sp,
                                 color = secondaryTextColor
                             )
                         }
@@ -173,6 +178,7 @@ fun DdayListItem(
                     Text(
                         text = dateStr,
                         style = MaterialTheme.typography.bodySmall,
+                        fontSize = (12 * fontScale).sp,
                         color = secondaryTextColor,
                         textDecoration = textDecoration
                     )
@@ -183,6 +189,7 @@ fun DdayListItem(
                 Text(
                     text = item.memo,
                     style = MaterialTheme.typography.bodySmall,
+                    fontSize = (12 * fontScale).sp,
                     modifier = Modifier.padding(top = 2.dp),
                     textDecoration = textDecoration,
                     color = secondaryTextColor
@@ -207,6 +214,7 @@ fun DdayListItem(
                 Text(
                     text = text,
                     style = MaterialTheme.typography.titleMedium,
+                    fontSize = (16 * fontScale).sp,
                     modifier = Modifier.padding(end = 4.dp),
                     textDecoration = textDecoration,
                     color = ddayColor
@@ -251,6 +259,7 @@ fun DdayListItem(
                         Text(
                             text = subTask.title,
                             style = MaterialTheme.typography.bodyMedium,
+                            fontSize = (14 * fontScale).sp,
                             textDecoration = if (subTask.isChecked) TextDecoration.LineThrough else TextDecoration.None,
                             color = if (subTask.isChecked) Color.Gray else MaterialTheme.colorScheme.onSurface
                         )
