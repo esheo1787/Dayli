@@ -4,8 +4,11 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -36,8 +39,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private var keepSplash = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        // 스플래시 화면 ~1.2초 유지
+        splashScreen.setKeepOnScreenCondition { keepSplash }
+        Handler(Looper.getMainLooper()).postDelayed({ keepSplash = false }, 1200L)
 
         // 알림 채널 생성
         NotificationHelper.createNotificationChannel(this)

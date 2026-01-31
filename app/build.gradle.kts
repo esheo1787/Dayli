@@ -75,6 +75,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")              // ✅ LiveData 지원
     implementation("androidx.compose.runtime:runtime-livedata:1.6.4")              // ✅ observeAsState 지원
 
+    // SplashScreen
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
     // Kotlin Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
