@@ -750,7 +750,7 @@ private fun GroupHeader(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = groupEmoji,
-                fontSize = (16 * fontScale).sp
+                fontSize = (14 * fontScale).sp
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
