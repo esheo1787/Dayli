@@ -230,7 +230,7 @@ fun DdayListItem(
                     onCheckedChange = { onToggle(item) },
                     colors = CheckboxDefaults.colors(
                         checkedColor = itemColor,
-                        uncheckedColor = itemColor
+                        uncheckedColor = Color(0xFF888888)
                     )
                 )
             }
@@ -258,7 +258,7 @@ fun DdayListItem(
                             modifier = Modifier.size(20.dp),
                             colors = CheckboxDefaults.colors(
                                 checkedColor = itemColor,
-                                uncheckedColor = itemColor
+                                uncheckedColor = Color(0xFF888888)
                             )
                         )
                         Spacer(modifier = Modifier.width(8.dp))
