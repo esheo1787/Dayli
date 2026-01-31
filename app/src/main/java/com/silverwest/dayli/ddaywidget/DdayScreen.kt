@@ -171,6 +171,9 @@ fun DdayScreen(
         ddayPendingByGroup[name]?.let { name to it }
     }
 
+    // 하위 체크리스트 펼침 상태 (탭 전환 시 유지)
+    var expandedSubTaskIds by remember { mutableStateOf(emptySet<Int>()) }
+
     // BottomSheet 상태 (수정/삭제 옵션용)
     var showBottomSheet by remember { mutableStateOf(false) }
     var selectedItem by remember { mutableStateOf<DdayItem?>(null) }
@@ -389,6 +392,12 @@ fun DdayScreen(
                                             },
                                             onSubTaskToggle = { ddayItem, index ->
                                                 viewModel.toggleSubTask(ddayItem, index)
+                                            },
+                                            isExpanded = item.id in expandedSubTaskIds,
+                                            onExpandToggle = {
+                                                expandedSubTaskIds = if (item.id in expandedSubTaskIds)
+                                                    expandedSubTaskIds - item.id
+                                                else expandedSubTaskIds + item.id
                                             }
                                         )
                                     }
@@ -430,6 +439,12 @@ fun DdayScreen(
                                         },
                                         onSubTaskToggle = { ddayItem, index ->
                                             viewModel.toggleSubTask(ddayItem, index)
+                                        },
+                                        isExpanded = item.id in expandedSubTaskIds,
+                                        onExpandToggle = {
+                                            expandedSubTaskIds = if (item.id in expandedSubTaskIds)
+                                                expandedSubTaskIds - item.id
+                                            else expandedSubTaskIds + item.id
                                         }
                                     )
                                 }

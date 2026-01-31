@@ -29,7 +29,9 @@ fun DdayListItem(
     item: DdayItem,
     onToggle: (DdayItem) -> Unit,
     onLongPress: (DdayItem) -> Unit = {},
-    onSubTaskToggle: (DdayItem, Int) -> Unit = { _, _ -> }
+    onSubTaskToggle: (DdayItem, Int) -> Unit = { _, _ -> },
+    isExpanded: Boolean = false,
+    onExpandToggle: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val formattedDate = item.date?.let { SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(it) }
@@ -39,7 +41,6 @@ fun DdayListItem(
     // 체크리스트 상태
     val subTasks = item.getSubTaskList()
     val hasSubTasks = subTasks.isNotEmpty()
-    var isExpanded by remember { mutableStateOf(false) }
     val completedCount = subTasks.count { it.isChecked }
     val totalCount = subTasks.size
 
@@ -85,7 +86,7 @@ fun DdayListItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
-                    onClick = { if (hasSubTasks) isExpanded = !isExpanded },
+                    onClick = { if (hasSubTasks) onExpandToggle() },
                     onLongClick = { onLongPress(item) }
                 )
                 .padding(horizontal = 10.dp, vertical = 5.dp),
@@ -136,7 +137,7 @@ fun DdayListItem(
                         contentDescription = if (isExpanded) "접기" else "펼치기",
                         modifier = Modifier
                             .size(20.dp)
-                            .clickable { isExpanded = !isExpanded },
+                            .clickable { onExpandToggle() },
                         tint = secondaryTextColor
                     )
                 }
