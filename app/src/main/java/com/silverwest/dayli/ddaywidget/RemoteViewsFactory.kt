@@ -120,6 +120,8 @@ class RemoteViewsFactory(
                     val ddayItems = items.filter { !it.isChecked }
                     val collapsedGroups = DdaySettings.getCollapsedGroups(context)
                     buildList {
+                        // D-Day 전용 위젯 헤더
+                        add(WidgetRow.Header("D-Day"))
                         // 그룹별로 묶기
                         val groupedDdays = ddayItems.groupBy { it.groupName ?: "미분류" }
 
@@ -153,6 +155,8 @@ class RemoteViewsFactory(
                     )
                     val collapsedTodos = DdaySettings.getCollapsedTodos(context)
                     buildList {
+                        // To-Do 전용 위젯 헤더
+                        add(WidgetRow.Header("To-Do"))
                         sortedItems.forEach { item ->
                             val subTasks = item.getSubTaskList()
                             if (subTasks.isNotEmpty()) {
