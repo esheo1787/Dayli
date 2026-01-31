@@ -198,7 +198,10 @@ fun DdayListItem(
         }
 
         // D-Day + 체크박스 (D-Day) 또는 체크박스만 (To-Do)
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.defaultMinSize(minHeight = 48.dp)
+        ) {
             // D-Day 텍스트는 D-Day 아이템일 때만 표시
             ddayText?.let { text ->
                 // D-Day 숫자 색상: D-3~D-2 파란색, D-1/D-Day/D+N 빨간색, D-4 이상 기본색
