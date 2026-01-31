@@ -359,8 +359,8 @@ class RemoteViewsFactory(
         views.setTextViewText(R.id.item_date, formattedDate)
         views.setTextViewTextSize(R.id.item_date, android.util.TypedValue.COMPLEX_UNIT_SP, 12f * fontSizeMultiplier)
 
-        // 체크박스: D-Day는 숨김, To-Do만 표시
-        if (item.isDday()) {
+        // 체크박스: D-Day는 숨김, 하위 체크리스트 있는 To-Do도 숨김 (자동 완료)
+        if (item.isDday() || item.getSubTaskList().isNotEmpty()) {
             views.setViewVisibility(R.id.item_checkbox, View.GONE)
         } else {
             views.setViewVisibility(R.id.item_checkbox, View.VISIBLE)
@@ -573,17 +573,8 @@ class RemoteViewsFactory(
         }
         views.setTextColor(R.id.todo_header_indicator, indicatorColor)
 
-        // To-Do 전용 위젯: 전체 완료 체크박스 표시
-        if (mode == DdayOnlyWidgetProvider.MODE_TODO) {
-            views.setViewVisibility(R.id.todo_header_checkbox, View.VISIBLE)
-            views.setCompoundButtonChecked(R.id.todo_header_checkbox, item.isChecked)
-            val checkboxIntent = Intent().apply {
-                putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_CHECKBOX)
-                putExtra(DdayWidgetProvider.EXTRA_ITEM_ID, item.id)
-                putExtra(DdayWidgetProvider.EXTRA_IS_CHECKED, !item.isChecked)
-            }
-            views.setOnClickFillInIntent(R.id.todo_header_checkbox, checkboxIntent)
-        }
+        // 하위 체크리스트가 있으므로 상위 체크박스 숨김 (자동 완료로 처리)
+        views.setViewVisibility(R.id.todo_header_checkbox, View.GONE)
 
         // 접기/펼치기 영역 (넓은 터치) → 접기/펼치기 토글
         val toggleIntent = Intent().apply {

@@ -220,14 +220,17 @@ fun DdayListItem(
                     color = ddayColor
                 )
             }
-            Checkbox(
-                checked = item.isChecked,
-                onCheckedChange = { onToggle(item) },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = itemColor,
-                    uncheckedColor = itemColor.copy(alpha = 0.6f)
+            // 하위 체크리스트가 있는 To-Do는 상위 체크박스 숨김 (자동 완료로 처리)
+            if (!hasSubTasks) {
+                Checkbox(
+                    checked = item.isChecked,
+                    onCheckedChange = { onToggle(item) },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = itemColor,
+                        uncheckedColor = itemColor.copy(alpha = 0.6f)
+                    )
                 )
-            )
+            }
         }
         }
 
