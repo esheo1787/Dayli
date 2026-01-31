@@ -102,5 +102,6 @@
         android:minWidth="0dp"
         android:minHeight="0dp"
         android:scaleX="1.1"
-        android:scaleY="1.1" />
+        android:scaleY="1.1"
+        android:buttonTint="@color/widget_checkbox_tint" />
 </LinearLayout>

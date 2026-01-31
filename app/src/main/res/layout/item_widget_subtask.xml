@@ -19,7 +19,8 @@
         android:focusable="false"
         android:clickable="false"
         android:minWidth="0dp"
-        android:minHeight="0dp" />
+        android:minHeight="0dp"
+        android:buttonTint="@color/widget_checkbox_tint" />
 
     <!-- 서브태스크 제목 -->
     <TextView
