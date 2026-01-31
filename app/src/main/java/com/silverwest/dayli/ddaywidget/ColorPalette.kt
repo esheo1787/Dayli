@@ -24,24 +24,24 @@ data class PaletteColor(
     val colorLong: Long
 )
 
-// Soft Pastel 색상 팔레트
+// 색상 팔레트 (14색)
 val ddayColors = listOf(
-    // 첫 번째 줄 - 파스텔 기본
-    PaletteColor("코랄", Color(0xFFE8A598), 0xFFE8A598),
-    PaletteColor("피치", Color(0xFFF5D5C8), 0xFFF5D5C8),
-    PaletteColor("레몬", Color(0xFFF2E2A0), 0xFFF2E2A0),
-    PaletteColor("민트", Color(0xFF9FCEC4), 0xFF9FCEC4),
-    PaletteColor("스카이", Color(0xFF9BC4D9), 0xFF9BC4D9),
-    PaletteColor("블루", Color(0xFFA8C5DA), 0xFFA8C5DA),
-    PaletteColor("라벤더", Color(0xFFC4B5D4), 0xFFC4B5D4),
-    // 두 번째 줄 - 파스텔 딥
-    PaletteColor("로즈", Color(0xFFDBA8B8), 0xFFDBA8B8),
-    PaletteColor("살몬", Color(0xFFE8B5A2), 0xFFE8B5A2),
-    PaletteColor("올리브", Color(0xFFB5C4A8), 0xFFB5C4A8),
-    PaletteColor("틸", Color(0xFF8CBAB2), 0xFF8CBAB2),
-    PaletteColor("슬레이트", Color(0xFF7BA3BD), 0xFF7BA3BD),
-    PaletteColor("모브", Color(0xFFB8A5C8), 0xFFB8A5C8),
-    PaletteColor("그레이", Color(0xFF9A9896), 0xFF9A9896)
+    // 1열
+    PaletteColor("코랄", Color(0xFFFF8A80), 0xFFFF8A80),
+    PaletteColor("피치", Color(0xFFFFCC80), 0xFFFFCC80),
+    PaletteColor("레몬", Color(0xFFFFF59D), 0xFFFFF59D),
+    PaletteColor("민트", Color(0xFFA5D6A7), 0xFFA5D6A7),
+    PaletteColor("스카이블루", Color(0xFF81D4FA), 0xFF81D4FA),
+    PaletteColor("라벤더", Color(0xFFCE93D8), 0xFFCE93D8),
+    PaletteColor("아이보리", Color(0xFFFFF8E1), 0xFFFFF8E1),
+    // 2열
+    PaletteColor("로즈핑크", Color(0xFFF48FB1), 0xFFF48FB1),
+    PaletteColor("살몬", Color(0xFFFFAB91), 0xFFFFAB91),
+    PaletteColor("연두", Color(0xFFC5E1A5), 0xFFC5E1A5),
+    PaletteColor("틸", Color(0xFF80CBC4), 0xFF80CBC4),
+    PaletteColor("퍼플블루", Color(0xFF9FA8DA), 0xFF9FA8DA),
+    PaletteColor("모브", Color(0xFFB39DDB), 0xFFB39DDB),
+    PaletteColor("차콜", Color(0xFF90A4AE), 0xFF90A4AE)
 )
 
 @Composable
