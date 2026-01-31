@@ -449,8 +449,9 @@ class RemoteViewsFactory(
         // D-Day 전용 위젯에서만 접기/펼치기 사용 (새 레이아웃 사용)
         if (mode == DdayOnlyWidgetProvider.MODE_DDAY) {
             val views = RemoteViews(context.packageName, R.layout.item_widget_group_header)
-            // 그룹 헤더: "📁 그룹명" 형식
-            views.setTextViewText(R.id.group_header_title, "📁 $groupName")
+            // 그룹 헤더: "이모지 그룹명" 형식
+            val groupEmoji = DdaySettings.getGroupEmoji(context, groupName)
+            views.setTextViewText(R.id.group_header_title, "$groupEmoji $groupName")
             // 접기/펼치기 아이콘
             views.setTextViewText(R.id.group_header_indicator, if (isCollapsed) "▼" else "▲")
             // 다크모드 대응 색상
@@ -472,7 +473,8 @@ class RemoteViewsFactory(
 
         // 혼합 위젯에서는 기존 레이아웃 사용 (접기 없음, 클릭 시 앱 열기)
         val views = RemoteViews(context.packageName, R.layout.item_widget_section_header)
-        views.setTextViewText(R.id.header_title, "📁 $groupName")
+        val groupEmoji = DdaySettings.getGroupEmoji(context, groupName)
+        views.setTextViewText(R.id.header_title, "$groupEmoji $groupName")
         views.setTextViewTextSize(R.id.header_title, android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
         val groupHeaderColor = if (isDark) 0xCCD0D0D0.toInt() else 0xAA3A3A3A.toInt()
         views.setTextColor(R.id.header_title, groupHeaderColor)

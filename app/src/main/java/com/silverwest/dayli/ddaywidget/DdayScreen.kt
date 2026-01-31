@@ -692,6 +692,9 @@ private fun GroupHeader(
     isExpanded: Boolean,
     onToggle: () -> Unit
 ) {
+    val context = LocalContext.current
+    val groupEmoji = DdaySettings.getGroupEmoji(context, groupName)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -703,7 +706,7 @@ private fun GroupHeader(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "📁",
+                text = groupEmoji,
                 fontSize = 16.sp
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -849,10 +852,12 @@ private fun GroupManageDialog(
     onDeleteGroup: (groupName: String) -> Unit,
     viewModel: DdayViewModel
 ) {
+    val context = LocalContext.current
     var editingGroup by remember { mutableStateOf<String?>(null) }
     var editingName by remember { mutableStateOf("") }
     var deleteConfirmGroup by remember { mutableStateOf<String?>(null) }
     var deleteGroupItemCount by remember { mutableStateOf(0) }
+    var emojiPickerGroup by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     AlertDialog(
@@ -917,6 +922,9 @@ private fun GroupManageDialog(
                                         deleteGroupItemCount = viewModel.getGroupItemCount(groupName)
                                         deleteConfirmGroup = groupName
                                     }
+                                },
+                                onEmojiClick = {
+                                    emojiPickerGroup = groupName
                                 }
                             )
                         }
@@ -965,6 +973,19 @@ private fun GroupManageDialog(
             }
         )
     }
+
+    // 그룹 이모지 피커
+    if (emojiPickerGroup != null) {
+        val currentEmoji = DdaySettings.getGroupEmoji(context, emojiPickerGroup!!)
+        EmojiPickerDialog(
+            currentEmoji = currentEmoji,
+            categoryColor = MaterialTheme.colorScheme.primary,
+            onEmojiSelected = { emoji ->
+                DdaySettings.setGroupEmoji(context, emojiPickerGroup!!, emoji)
+            },
+            onDismiss = { emojiPickerGroup = null }
+        )
+    }
 }
 
 @Composable
@@ -976,8 +997,12 @@ private fun GroupManageItem(
     onEditChange: (String) -> Unit,
     onEditConfirm: () -> Unit,
     onEditCancel: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    onEmojiClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val groupEmoji = DdaySettings.getGroupEmoji(context, groupName)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -990,8 +1015,17 @@ private fun GroupManageItem(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 폴더 아이콘
-            Text("📁", fontSize = 18.sp)
+            // 그룹 이모지 (클릭하여 변경)
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { onEmojiClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(groupEmoji, fontSize = 18.sp)
+            }
             Spacer(modifier = Modifier.width(8.dp))
 
             if (isEditing) {

@@ -75,6 +75,8 @@ fun AddEditBottomSheet(
     }
     var showGroupDialog by remember { mutableStateOf(false) }
     var newGroupName by remember { mutableStateOf("") }
+    var newGroupEmoji by remember { mutableStateOf("📁") }
+    var showGroupEmojiPicker by remember { mutableStateOf(false) }
     var groupDropdownExpanded by remember { mutableStateOf(false) }
 
     // 체크리스트 상태 (To-Do 전용)
@@ -134,23 +136,46 @@ fun AddEditBottomSheet(
             onDismissRequest = {
                 showGroupDialog = false
                 newGroupName = ""
+                newGroupEmoji = "📁"
             },
             title = { Text("새 그룹") },
             text = {
-                OutlinedTextField(
-                    value = newGroupName,
-                    onValueChange = { newGroupName = it },
-                    label = { Text("그룹 이름") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column {
+                    // 이모지 선택
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    ) {
+                        Text("이모지: ", style = MaterialTheme.typography.bodyMedium)
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable { showGroupEmojiPicker = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(newGroupEmoji, fontSize = 22.sp)
+                        }
+                    }
+                    OutlinedTextField(
+                        value = newGroupName,
+                        onValueChange = { newGroupName = it },
+                        label = { Text("그룹 이름") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         if (newGroupName.isNotBlank()) {
-                            selectedGroupName = newGroupName.trim()
+                            val trimmedName = newGroupName.trim()
+                            DdaySettings.setGroupEmoji(context, trimmedName, newGroupEmoji)
+                            selectedGroupName = trimmedName
                             newGroupName = ""
+                            newGroupEmoji = "📁"
                             showGroupDialog = false
                         }
                     },
@@ -163,10 +188,21 @@ fun AddEditBottomSheet(
                 TextButton(onClick = {
                     showGroupDialog = false
                     newGroupName = ""
+                    newGroupEmoji = "📁"
                 }) {
                     Text("취소")
                 }
             }
+        )
+    }
+
+    // 그룹 이모지 피커
+    if (showGroupEmojiPicker) {
+        EmojiPickerDialog(
+            currentEmoji = newGroupEmoji,
+            categoryColor = MaterialTheme.colorScheme.primary,
+            onEmojiSelected = { newGroupEmoji = it },
+            onDismiss = { showGroupEmojiPicker = false }
         )
     }
 

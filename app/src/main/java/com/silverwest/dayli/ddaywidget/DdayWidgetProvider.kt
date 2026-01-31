@@ -136,28 +136,48 @@ class DdayWidgetProvider : AppWidgetProvider() {
         fun refreshAllWidgets(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
 
-            // 1) 통합 위젯 갱신 (배경 + 리스트 데이터 모두)
+            // 데이터만 갱신 (스크롤 위치 유지)
+            val mainIds = manager.getAppWidgetIds(ComponentName(context, DdayWidgetProvider::class.java))
+            if (mainIds.isNotEmpty()) {
+                manager.notifyAppWidgetViewDataChanged(mainIds, R.id.widgetListView)
+            }
+
+            val ddayOnlyIds = manager.getAppWidgetIds(ComponentName(context, DdayOnlyWidgetProvider::class.java))
+            if (ddayOnlyIds.isNotEmpty()) {
+                manager.notifyAppWidgetViewDataChanged(ddayOnlyIds, R.id.widgetListView)
+            }
+
+            val todoOnlyIds = manager.getAppWidgetIds(ComponentName(context, TodoOnlyWidgetProvider::class.java))
+            if (todoOnlyIds.isNotEmpty()) {
+                manager.notifyAppWidgetViewDataChanged(todoOnlyIds, R.id.widgetListView)
+            }
+
+            android.util.Log.d("DDAY_WIDGET", "🔁 refreshAllWidgets() 호출됨: 통합=${mainIds.size}, D-Day=${ddayOnlyIds.size}, To-Do=${todoOnlyIds.size}")
+        }
+
+        // 설정 변경 시 전체 위젯 레이아웃 재구성 (배경 등 반영, 스크롤 초기화됨)
+        fun refreshAllWidgetsFull(context: Context) {
+            val manager = AppWidgetManager.getInstance(context)
+
             val mainIds = manager.getAppWidgetIds(ComponentName(context, DdayWidgetProvider::class.java))
             if (mainIds.isNotEmpty()) {
                 mainIds.forEach { updateAppWidget(context, manager, it) }
                 manager.notifyAppWidgetViewDataChanged(mainIds, R.id.widgetListView)
             }
 
-            // 2) D-Day 전용 위젯 갱신
             val ddayOnlyIds = manager.getAppWidgetIds(ComponentName(context, DdayOnlyWidgetProvider::class.java))
             if (ddayOnlyIds.isNotEmpty()) {
                 ddayOnlyIds.forEach { DdayOnlyWidgetProvider.updateAppWidget(context, manager, it) }
                 manager.notifyAppWidgetViewDataChanged(ddayOnlyIds, R.id.widgetListView)
             }
 
-            // 3) To-Do 전용 위젯 갱신
             val todoOnlyIds = manager.getAppWidgetIds(ComponentName(context, TodoOnlyWidgetProvider::class.java))
             if (todoOnlyIds.isNotEmpty()) {
                 todoOnlyIds.forEach { TodoOnlyWidgetProvider.updateAppWidget(context, manager, it) }
                 manager.notifyAppWidgetViewDataChanged(todoOnlyIds, R.id.widgetListView)
             }
 
-            android.util.Log.d("DDAY_WIDGET", "🔁 refreshAllWidgets() 호출됨: 통합=${mainIds.size}, D-Day=${ddayOnlyIds.size}, To-Do=${todoOnlyIds.size}")
+            android.util.Log.d("DDAY_WIDGET", "🔁 refreshAllWidgetsFull() 호출됨")
         }
 
         private fun updateAppWidget(

@@ -260,6 +260,27 @@ object DdaySettings {
         getPrefs(context).edit().putString(KEY_GROUP_ORDER, arr.toString()).apply()
     }
 
+    // ===== D-Day 그룹 이모지 =====
+
+    private const val KEY_GROUP_EMOJIS = "dday_group_emojis"
+
+    fun getGroupEmoji(context: Context, groupName: String): String {
+        val json = getPrefs(context).getString(KEY_GROUP_EMOJIS, null) ?: return "📁"
+        return try {
+            val obj = org.json.JSONObject(json)
+            obj.optString(groupName, "📁")
+        } catch (e: Exception) { "📁" }
+    }
+
+    fun setGroupEmoji(context: Context, groupName: String, emoji: String) {
+        val obj = try {
+            val json = getPrefs(context).getString(KEY_GROUP_EMOJIS, null)
+            if (json != null) org.json.JSONObject(json) else org.json.JSONObject()
+        } catch (e: Exception) { org.json.JSONObject() }
+        obj.put(groupName, emoji)
+        getPrefs(context).edit().putString(KEY_GROUP_EMOJIS, obj.toString()).apply()
+    }
+
     // ===== D-Day 위젯 그룹 접기/펼치기 =====
 
     private const val KEY_COLLAPSED_GROUPS = "collapsed_groups"

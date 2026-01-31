@@ -219,8 +219,8 @@ fun MainDdayScreen(
                 ) {
                     SettingsScreen(
                         onSettingsChanged = {
-                            // 위젯 새로고침
-                            DdayWidgetProvider.refreshAllWidgets(context)
+                            // 위젯 전체 새로고침 (배경 등 설정 반영)
+                            DdayWidgetProvider.refreshAllWidgetsFull(context)
                             // 앱 리스트 새로고침
                             settingsKey++
                         },
