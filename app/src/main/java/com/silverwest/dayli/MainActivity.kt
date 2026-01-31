@@ -4,12 +4,12 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,12 +19,19 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.silverwest.dayli.ddaywidget.*
 import com.silverwest.dayli.ui.theme.MyApplicationTheme
+import kotlinx.coroutines.delay
 import java.util.Calendar
 
 class MainActivity : ComponentActivity() {
@@ -39,15 +46,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private var keepSplash = true
-
     override fun onCreate(savedInstanceState: Bundle?) {
-        val splashScreen = installSplashScreen()
+        installSplashScreen()
         super.onCreate(savedInstanceState)
-
-        // 스플래시 화면 ~1.2초 유지
-        splashScreen.setKeepOnScreenCondition { keepSplash }
-        Handler(Looper.getMainLooper()).postDelayed({ keepSplash = false }, 1200L)
 
         // 알림 채널 생성
         NotificationHelper.createNotificationChannel(this)
@@ -59,17 +60,28 @@ class MainActivity : ComponentActivity() {
         requestNotificationPermission()
 
         setContent {
+            // 스플래시 화면 상태
+            var showSplash by remember { mutableStateOf(true) }
+            LaunchedEffect(Unit) {
+                delay(1200L)
+                showSplash = false
+            }
+
             // 테마 모드 상태 관리 (즉시 적용을 위해)
             var currentThemeMode by remember {
                 mutableStateOf(DdaySettings.getThemeModeEnum(this))
             }
 
-            MyApplicationTheme(themeMode = currentThemeMode) {
-                MainDdayScreen(
-                    onThemeChanged = { newMode ->
-                        currentThemeMode = newMode
-                    }
-                )
+            if (showSplash) {
+                SplashContent()
+            } else {
+                MyApplicationTheme(themeMode = currentThemeMode) {
+                    MainDdayScreen(
+                        onThemeChanged = { newMode ->
+                            currentThemeMode = newMode
+                        }
+                    )
+                }
             }
         }
     }
@@ -247,3 +259,27 @@ fun MainDdayScreen(
     }
 }
 
+@Composable
+private fun SplashContent() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFDDD8F3)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(
+                painter = painterResource(R.drawable.splash_icon),
+                contentDescription = null,
+                modifier = Modifier.size(120.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Dayli",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF5B5680)
+            )
+        }
+    }
+}
