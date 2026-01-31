@@ -432,9 +432,12 @@ class RemoteViewsFactory(
         val isDark = isDarkMode(context)
         val views = RemoteViews(context.packageName, R.layout.item_widget_section_header)
         views.setTextViewText(R.id.header_title, title)
-        // 다크모드 대응 헤더 텍스트 색상
-        val headerColor = if (isDark) 0xAAB8B8B8.toInt() else 0x88000000.toInt()
+        // 혼합 위젯 섹션 헤더: 크고 진한 텍스트 + 연보라 배경
+        views.setTextViewTextSize(R.id.header_title, android.util.TypedValue.COMPLEX_UNIT_SP, 15f)
+        val headerColor = if (isDark) 0xDDF5F5F0.toInt() else 0xDD4A4A4A.toInt()
         views.setTextColor(R.id.header_title, headerColor)
+        val headerBgColor = if (isDark) 0x25B39DDB else 0x35D1C4E9.toInt()
+        views.setInt(R.id.header_title, "setBackgroundColor", headerBgColor)
         // 혼합 위젯: 헤더 클릭 시 앱 열기
         val itemIntent = Intent().apply {
             putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)
