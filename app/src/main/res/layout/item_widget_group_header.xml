@@ -6,7 +6,7 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:paddingHorizontal="14dp"
-    android:paddingVertical="6dp"
+    android:paddingVertical="10dp"
     android:gravity="center_vertical"
     android:background="?android:attr/selectableItemBackground">
 
@@ -25,8 +25,10 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:gravity="center"
-        android:paddingStart="24dp"
-        android:paddingEnd="4dp">
+        android:paddingStart="40dp"
+        android:paddingEnd="12dp"
+        android:paddingVertical="4dp"
+        android:minHeight="44dp">
 
         <TextView
             android:id="@+id/group_header_indicator"
