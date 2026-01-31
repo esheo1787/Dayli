@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.launch
 
 // ─── 내부 데이터 클래스 ───
 private class E(val e: String, val s: Boolean = false)
@@ -260,8 +263,9 @@ fun EmojiPickerDialog(
     onDismiss: () -> Unit
 ) {
     var selectedEmoji by remember { mutableStateOf(currentEmoji) }
-    var catIndex by remember { mutableStateOf(0) }
+    val pagerState = rememberPagerState(pageCount = { categories.size })
     var skinIndex by remember { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -325,7 +329,7 @@ fun EmojiPickerDialog(
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     categories.forEachIndexed { index, cat ->
-                        val isSel = index == catIndex
+                        val isSel = index == pagerState.currentPage
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
@@ -339,7 +343,7 @@ fun EmojiPickerDialog(
                                         1.5.dp, categoryColor, RoundedCornerShape(8.dp)
                                     ) else Modifier
                                 )
-                                .clickable { catIndex = index },
+                                .clickable { scope.launch { pagerState.animateScrollToPage(index) } },
                             contentAlignment = Alignment.Center
                         ) {
                             Text(text = cat.icon, fontSize = 18.sp)
@@ -349,45 +353,50 @@ fun EmojiPickerDialog(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
 
-                // ── 이모지 그리드 ──
-                val currentItems = categories[catIndex].items
+                // ── 이모지 그리드 (스와이프로 카테고리 전환) ──
                 val skinMod = SKIN_TONES[skinIndex]
 
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(7),
+                HorizontalPager(
+                    state = pagerState,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    items(currentItems) { item ->
-                        val display = if (item.s && skinMod.isNotEmpty()) {
-                            applySkinTone(item.e, skinMod)
-                        } else {
-                            item.e
-                        }
-                        val isSel = display == selectedEmoji
-                        Box(
-                            modifier = Modifier
-                                .aspectRatio(1f)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(
-                                    if (isSel) categoryColor.copy(alpha = 0.2f)
-                                    else Color.Transparent
-                                )
-                                .then(
-                                    if (isSel) Modifier.border(
-                                        1.5.dp, categoryColor, RoundedCornerShape(6.dp)
-                                    ) else Modifier.border(
-                                        0.5.dp, Color.Gray.copy(alpha = 0.15f),
-                                        RoundedCornerShape(6.dp)
+                        .height(300.dp)
+                ) { page ->
+                    val pageItems = categories[page].items
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(7),
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        items(pageItems) { item ->
+                            val display = if (item.s && skinMod.isNotEmpty()) {
+                                applySkinTone(item.e, skinMod)
+                            } else {
+                                item.e
+                            }
+                            val isSel = display == selectedEmoji
+                            Box(
+                                modifier = Modifier
+                                    .aspectRatio(1f)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(
+                                        if (isSel) categoryColor.copy(alpha = 0.2f)
+                                        else Color.Transparent
                                     )
-                                )
-                                .clickable { selectedEmoji = display },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(text = display, fontSize = 20.sp)
+                                    .then(
+                                        if (isSel) Modifier.border(
+                                            1.5.dp, categoryColor, RoundedCornerShape(6.dp)
+                                        ) else Modifier.border(
+                                            0.5.dp, Color.Gray.copy(alpha = 0.15f),
+                                            RoundedCornerShape(6.dp)
+                                        )
+                                    )
+                                    .clickable { selectedEmoji = display },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = display, fontSize = 20.sp)
+                            }
                         }
                     }
                 }
