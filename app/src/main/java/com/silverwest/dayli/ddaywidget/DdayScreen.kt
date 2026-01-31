@@ -474,7 +474,7 @@ fun DdayScreen(
                                             modifier = Modifier
                                                 .detectReorder(groupReorderableState)
                                                 .padding(start = 8.dp, end = 4.dp)
-                                                .padding(vertical = 12.dp)
+                                                .padding(vertical = 8.dp)
                                                 .size(24.dp),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                         )
