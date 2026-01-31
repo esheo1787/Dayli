@@ -20,18 +20,21 @@
         android:textStyle="bold"
         android:textColor="#AA3A3A3A" />
 
-    <!-- 오른쪽: 접기/펼치기 (고정 너비로 확실한 터치 영역) -->
+    <!-- 오른쪽: 접기/펼치기 (To-Do 헤더와 동일 구조) -->
     <LinearLayout
         android:id="@+id/group_header_toggle_area"
-        android:layout_width="56dp"
-        android:layout_height="40dp"
-        android:gravity="center">
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="4dp">
 
         <TextView
             android:id="@+id/group_header_indicator"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
+            android:textSize="12sp"
             android:textColor="#AA3A3A3A" />
     </LinearLayout>
 
