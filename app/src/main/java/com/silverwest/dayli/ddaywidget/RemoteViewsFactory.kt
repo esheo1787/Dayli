@@ -479,6 +479,9 @@ class RemoteViewsFactory(
         val groupEmoji = DdaySettings.getGroupEmoji(context, groupName)
         views.setTextViewText(R.id.header_title, "$groupEmoji $groupName")
         views.setTextViewTextSize(R.id.header_title, android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
+        // 그룹 이름은 왼쪽 정렬
+        views.setInt(R.id.header_title, "setGravity", android.view.Gravity.START or android.view.Gravity.CENTER_VERTICAL)
+        views.setInt(R.id.header_title, "setTextAlignment", android.view.View.TEXT_ALIGNMENT_VIEW_START)
         val groupHeaderColor = if (isDark) 0xCCD0D0D0.toInt() else 0xAA3A3A3A.toInt()
         views.setTextColor(R.id.header_title, groupHeaderColor)
         // 그룹 헤더 클릭 시 앱 열기
