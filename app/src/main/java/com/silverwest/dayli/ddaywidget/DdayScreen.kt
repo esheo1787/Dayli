@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package com.silverwest.dayli.ddaywidget
 
 import android.util.Log
@@ -28,6 +29,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,6 +46,21 @@ fun DdayScreen(
     onEditItem: (DdayItem) -> Unit = {}
 ) {
     val context = LocalContext.current
+
+    // 위젯에서 변경된 데이터를 앱 복귀 시 자동 반영
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadAll()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val ddays by viewModel.ddayList.observeAsState(emptyList())
     val todos by viewModel.todoList.observeAsState(emptyList())
     val currentSort by viewModel.sortOption.observeAsState(SortOption.NEAREST)
