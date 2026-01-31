@@ -93,6 +93,7 @@ class DdayOnlyWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_dday_scrollable).apply {
                 setRemoteAdapter(R.id.widgetListView, intent)
                 setEmptyView(R.id.widgetListView, R.id.emptyTextView)
+                setTextViewText(R.id.emptyTextView, "D-Day를 추가해보세요")
 
                 // Widget container background
                 setInt(R.id.widget_container, "setBackgroundColor", widgetBgColor)

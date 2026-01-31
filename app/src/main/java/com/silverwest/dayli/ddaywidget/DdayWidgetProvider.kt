@@ -213,6 +213,7 @@ class DdayWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_dday_scrollable).apply {
                 setRemoteAdapter(R.id.widgetListView, intent)
                 setEmptyView(R.id.widgetListView, R.id.emptyTextView)
+                setTextViewText(R.id.emptyTextView, "항목을 추가해보세요")
 
                 // 위젯 컨테이너 배경색 적용
                 setInt(R.id.widget_container, "setBackgroundColor", widgetBgColor)

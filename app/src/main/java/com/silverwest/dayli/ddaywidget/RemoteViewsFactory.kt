@@ -118,6 +118,9 @@ class RemoteViewsFactory(
                 } else if (mode == DdayOnlyWidgetProvider.MODE_DDAY) {
                     // D-Day 전용 위젯: 그룹별로 표시 (접기/펼치기 지원)
                     val ddayItems = items.filter { !it.isChecked }
+                    if (ddayItems.isEmpty()) {
+                        emptyList()  // emptyView에서 안내 문구 표시
+                    } else {
                     val collapsedGroups = DdaySettings.getCollapsedGroups(context)
                     buildList {
                         // D-Day 전용 위젯 헤더
@@ -148,11 +151,15 @@ class RemoteViewsFactory(
                             }
                         }
                     }
+                    }
                 } else {
                     // To-Do 전용 위젯: 체크리스트 표시 (드래그 순서)
                     val sortedItems = items.sortedWith(
                         compareBy<DdayItem> { it.isChecked }.thenBy { it.sortOrder }.thenByDescending { it.id }
                     )
+                    if (sortedItems.isEmpty()) {
+                        emptyList()  // emptyView에서 안내 문구 표시
+                    } else {
                     val collapsedTodos = DdaySettings.getCollapsedTodos(context)
                     buildList {
                         // To-Do 전용 위젯 헤더
@@ -175,6 +182,7 @@ class RemoteViewsFactory(
                                 add(WidgetRow.Item(item))
                             }
                         }
+                    }
                     }
                 }
 
