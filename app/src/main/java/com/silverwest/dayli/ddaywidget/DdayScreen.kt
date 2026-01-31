@@ -70,9 +70,13 @@ fun DdayScreen(
     val currentCategory by viewModel.categoryFilter.observeAsState(null)
     val currentTab by viewModel.currentTab.observeAsState(ItemType.DDAY)
 
-    // 탭 인덱스 (HorizontalPager 연동)
-    val pagerState = rememberPagerState(pageCount = { 2 })
+    // 탭 인덱스 (HorizontalPager 연동, 마지막 탭 복원)
+    val pagerState = rememberPagerState(
+        initialPage = DdaySettings.getLastTab(context),
+        pageCount = { 2 }
+    )
     LaunchedEffect(pagerState.currentPage) {
+        DdaySettings.setLastTab(context, pagerState.currentPage)
         onTabChanged(pagerState.currentPage)
     }
 
@@ -155,9 +159,10 @@ fun DdayScreen(
         }
     }
 
-    // 그룹 초기 펼침 상태 설정 + 그룹 순서 초기화
+    // 그룹 초기 펼침 상태 설정 + 그룹 순서 초기화 (저장된 접힘 상태 복원)
     LaunchedEffect(ddayPendingByGroup.keys) {
-        expandedGroups = ddayPendingByGroup.keys.toSet()
+        val collapsed = DdaySettings.getCollapsedGroups(context)
+        expandedGroups = ddayPendingByGroup.keys.filter { it !in collapsed }.toSet()
         // 그룹 순서 초기화
         val savedOrder = DdaySettings.getGroupOrder(context)
         val ordered = mutableListOf<String>()
@@ -171,8 +176,11 @@ fun DdayScreen(
         ddayPendingByGroup[name]?.let { name to it }
     }
 
-    // 하위 체크리스트 펼침 상태 (탭 전환 시 유지)
-    var expandedSubTaskIds by remember { mutableStateOf(emptySet<Int>()) }
+    // 하위 체크리스트 펼침 상태 (탭 전환 + 앱 재시작 시 유지)
+    var expandedSubTaskIds by remember { mutableStateOf(DdaySettings.getExpandedSubTaskIds(context)) }
+    LaunchedEffect(expandedSubTaskIds) {
+        DdaySettings.setExpandedSubTaskIds(context, expandedSubTaskIds)
+    }
 
     // BottomSheet 상태 (수정/삭제 옵션용)
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -504,6 +512,7 @@ fun DdayScreen(
                                                     } else {
                                                         expandedGroups + groupName
                                                     }
+                                                    DdaySettings.toggleGroupCollapsed(context, groupName)
                                                 }
                                             )
                                         }

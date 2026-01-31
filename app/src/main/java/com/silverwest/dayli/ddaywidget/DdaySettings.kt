@@ -239,6 +239,32 @@ object DdaySettings {
         setThemeMode(context, mode.value)
     }
 
+    // ===== 마지막 탭 상태 =====
+
+    private const val KEY_LAST_TAB = "last_tab"
+
+    fun getLastTab(context: Context): Int {
+        return getPrefs(context).getInt(KEY_LAST_TAB, 0)
+    }
+
+    fun setLastTab(context: Context, tab: Int) {
+        getPrefs(context).edit().putInt(KEY_LAST_TAB, tab.coerceIn(0, 1)).apply()
+    }
+
+    // ===== 하위 체크리스트 펼침 상태 =====
+
+    private const val KEY_EXPANDED_SUBTASK_IDS = "expanded_subtask_ids"
+
+    fun getExpandedSubTaskIds(context: Context): Set<Int> {
+        val stringSet = getPrefs(context).getStringSet(KEY_EXPANDED_SUBTASK_IDS, emptySet()) ?: emptySet()
+        return stringSet.mapNotNull { it.toIntOrNull() }.toSet()
+    }
+
+    fun setExpandedSubTaskIds(context: Context, ids: Set<Int>) {
+        val stringSet = ids.map { it.toString() }.toSet()
+        getPrefs(context).edit().putStringSet(KEY_EXPANDED_SUBTASK_IDS, stringSet).apply()
+    }
+
     // ===== 정렬 설정 (앱 ↔ 위젯 공유) =====
 
     // D-Day 정렬 (NEAREST / FARTHEST)
