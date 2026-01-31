@@ -3,6 +3,7 @@ package com.silverwest.dayli.ddaywidget
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -81,285 +82,21 @@ fun SettingsScreen(
     }
     var showTimePicker by remember { mutableStateOf(false) }
 
+    // 다크 모드 여부 (위젯 미리보기용)
+    val isDark = when (themeMode) {
+        DdaySettings.ThemeMode.DARK -> true
+        DdaySettings.ThemeMode.LIGHT -> false
+        DdaySettings.ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // ===== 테마 설정 섹션 =====
+        // ===== 🔔 알림 섹션 =====
         Text(
-            text = "테마 설정",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        // 테마 모드 선택
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-        ) {
-            Text(
-                text = "화면 모드",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                text = "앱과 위젯의 색상 테마를 선택합니다",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                DdaySettings.ThemeMode.entries.forEach { mode ->
-                    FilterChip(
-                        selected = themeMode == mode,
-                        onClick = {
-                            themeMode = mode
-                            DdaySettings.setThemeModeEnum(context, mode)
-                            onThemeChanged(mode)  // 테마 즉시 적용
-                            onSettingsChanged()
-                        },
-                        label = {
-                            Text(
-                                text = when (mode) {
-                                    DdaySettings.ThemeMode.SYSTEM -> "시스템"
-                                    DdaySettings.ThemeMode.LIGHT -> "라이트"
-                                    DdaySettings.ThemeMode.DARK -> "다크"
-                                }
-                            )
-                        },
-                        leadingIcon = {
-                            Text(
-                                text = when (mode) {
-                                    DdaySettings.ThemeMode.SYSTEM -> "📱"
-                                    DdaySettings.ThemeMode.LIGHT -> "☀️"
-                                    DdaySettings.ThemeMode.DARK -> "🌙"
-                                },
-                                fontSize = 14.sp
-                            )
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-        // ===== 배경 설정 섹션 =====
-        Text(
-            text = "배경 설정",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        // 배경 색상 ON/OFF
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = "배경 색상 표시",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    text = "아이템별 색상을 배경에 적용",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-            }
-            Switch(
-                checked = backgroundEnabled,
-                onCheckedChange = { enabled ->
-                    backgroundEnabled = enabled
-                    DdaySettings.setBackgroundEnabled(context, enabled)
-                    onSettingsChanged()
-                }
-            )
-        }
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-        // 배경 투명도 슬라이더
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "아이템 배경 투명도",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    text = "${backgroundOpacity}%",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Text(
-                text = "리스트와 위젯의 아이템 배경 색상 강도",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Slider(
-                value = backgroundOpacity.toFloat(),
-                onValueChange = { value ->
-                    backgroundOpacity = value.toInt()
-                },
-                onValueChangeFinished = {
-                    DdaySettings.setBackgroundOpacity(context, backgroundOpacity)
-                    onSettingsChanged()
-                },
-                valueRange = 0f..100f,
-                steps = 19,  // 5% 단위
-                enabled = backgroundEnabled
-            )
-        }
-
-        // 아이콘 배경 투명도 슬라이더
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "아이콘 배경 투명도",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    text = "${iconBgOpacity}%",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Text(
-                text = "이모지 아이콘 배경 색상 강도",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Slider(
-                value = iconBgOpacity.toFloat(),
-                onValueChange = { value ->
-                    iconBgOpacity = value.toInt()
-                },
-                onValueChangeFinished = {
-                    DdaySettings.setIconBgOpacity(context, iconBgOpacity)
-                    onSettingsChanged()
-                },
-                valueRange = 0f..100f,
-                steps = 19,  // 5% 단위
-                enabled = backgroundEnabled
-            )
-        }
-
-        // 위젯 배경 투명도 슬라이더
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "위젯 배경 투명도",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    text = "${widgetBgOpacity}%",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Text(
-                text = "위젯 전체 배경 (글래스모피즘)",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Slider(
-                value = widgetBgOpacity.toFloat(),
-                onValueChange = { value ->
-                    widgetBgOpacity = value.toInt()
-                },
-                onValueChangeFinished = {
-                    DdaySettings.setWidgetBgOpacity(context, widgetBgOpacity)
-                    onSettingsChanged()
-                },
-                valueRange = 0f..100f,
-                steps = 19,  // 5% 단위
-                enabled = true  // 위젯 배경은 항상 조절 가능
-            )
-        }
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-        // 위젯 글씨 크기
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-        ) {
-            Text(
-                text = "위젯 글씨 크기",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                text = "위젯에 표시되는 텍스트 크기",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                listOf("작게" to 0, "보통" to 1, "크게" to 2).forEach { (label, value) ->
-                    FilterChip(
-                        selected = widgetFontSize == value,
-                        onClick = {
-                            widgetFontSize = value
-                            DdaySettings.setWidgetFontSize(context, value)
-                            onSettingsChanged()
-                        },
-                        label = { Text(label) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-        // ===== 알림 설정 섹션 =====
-        Text(
-            text = "알림 설정",
+            text = "🔔 알림",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp)
@@ -514,7 +251,188 @@ fun SettingsScreen(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
-        // 미리보기
+        // ===== 🎨 테마 & 배경 섹션 =====
+        Text(
+            text = "🎨 테마 & 배경",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // 테마 모드 선택
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Text(
+                text = "화면 모드",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = "앱과 위젯의 색상 테마를 선택합니다",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                DdaySettings.ThemeMode.entries.forEach { mode ->
+                    FilterChip(
+                        selected = themeMode == mode,
+                        onClick = {
+                            themeMode = mode
+                            DdaySettings.setThemeModeEnum(context, mode)
+                            onThemeChanged(mode)  // 테마 즉시 적용
+                            onSettingsChanged()
+                        },
+                        label = {
+                            Text(
+                                text = when (mode) {
+                                    DdaySettings.ThemeMode.SYSTEM -> "시스템"
+                                    DdaySettings.ThemeMode.LIGHT -> "라이트"
+                                    DdaySettings.ThemeMode.DARK -> "다크"
+                                }
+                            )
+                        },
+                        leadingIcon = {
+                            Text(
+                                text = when (mode) {
+                                    DdaySettings.ThemeMode.SYSTEM -> "📱"
+                                    DdaySettings.ThemeMode.LIGHT -> "☀️"
+                                    DdaySettings.ThemeMode.DARK -> "🌙"
+                                },
+                                fontSize = 14.sp
+                            )
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        // 배경 색상 ON/OFF
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "배경 색상 표시",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "아이템별 색상을 배경에 적용",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+            Switch(
+                checked = backgroundEnabled,
+                onCheckedChange = { enabled ->
+                    backgroundEnabled = enabled
+                    DdaySettings.setBackgroundEnabled(context, enabled)
+                    onSettingsChanged()
+                }
+            )
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        // 아이템 배경 투명도 슬라이더
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "아이템 배경 투명도",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "${backgroundOpacity}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Text(
+                text = "리스트와 위젯의 아이템 배경 색상 강도",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Slider(
+                value = backgroundOpacity.toFloat(),
+                onValueChange = { value ->
+                    backgroundOpacity = value.toInt()
+                },
+                onValueChangeFinished = {
+                    DdaySettings.setBackgroundOpacity(context, backgroundOpacity)
+                    onSettingsChanged()
+                },
+                valueRange = 0f..100f,
+                steps = 19,  // 5% 단위
+                enabled = backgroundEnabled
+            )
+        }
+
+        // 아이콘 배경 투명도 슬라이더
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "아이콘 배경 투명도",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "${iconBgOpacity}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Text(
+                text = "이모지 아이콘 배경 색상 강도",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Slider(
+                value = iconBgOpacity.toFloat(),
+                onValueChange = { value ->
+                    iconBgOpacity = value.toInt()
+                },
+                onValueChangeFinished = {
+                    DdaySettings.setIconBgOpacity(context, iconBgOpacity)
+                    onSettingsChanged()
+                },
+                valueRange = 0f..100f,
+                steps = 19,  // 5% 단위
+                enabled = backgroundEnabled
+            )
+        }
+
+        // 앱 미리보기
         Text(
             text = "미리보기",
             style = MaterialTheme.typography.bodyMedium,
@@ -522,7 +440,6 @@ fun SettingsScreen(
             modifier = Modifier.padding(vertical = 8.dp)
         )
 
-        // 샘플 아이템 미리보기
         PreviewItem(
             emoji = "📚",
             title = "시험 공부",
@@ -545,9 +462,195 @@ fun SettingsScreen(
             iconBgOpacity = iconBgOpacity
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
-        // 기본값 복원 버튼
+        // ===== 🧩 위젯 섹션 =====
+        Text(
+            text = "🧩 위젯",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // 위젯 배경 투명도 슬라이더
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "위젯 배경 투명도",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "${widgetBgOpacity}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Text(
+                text = "위젯 전체 배경 (글래스모피즘)",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Slider(
+                value = widgetBgOpacity.toFloat(),
+                onValueChange = { value ->
+                    widgetBgOpacity = value.toInt()
+                },
+                onValueChangeFinished = {
+                    DdaySettings.setWidgetBgOpacity(context, widgetBgOpacity)
+                    onSettingsChanged()
+                },
+                valueRange = 0f..100f,
+                steps = 19  // 5% 단위
+            )
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        // 위젯 글씨 크기
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Text(
+                text = "위젯 글씨 크기",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = "위젯에 표시되는 텍스트 크기",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf("작게" to 0, "보통" to 1, "크게" to 2).forEach { (label, value) ->
+                    FilterChip(
+                        selected = widgetFontSize == value,
+                        onClick = {
+                            widgetFontSize = value
+                            DdaySettings.setWidgetFontSize(context, value)
+                            onSettingsChanged()
+                        },
+                        label = { Text(label) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        // 위젯 미리보기
+        Text(
+            text = "미리보기",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+
+        WidgetPreviewItem(
+            widgetBgOpacity = widgetBgOpacity,
+            backgroundEnabled = backgroundEnabled,
+            backgroundOpacity = backgroundOpacity,
+            iconBgOpacity = iconBgOpacity,
+            widgetFontSize = widgetFontSize,
+            isDark = isDark
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+        // ===== ℹ️ 정보 섹션 =====
+        Text(
+            text = "ℹ️ 정보",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // 앱 버전
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "앱 버전",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            val versionName = remember {
+                try {
+                    context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
+                } catch (_: Exception) { "1.0" }
+            }
+            Text(
+                text = versionName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
+        }
+
+        // 개인정보처리방침
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                    // TODO: 개인정보처리방침 URL 연결
+                }
+                .padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "개인정보처리방침",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = "›",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.Gray
+            )
+        }
+
+        // 문의하기
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                    // TODO: 문의하기 이메일 연결
+                }
+                .padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "문의하기",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = "›",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.Gray
+            )
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        // 기본값으로 복원 버튼
         OutlinedButton(
             onClick = {
                 backgroundEnabled = true
@@ -589,6 +692,125 @@ fun SettingsScreen(
                 showTimePicker = false
             }
         )
+    }
+}
+
+@Composable
+private fun WidgetPreviewItem(
+    widgetBgOpacity: Int,
+    backgroundEnabled: Boolean,
+    backgroundOpacity: Int,
+    iconBgOpacity: Int,
+    widgetFontSize: Int,
+    isDark: Boolean
+) {
+    // 위젯 배경색 (DdayWidgetProvider와 동일한 로직)
+    val bgAlpha = (widgetBgOpacity / 100f).coerceIn(0f, 1f)
+    val widgetBgColor = if (isDark) Color(0xFF2A2A3E) else Color(0xFFFFFDF5)
+
+    // 폰트 크기 (RemoteViewsFactory와 동일한 배율)
+    val fontMultiplier = when (widgetFontSize) {
+        0 -> 0.85f  // 작게
+        2 -> 1.15f  // 크게
+        else -> 1f  // 보통
+    }
+    val titleSize = (15f * fontMultiplier).sp
+    val dateSize = (12f * fontMultiplier).sp
+    val ddaySize = (16f * fontMultiplier).sp
+
+    val itemBgAlpha = if (backgroundEnabled) backgroundOpacity / 100f else 0f
+    val iconAlpha = if (backgroundEnabled) iconBgOpacity / 100f else 0f
+
+    val textColor = if (isDark) Color.White.copy(alpha = 0.87f) else Color.Black.copy(alpha = 0.87f)
+    val subTextColor = if (isDark) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.53f)
+
+    // 위젯 컨테이너
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(widgetBgColor.copy(alpha = bgAlpha))
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        // D-Day 예시 카드
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFFE53935).copy(alpha = itemBgAlpha))
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFFE53935).copy(alpha = iconAlpha)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("📚", fontSize = (18f * fontMultiplier).sp)
+            }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 10.dp, end = 6.dp)
+            ) {
+                Text(
+                    text = "시험 공부",
+                    fontSize = titleSize,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor,
+                    maxLines = 1
+                )
+                Text(
+                    text = "2025.06.15",
+                    fontSize = dateSize,
+                    color = subTextColor
+                )
+            }
+            Text(
+                text = "D-7",
+                fontSize = ddaySize,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFE53935)
+            )
+        }
+
+        // To-Do 예시 카드
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF43A047).copy(alpha = itemBgAlpha))
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF43A047).copy(alpha = iconAlpha)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("✅", fontSize = (18f * fontMultiplier).sp)
+            }
+            Text(
+                text = "운동하기",
+                fontSize = titleSize,
+                fontWeight = FontWeight.Bold,
+                color = textColor,
+                maxLines = 1,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 10.dp, end = 6.dp)
+            )
+            Checkbox(
+                checked = true,
+                onCheckedChange = null,
+                modifier = Modifier.size(24.dp)
+            )
+        }
     }
 }
 
@@ -1057,4 +1279,3 @@ private fun formatTime(hour: Int, minute: Int): String {
         "$amPm ${displayHour}시 ${minute}분"
     }
 }
-
