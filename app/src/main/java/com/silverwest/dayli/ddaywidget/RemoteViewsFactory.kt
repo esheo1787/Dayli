@@ -553,6 +553,18 @@ class RemoteViewsFactory(
         views.setTextViewText(R.id.todo_header_indicator, if (isCollapsed) "▼" else "▲")
         views.setTextColor(R.id.todo_header_indicator, progressColor)
 
+        // To-Do 전용 위젯: 전체 완료 체크박스 표시
+        if (mode == DdayOnlyWidgetProvider.MODE_TODO) {
+            views.setViewVisibility(R.id.todo_header_checkbox, View.VISIBLE)
+            views.setCompoundButtonChecked(R.id.todo_header_checkbox, item.isChecked)
+            val checkboxIntent = Intent().apply {
+                putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_CHECKBOX)
+                putExtra(DdayWidgetProvider.EXTRA_ITEM_ID, item.id)
+                putExtra(DdayWidgetProvider.EXTRA_IS_CHECKED, !item.isChecked)
+            }
+            views.setOnClickFillInIntent(R.id.todo_header_checkbox, checkboxIntent)
+        }
+
         // 접기/펼치기 영역 (넓은 터치) → 접기/펼치기 토글
         val toggleIntent = Intent().apply {
             putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_TODO_TOGGLE)

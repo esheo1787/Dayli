@@ -58,6 +58,20 @@
             android:textSize="13sp"
             android:textColor="#88000000" />
 
+        <!-- 전체 완료 체크박스 (To-Do 전용 위젯에서만 표시) -->
+        <CheckBox
+            android:id="@+id/todo_header_checkbox"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:gravity="center"
+            android:focusable="false"
+            android:clickable="false"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:scaleX="1.0"
+            android:scaleY="1.0"
+            android:visibility="gone" />
+
         <!-- 접기/펼치기 표시 -->
         <TextView
             android:id="@+id/todo_header_indicator"
