@@ -201,7 +201,7 @@ fun DdayListItem(
         // D-Day + 체크박스 (D-Day) 또는 체크박스만 (To-Do)
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.defaultMinSize(minHeight = 48.dp)
+            modifier = if (!hasSubTasks) Modifier.defaultMinSize(minHeight = 48.dp) else Modifier
         ) {
             // D-Day 텍스트는 D-Day 아이템일 때만 표시
             ddayText?.let { text ->
