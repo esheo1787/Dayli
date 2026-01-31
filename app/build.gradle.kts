@@ -75,9 +75,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")              // ✅ LiveData 지원
     implementation("androidx.compose.runtime:runtime-livedata:1.6.4")              // ✅ observeAsState 지원
 
-    // Emoji Picker
-    implementation("androidx.emoji2:emoji2-emojipicker:1.5.0")
-
     // SplashScreen
     implementation("androidx.core:core-splashscreen:1.0.1")
 
