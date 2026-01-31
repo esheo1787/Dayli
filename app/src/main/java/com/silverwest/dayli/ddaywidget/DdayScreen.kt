@@ -81,7 +81,6 @@ fun DdayScreen(
 
     // 진행중/완료 항목 분리
     val pendingItems = currentItems.filter { !it.isChecked }
-    val completedItems = currentItems.filter { it.isChecked }
 
     // To-Do 드래그 순서 변경을 위한 상태
     var todoPendingData by remember { mutableStateOf(pendingItems) }
@@ -90,6 +89,12 @@ fun DdayScreen(
             todoPendingData = pendingItems
         }
     }
+
+    // completedItems: todoPendingData에 남아있는 아이템 ID를 제외하여
+    // LazyColumn 키 중복 방지 (todoPendingData는 LaunchedEffect로 비동기 갱신되므로
+    // 1프레임 동안 동일 아이템이 pending/completed 양쪽에 존재할 수 있음)
+    val todoPendingIds = todoPendingData.map { it.id }.toSet()
+    val completedItems = currentItems.filter { it.isChecked && it.id !in todoPendingIds }
 
     // Reorderable 상태 (To-Do 탭 전용)
     val reorderableState = rememberReorderableLazyListState(
