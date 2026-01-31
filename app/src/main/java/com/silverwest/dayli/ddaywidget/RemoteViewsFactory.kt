@@ -533,7 +533,7 @@ class RemoteViewsFactory(
         val itemColor = item.getColorLong().toInt()
 
         // 배경 색상 적용 (앱과 동일한 투명도 공식)
-        if (backgroundEnabled) {
+        if (backgroundEnabled && !item.isChecked) {
             val alpha = (bgOpacity * 255).toInt().coerceIn(0, 255)
             val tintColor = (alpha shl 24) or (itemColor and 0x00FFFFFF)
             views.setInt(R.id.todo_header_root, "setBackgroundColor", tintColor)
@@ -550,15 +550,28 @@ class RemoteViewsFactory(
             }
         }
 
-        // 텍스트 색상
-        val titleColor = if (isDark) 0xFFF5F5F0.toInt() else 0xFF4A4A4A.toInt()
-        val progressColor = if (isDark) 0xFFB8B8B8.toInt() else 0xFF7A7A7A.toInt()
-        views.setTextColor(R.id.todo_header_title, titleColor)
-        views.setTextColor(R.id.todo_header_progress, progressColor)
+        // 텍스트 색상 + 체크 시 가로줄/회색 처리
+        if (item.isChecked) {
+            val checkedColor = if (isDark) 0xFF606060.toInt() else 0xFF9A9A9A.toInt()
+            views.setTextColor(R.id.todo_header_title, checkedColor)
+            views.setTextColor(R.id.todo_header_progress, checkedColor)
+            views.setInt(R.id.todo_header_title, "setPaintFlags", Paint.STRIKE_THRU_TEXT_FLAG or Paint.ANTI_ALIAS_FLAG)
+        } else {
+            val titleColor = if (isDark) 0xFFF5F5F0.toInt() else 0xFF4A4A4A.toInt()
+            val progressColor = if (isDark) 0xFFB8B8B8.toInt() else 0xFF7A7A7A.toInt()
+            views.setTextColor(R.id.todo_header_title, titleColor)
+            views.setTextColor(R.id.todo_header_progress, progressColor)
+            views.setInt(R.id.todo_header_title, "setPaintFlags", Paint.ANTI_ALIAS_FLAG)
+        }
 
         // 접기/펼치기 표시
         views.setTextViewText(R.id.todo_header_indicator, if (isCollapsed) "▼" else "▲")
-        views.setTextColor(R.id.todo_header_indicator, progressColor)
+        val indicatorColor = if (item.isChecked) {
+            if (isDark) 0xFF606060.toInt() else 0xFF9A9A9A.toInt()
+        } else {
+            if (isDark) 0xFFB8B8B8.toInt() else 0xFF7A7A7A.toInt()
+        }
+        views.setTextColor(R.id.todo_header_indicator, indicatorColor)
 
         // To-Do 전용 위젯: 전체 완료 체크박스 표시
         if (mode == DdayOnlyWidgetProvider.MODE_TODO) {
