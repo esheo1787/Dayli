@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import org.burnoutcrew.reorderable.*
 import androidx.compose.material.icons.Icons
@@ -68,11 +70,14 @@ fun DdayScreen(
     val currentCategory by viewModel.categoryFilter.observeAsState(null)
     val currentTab by viewModel.currentTab.observeAsState(ItemType.DDAY)
 
-    // 탭 인덱스
-    var selectedTabIndex by remember { mutableStateOf(0) }
+    // 탭 인덱스 (HorizontalPager 연동)
+    val pagerState = rememberPagerState(pageCount = { 2 })
+    LaunchedEffect(pagerState.currentPage) {
+        onTabChanged(pagerState.currentPage)
+    }
 
     // 현재 탭에 따른 아이템 리스트
-    val currentItems = if (selectedTabIndex == 0) ddays else todos
+    val currentItems = if (pagerState.currentPage == 0) ddays else todos
 
     // 진행중/완료 항목 분리
     val pendingItems = currentItems.filter { !it.isChecked }
@@ -80,8 +85,8 @@ fun DdayScreen(
 
     // To-Do 드래그 순서 변경을 위한 상태
     var todoPendingData by remember { mutableStateOf(pendingItems) }
-    LaunchedEffect(pendingItems, selectedTabIndex) {
-        if (selectedTabIndex == 1) {
+    LaunchedEffect(pendingItems, pagerState.currentPage) {
+        if (pagerState.currentPage == 1) {
             todoPendingData = pendingItems
         }
     }
@@ -136,8 +141,8 @@ fun DdayScreen(
     val templates by viewModel.templates.observeAsState(emptyList())
 
     // D-Day 그룹별 분류
-    val ddayPendingByGroup = remember(pendingItems, selectedTabIndex) {
-        if (selectedTabIndex == 0) {
+    val ddayPendingByGroup = remember(pendingItems, pagerState.currentPage) {
+        if (pagerState.currentPage == 0) {
             pendingItems.groupBy { it.groupName ?: "미분류" }
                 .toSortedMap(compareBy { if (it == "미분류") "zzz" else it })  // 미분류를 마지막으로
         } else {
@@ -186,14 +191,13 @@ fun DdayScreen(
         ) {
             // 탭 바
             TabRow(
-                selectedTabIndex = selectedTabIndex,
+                selectedTabIndex = pagerState.currentPage,
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
                 Tab(
-                    selected = selectedTabIndex == 0,
+                    selected = pagerState.currentPage == 0,
                     onClick = {
-                        selectedTabIndex = 0
-                        onTabChanged(0)
+                        scope.launch { pagerState.animateScrollToPage(0) }
                     },
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -204,10 +208,9 @@ fun DdayScreen(
                     }
                 )
                 Tab(
-                    selected = selectedTabIndex == 1,
+                    selected = pagerState.currentPage == 1,
                     onClick = {
-                        selectedTabIndex = 1
-                        onTabChanged(1)
+                        scope.launch { pagerState.animateScrollToPage(1) }
                     },
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -219,8 +222,14 @@ fun DdayScreen(
                 )
             }
 
+            // 탭 콘텐츠 (스와이프로 전환 가능)
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f)
+            ) { page ->
+            Column(modifier = Modifier.fillMaxSize()) {
             // D-Day 탭일 때만 정렬 옵션 표시
-            if (selectedTabIndex == 0) {
+            if (page == 0) {
                 // 정렬 옵션 버튼 + 그룹 관리 버튼
                 Row(
                     modifier = Modifier
@@ -264,7 +273,7 @@ fun DdayScreen(
             }
 
             // To-Do 탭일 때 정렬 옵션 + 템플릿 관리 표시
-            if (selectedTabIndex == 1) {
+            if (page == 1) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -309,7 +318,7 @@ fun DdayScreen(
             }
 
             // 리스트 (To-Do 탭: 드래그 가능, D-Day 탭: 일반)
-            if (selectedTabIndex == 1) {
+            if (page == 1) {
                 // To-Do 탭: 드래그 순서 변경 가능
                 LazyColumn(
                     state = reorderableState.listState,
@@ -547,6 +556,8 @@ fun DdayScreen(
                     }
                 }
             }
+            } // Column (HorizontalPager page)
+            } // HorizontalPager
         }
 
         // BottomSheet
