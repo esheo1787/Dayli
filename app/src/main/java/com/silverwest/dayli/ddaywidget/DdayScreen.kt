@@ -325,7 +325,7 @@ fun DdayScreen(
                     modifier = Modifier
                         .weight(1f)
                         .reorderable(reorderableState),
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                    verticalArrangement = Arrangement.spacedBy(1.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)  // FAB 겹침 방지
                 ) {
                     // 진행중 섹션 헤더
@@ -437,7 +437,7 @@ fun DdayScreen(
                     modifier = Modifier
                         .weight(1f)
                         .reorderable(groupReorderableState),
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                    verticalArrangement = Arrangement.spacedBy(1.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
                     items(

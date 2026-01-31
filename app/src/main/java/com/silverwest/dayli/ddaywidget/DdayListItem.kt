@@ -85,25 +85,25 @@ fun DdayListItem(
                     onClick = { if (hasSubTasks) isExpanded = !isExpanded },
                     onLongClick = { onLongPress(item) }
                 )
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 10.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
         // 이모지 아이콘
         val itemEmoji = item.getEmoji()
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(32.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(iconBgColor),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = itemEmoji,
-                fontSize = 20.sp
+                fontSize = 18.sp
             )
         }
 
-        Spacer(modifier = Modifier.width(10.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
         // 내용
         Column(modifier = Modifier.weight(1f)) {
@@ -228,14 +228,14 @@ fun DdayListItem(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 58.dp, end = 12.dp, bottom = 8.dp)
+                    .padding(start = 50.dp, end = 10.dp, bottom = 4.dp)
             ) {
                 subTasks.forEachIndexed { index, subTask ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onSubTaskToggle(item, index) }
-                            .padding(vertical = 4.dp),
+                            .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(

@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
@@ -411,11 +410,10 @@ fun AddEditBottomSheet(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text(if (actualItemType == ItemType.TODO) "할 일" else "제목", fontSize = 14.sp) },
-                    placeholder = { Text(if (actualItemType == ItemType.TODO) "할 일을 입력하세요" else "제목을 입력하세요", fontSize = 14.sp) },
+                    label = { Text(if (actualItemType == ItemType.TODO) "할 일" else "제목") },
+                    placeholder = { Text(if (actualItemType == ItemType.TODO) "할 일을 입력하세요" else "제목을 입력하세요") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+                    maxLines = 2
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -424,10 +422,9 @@ fun AddEditBottomSheet(
                 OutlinedTextField(
                     value = memo,
                     onValueChange = { memo = it },
-                    label = { Text("메모 (선택)", fontSize = 14.sp) },
+                    label = { Text("메모 (선택)") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+                    maxLines = 3
                 )
 
                 // 체크리스트 섹션 (To-Do 전용)
@@ -464,8 +461,7 @@ fun AddEditBottomSheet(
                                     }
                                 },
                                 modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+                                singleLine = true
                             )
                             IconButton(
                                 onClick = {
@@ -494,9 +490,8 @@ fun AddEditBottomSheet(
                             value = newSubTaskText,
                             onValueChange = { newSubTaskText = it },
                             modifier = Modifier.weight(1f),
-                            placeholder = { Text("항목 추가...", fontSize = 14.sp) },
-                            singleLine = true,
-                            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+                            placeholder = { Text("항목 추가...") },
+                            singleLine = true
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         FilledIconButton(
