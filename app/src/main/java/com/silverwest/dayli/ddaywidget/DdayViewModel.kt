@@ -44,6 +44,10 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentTab = MutableLiveData(ItemType.DDAY)
     val currentTab: LiveData<ItemType> = _currentTab
 
+    // 숨겨진 D-Day 항목 (매월/매년 반복)
+    private val _hiddenDdays = MutableLiveData<List<DdayItem>>(emptyList())
+    val hiddenDdays: LiveData<List<DdayItem>> = _hiddenDdays
+
     // 기존 그룹 목록
     private val _existingGroups = MutableLiveData<List<String>>(emptyList())
     val existingGroups: LiveData<List<String>> = _existingGroups
@@ -63,6 +67,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         }
         loadAllDdays()
         loadAllTodos()
+        loadHiddenDdays()
         loadGroups()
         loadTemplates()
     }
@@ -117,9 +122,16 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun loadHiddenDdays() {
+        viewModelScope.launch {
+            _hiddenDdays.postValue(dao.getHiddenDdays())
+        }
+    }
+
     fun loadAll() {
         loadAllDdays()
         loadAllTodos()
+        loadHiddenDdays()
     }
 
     fun setSortOption(option: SortOption) {
@@ -149,11 +161,13 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                     // D-Day 반복: 다음 날짜로 자동 재생성
                     val nextDate = item.getNextRepeatDate()
                     if (nextDate != null) {
-                        if (item.repeatTypeEnum() == RepeatType.YEARLY) {
-                            // 매년 반복: 숨기고 30일 전에 다시 표시
+                        val rType = item.repeatTypeEnum()
+                        if (rType == RepeatType.MONTHLY || rType == RepeatType.YEARLY) {
+                            // 매월/매년 반복: 숨기고 미리 다시 표시
+                            val advanceDays = if (rType == RepeatType.MONTHLY) 14 else 30
                             val showDate = java.util.Calendar.getInstance().apply {
                                 time = nextDate
-                                add(java.util.Calendar.DAY_OF_YEAR, -30)
+                                add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
                             }.timeInMillis
                             val updatedItem = item.copy(
                                 date = nextDate,
@@ -163,7 +177,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                                 nextShowDate = showDate
                             )
                             dao.update(updatedItem)
-                            Log.d("DDAY_WIDGET", "🔁 매년 반복 D-Day 숨김: ${item.title} → 표시일: $showDate")
+                            Log.d("DDAY_WIDGET", "🔁 반복 D-Day 숨김: ${item.title} → 표시일: $showDate")
                         } else {
                             val updatedItem = item.copy(
                                 date = nextDate,

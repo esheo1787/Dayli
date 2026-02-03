@@ -117,6 +117,10 @@ interface DdayDao {
     """)
     suspend fun getAllForWidgetWithTodos(cutoffTime: Long): List<DdayItem>
 
+    // 숨겨진 D-Day 항목 (매월/매년 반복, 표시 예정일 순)
+    @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' AND isHidden = 1 ORDER BY nextShowDate ASC")
+    suspend fun getHiddenDdays(): List<DdayItem>
+
     // 매년 반복: 표시 시간이 된 숨겨진 항목을 자동으로 다시 표시
     @Query("UPDATE dday_items SET isHidden = 0, nextShowDate = NULL WHERE isHidden = 1 AND nextShowDate IS NOT NULL AND nextShowDate <= :today")
     suspend fun unhideReadyItems(today: Long)

@@ -65,6 +65,7 @@ fun DdayScreen(
 
     val ddays by viewModel.ddayList.observeAsState(emptyList())
     val todos by viewModel.todoList.observeAsState(emptyList())
+    val hiddenDdays by viewModel.hiddenDdays.observeAsState(emptyList())
     val currentSort by viewModel.sortOption.observeAsState(SortOption.NEAREST)
     val currentTodoSort by viewModel.todoSortOption.observeAsState(TodoSortOption.MY_ORDER)
     val currentCategory by viewModel.categoryFilter.observeAsState(null)
@@ -137,6 +138,9 @@ fun DdayScreen(
 
     // 완료 섹션 펼침/접힘 상태 (기본: 접힘)
     var isCompletedExpanded by remember { mutableStateOf(false) }
+
+    // 반복 일정 섹션 펼침/접힘 상태 (기본: 접힘)
+    var isHiddenExpanded by remember { mutableStateOf(false) }
 
     // D-Day 그룹 펼침/접힘 상태 (그룹명 -> 펼침 여부, 기본: 펼침)
     var expandedGroups by remember { mutableStateOf(setOf<String>()) }
@@ -539,6 +543,59 @@ fun DdayScreen(
                                                     }
                                                 )
                                             }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 반복 일정 섹션 (숨겨진 매월/매년 항목)
+                    if (hiddenDdays.isNotEmpty()) {
+                        item(key = "header_hidden") {
+                            SectionHeader(
+                                title = "반복 일정",
+                                count = hiddenDdays.size,
+                                isExpandable = true,
+                                isExpanded = isHiddenExpanded,
+                                onToggle = { isHiddenExpanded = !isHiddenExpanded }
+                            )
+                        }
+
+                        if (isHiddenExpanded) {
+                            items(
+                                items = hiddenDdays,
+                                key = { "hidden_${it.id}" }
+                            ) { item ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RectangleShape,
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface
+                                    )
+                                ) {
+                                    Column {
+                                        DdayListItem(
+                                            item = item,
+                                            onToggle = { viewModel.toggleChecked(it) },
+                                            onLongPress = {
+                                                selectedItem = it
+                                                showBottomSheet = true
+                                            },
+                                            onSubTaskToggle = { ddayItem, index ->
+                                                viewModel.toggleSubTask(ddayItem, index)
+                                            }
+                                        )
+                                        if (item.nextShowDate != null) {
+                                            val cal = java.util.Calendar.getInstance().apply {
+                                                timeInMillis = item.nextShowDate
+                                            }
+                                            Text(
+                                                text = "${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일 표시 예정",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(start = 56.dp, bottom = 8.dp)
+                                            )
                                         }
                                     }
                                 }
