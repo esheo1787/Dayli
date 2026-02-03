@@ -476,7 +476,9 @@ fun DdayScreen(
                                     }
                                     DdayListItem(
                                         item = item,
-                                        onToggle = { viewModel.toggleChecked(it) },
+                                        onToggle = {
+                                            viewModel.updateItem(it.copy(isHidden = false, nextShowDate = null))
+                                        },
                                         onLongPress = {
                                             selectedItem = it
                                             showBottomSheet = true
@@ -484,7 +486,13 @@ fun DdayScreen(
                                         onSubTaskToggle = { ddayItem, index ->
                                             viewModel.toggleSubTask(ddayItem, index)
                                         },
-                                        showCheckbox = false,
+                                        isExpanded = item.id in expandedSubTaskIds,
+                                        onExpandToggle = {
+                                            expandedSubTaskIds = if (item.id in expandedSubTaskIds)
+                                                expandedSubTaskIds - item.id
+                                            else expandedSubTaskIds + item.id
+                                        },
+                                        forceCheckbox = true,
                                         infoText = showDateText
                                     )
                                 }

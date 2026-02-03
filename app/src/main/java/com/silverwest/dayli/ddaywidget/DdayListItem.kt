@@ -33,6 +33,7 @@ fun DdayListItem(
     isExpanded: Boolean = false,
     onExpandToggle: () -> Unit = {},
     showCheckbox: Boolean = true,
+    forceCheckbox: Boolean = false,
     infoText: String? = null
 ) {
     val context = LocalContext.current
@@ -226,7 +227,7 @@ fun DdayListItem(
                 )
             }
             // 하위 체크리스트가 있는 To-Do는 상위 체크박스 숨김 (자동 완료로 처리)
-            if (!hasSubTasks && showCheckbox) {
+            if (showCheckbox && (forceCheckbox || !hasSubTasks)) {
                 Checkbox(
                     checked = item.isChecked,
                     onCheckedChange = { onToggle(item) },
