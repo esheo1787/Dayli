@@ -120,8 +120,24 @@ fun DdayScreen(
         }
     )
 
-    // D-Day 그룹 드래그 순서를 위한 상태
-    var groupOrder by remember { mutableStateOf(listOf<String>()) }
+    // D-Day 그룹별 분류 (groupOrder보다 먼저 계산)
+    val ddayPendingByGroup = remember(pendingItems, pagerState.currentPage) {
+        if (pagerState.currentPage == 0) {
+            pendingItems.groupBy { it.groupName ?: "미분류" }
+                .toSortedMap(compareBy { if (it == "미분류") "zzz" else it })
+        } else {
+            emptyMap()
+        }
+    }
+
+    // D-Day 그룹 드래그 순서 (동기 초기화 — 데이터 로드 즉시 그룹 표시)
+    var groupOrder by remember(ddayPendingByGroup.keys) {
+        val savedOrder = DdaySettings.getGroupOrder(context)
+        val ordered = mutableListOf<String>()
+        savedOrder.forEach { name -> if (name in ddayPendingByGroup) ordered.add(name) }
+        ddayPendingByGroup.keys.forEach { name -> if (name !in ordered) ordered.add(name) }
+        mutableStateOf(ordered.toList())
+    }
 
     // Reorderable 상태 (D-Day 그룹 드래그)
     val groupReorderableState = rememberReorderableLazyListState(
@@ -144,16 +160,6 @@ fun DdayScreen(
         reorderableState.listState.scrollToItem(0)
     }
 
-    // D-Day 탭 초기 스크롤: groupOrder 변경 후 리컴포지션 완료를 기다린 뒤 scroll
-    var ddayInitialScrollDone by remember { mutableStateOf(false) }
-    LaunchedEffect(groupOrder) {
-        if (!ddayInitialScrollDone && groupOrder.isNotEmpty()) {
-            ddayInitialScrollDone = true
-            delay(100) // LazyColumn 리컴포지션 대기
-            groupReorderableState.listState.scrollToItem(0)
-        }
-    }
-
     // 완료 섹션 펼침/접힘 상태 (저장된 상태 복원)
     var isCompletedExpanded by remember { mutableStateOf(DdaySettings.isCompletedExpanded(context)) }
     LaunchedEffect(isCompletedExpanded) {
@@ -170,8 +176,11 @@ fun DdayScreen(
         DdaySettings.setHiddenTodoExpanded(context, isHiddenTodoExpanded)
     }
 
-    // D-Day 그룹 펼침/접힘 상태 (그룹명 -> 펼침 여부, 기본: 펼침)
-    var expandedGroups by remember { mutableStateOf(setOf<String>()) }
+    // D-Day 그룹 펼침/접힘 상태 (동기 초기화 — 저장된 접힘 상태 복원)
+    var expandedGroups by remember(ddayPendingByGroup.keys) {
+        val collapsed = DdaySettings.getCollapsedGroups(context)
+        mutableStateOf(ddayPendingByGroup.keys.filter { it !in collapsed }.toSet())
+    }
 
     // 그룹 관리 다이얼로그 상태
     var showGroupManageDialog by remember { mutableStateOf(false) }
@@ -180,28 +189,6 @@ fun DdayScreen(
     // 템플릿 관리 다이얼로그 상태
     var showTemplateManageDialog by remember { mutableStateOf(false) }
     val templates by viewModel.templates.observeAsState(emptyList())
-
-    // D-Day 그룹별 분류
-    val ddayPendingByGroup = remember(pendingItems, pagerState.currentPage) {
-        if (pagerState.currentPage == 0) {
-            pendingItems.groupBy { it.groupName ?: "미분류" }
-                .toSortedMap(compareBy { if (it == "미분류") "zzz" else it })  // 미분류를 마지막으로
-        } else {
-            emptyMap()
-        }
-    }
-
-    // 그룹 초기 펼침 상태 설정 + 그룹 순서 초기화 (저장된 접힘 상태 복원)
-    LaunchedEffect(ddayPendingByGroup.keys) {
-        val collapsed = DdaySettings.getCollapsedGroups(context)
-        expandedGroups = ddayPendingByGroup.keys.filter { it !in collapsed }.toSet()
-        // 그룹 순서 초기화
-        val savedOrder = DdaySettings.getGroupOrder(context)
-        val ordered = mutableListOf<String>()
-        savedOrder.forEach { name -> if (name in ddayPendingByGroup) ordered.add(name) }
-        ddayPendingByGroup.keys.forEach { name -> if (name !in ordered) ordered.add(name) }
-        groupOrder = ordered
-    }
 
     // 정렬된 그룹 리스트 (항상 드래그 순서 사용)
     val orderedGroupList = groupOrder.mapNotNull { name ->
