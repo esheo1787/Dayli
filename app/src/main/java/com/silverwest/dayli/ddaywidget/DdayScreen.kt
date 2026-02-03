@@ -417,7 +417,7 @@ fun DdayScreen(
                                         val nextDateInfo = if (item.isRepeating()) {
                                             item.getNextOccurrenceDate()?.let { nextDate ->
                                                 val cal = java.util.Calendar.getInstance().apply { time = nextDate }
-                                                "다음: ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일"
+                                                "다음: ${cal.get(java.util.Calendar.YEAR)}년 ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일"
                                             }
                                         } else null
                                         DdayListItem(
@@ -472,7 +472,7 @@ fun DdayScreen(
                                         val cal = java.util.Calendar.getInstance().apply {
                                             timeInMillis = showDate
                                         }
-                                        "📅 ${cal.get(java.util.Calendar.YEAR)}년 ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일 표시 예정"
+                                        "다음: ${cal.get(java.util.Calendar.YEAR)}년 ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일"
                                     }
                                     DdayListItem(
                                         item = item,
@@ -621,7 +621,7 @@ fun DdayScreen(
                                                 val nextDateInfo = if (item.isRepeating()) {
                                                     item.getNextOccurrenceDate()?.let { nextDate ->
                                                         val cal = java.util.Calendar.getInstance().apply { time = nextDate }
-                                                        "다음: ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일"
+                                                        "다음: ${cal.get(java.util.Calendar.YEAR)}년 ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일"
                                                     }
                                                 } else null
                                                 DdayListItem(
@@ -672,7 +672,7 @@ fun DdayScreen(
                                         val cal = java.util.Calendar.getInstance().apply {
                                             timeInMillis = showDate
                                         }
-                                        "📅 ${cal.get(java.util.Calendar.YEAR)}년 ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일 표시 예정"
+                                        "다음: ${cal.get(java.util.Calendar.YEAR)}년 ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일"
                                     }
                                     DdayListItem(
                                         item = item,
