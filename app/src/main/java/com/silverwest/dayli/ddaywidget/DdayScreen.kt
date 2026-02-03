@@ -142,7 +142,13 @@ fun DdayScreen(
     // 앱 실행 시 스크롤 맨 위로
     LaunchedEffect(Unit) {
         reorderableState.listState.scrollToItem(0)
-        groupReorderableState.listState.scrollToItem(0)
+    }
+    var ddayInitialScrollDone by remember { mutableStateOf(false) }
+    LaunchedEffect(ddays) {
+        if (!ddayInitialScrollDone && ddays.isNotEmpty()) {
+            groupReorderableState.listState.scrollToItem(0)
+            ddayInitialScrollDone = true
+        }
     }
 
     // 완료 섹션 펼침/접힘 상태 (저장된 상태 복원)
