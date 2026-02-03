@@ -54,6 +54,9 @@ class RemoteViewsFactory(
                 val db = DdayDatabase.getDatabase(context)
                 val dao = db.ddayDao()
 
+                // 숨겨진 매년 반복 항목 자동 표시
+                dao.unhideReadyItems(System.currentTimeMillis())
+
                 // 24시간 전 타임스탬프 계산 (To-Do 체크 후 24시간 유지용)
                 val cutoffTime = System.currentTimeMillis() - 24 * 60 * 60 * 1000
 

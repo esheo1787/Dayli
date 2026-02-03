@@ -59,20 +59,20 @@ interface DdayDao {
     @Query("SELECT * FROM dday_items WHERE category = :category ORDER BY date ASC")
     suspend fun getByCategoryDday(category: String): List<DdayItem>
 
-    // D-Day 아이템만 (최신순)
-    @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' ORDER BY id DESC")
+    // D-Day 아이템만 (최신순, 숨김 제외)
+    @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' AND isHidden = 0 ORDER BY id DESC")
     suspend fun getAllDdays(): List<DdayItem>
 
-    // D-Day 아이템만 (내 순서 - sortOrder 기준)
-    @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' ORDER BY isChecked ASC, sortOrder ASC, id DESC")
+    // D-Day 아이템만 (내 순서 - sortOrder 기준, 숨김 제외)
+    @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' AND isHidden = 0 ORDER BY isChecked ASC, sortOrder ASC, id DESC")
     suspend fun getAllDdaysSorted(): List<DdayItem>
 
-    // D-Day 아이템만 (임박순 - 가까운 날짜 먼저)
-    @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' ORDER BY date ASC")
+    // D-Day 아이템만 (임박순 - 가까운 날짜 먼저, 숨김 제외)
+    @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' AND isHidden = 0 ORDER BY date ASC")
     suspend fun getAllDdaysByDateAsc(): List<DdayItem>
 
-    // D-Day 아이템만 (여유순 - 먼 날짜 먼저)
-    @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' ORDER BY date DESC")
+    // D-Day 아이템만 (여유순 - 먼 날짜 먼저, 숨김 제외)
+    @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' AND isHidden = 0 ORDER BY date DESC")
     suspend fun getAllDdaysByDateDesc(): List<DdayItem>
 
     // To-Do 아이템만 (최신순)
@@ -106,7 +106,7 @@ interface DdayDao {
     @Query("""
         SELECT * FROM dday_items
         WHERE
-            (itemType = 'DDAY' AND isChecked = 0)
+            (itemType = 'DDAY' AND isChecked = 0 AND isHidden = 0)
             OR
             (itemType = 'TODO' AND (isChecked = 0 OR (isChecked = 1 AND checkedAt > :cutoffTime)))
         ORDER BY
@@ -116,6 +116,10 @@ interface DdayDao {
             id DESC
     """)
     suspend fun getAllForWidgetWithTodos(cutoffTime: Long): List<DdayItem>
+
+    // 매년 반복: 표시 시간이 된 숨겨진 항목을 자동으로 다시 표시
+    @Query("UPDATE dday_items SET isHidden = 0, nextShowDate = NULL WHERE isHidden = 1 AND nextShowDate IS NOT NULL AND nextShowDate <= :today")
+    suspend fun unhideReadyItems(today: Long)
 
     // 기존 그룹 이름 목록 (D-Day만, null 제외)
     @Query("SELECT DISTINCT group_name FROM dday_items WHERE itemType = 'DDAY' AND group_name IS NOT NULL ORDER BY group_name ASC")

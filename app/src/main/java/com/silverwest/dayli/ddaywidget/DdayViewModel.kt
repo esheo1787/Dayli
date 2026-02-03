@@ -57,6 +57,10 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             TodoSortOption.valueOf(DdaySettings.getTodoSort(application))
         } catch (e: Exception) { TodoSortOption.MY_ORDER }
 
+        // 숨겨진 매년 반복 항목 자동 표시 후 로드
+        viewModelScope.launch {
+            dao.unhideReadyItems(System.currentTimeMillis())
+        }
         loadAllDdays()
         loadAllTodos()
         loadGroups()
@@ -145,13 +149,30 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                     // D-Day 반복: 다음 날짜로 자동 재생성
                     val nextDate = item.getNextRepeatDate()
                     if (nextDate != null) {
-                        val updatedItem = item.copy(
-                            date = nextDate,
-                            isChecked = false,
-                            checkedAt = null
-                        )
-                        dao.update(updatedItem)
-                        Log.d("DDAY_WIDGET", "🔁 반복 D-Day 갱신: ${item.title} → ${nextDate}")
+                        if (item.repeatTypeEnum() == RepeatType.YEARLY) {
+                            // 매년 반복: 숨기고 30일 전에 다시 표시
+                            val showDate = java.util.Calendar.getInstance().apply {
+                                time = nextDate
+                                add(java.util.Calendar.DAY_OF_YEAR, -30)
+                            }.timeInMillis
+                            val updatedItem = item.copy(
+                                date = nextDate,
+                                isChecked = false,
+                                checkedAt = null,
+                                isHidden = true,
+                                nextShowDate = showDate
+                            )
+                            dao.update(updatedItem)
+                            Log.d("DDAY_WIDGET", "🔁 매년 반복 D-Day 숨김: ${item.title} → 표시일: $showDate")
+                        } else {
+                            val updatedItem = item.copy(
+                                date = nextDate,
+                                isChecked = false,
+                                checkedAt = null
+                            )
+                            dao.update(updatedItem)
+                            Log.d("DDAY_WIDGET", "🔁 반복 D-Day 갱신: ${item.title} → ${nextDate}")
+                        }
                     }
                 } else if (item.isTodo()) {
                     // To-Do 반복: 체크 해제 상태로 재생성 (새 항목 생성)

@@ -42,6 +42,8 @@ data class DdayItem(
     val sortOrder: Int = 0,  // To-Do 드래그 순서 (0 = 기본, 작을수록 위)
     @ColumnInfo(name = "sub_tasks")
     val subTasks: String? = null,  // 체크리스트 하위 항목 (JSON 형식)
+    val isHidden: Boolean = false,  // 매년 반복: 체크 시 숨김
+    val nextShowDate: Long? = null,  // 매년 반복: 다시 보여줄 날짜 (epoch ms)
     @ColumnInfo(name = "group_name")
     val groupName: String? = null  // D-Day 그룹 이름
 ) {
