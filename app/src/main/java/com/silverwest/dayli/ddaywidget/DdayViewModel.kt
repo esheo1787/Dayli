@@ -61,15 +61,13 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             TodoSortOption.valueOf(DdaySettings.getTodoSort(application))
         } catch (e: Exception) { TodoSortOption.MY_ORDER }
 
-        // 숨겨진 매년 반복 항목 자동 표시 후 로드
+        // 숨겨진 반복 항목 자동 표시 후 로드 (unhide 완료 후 순차 로드)
         viewModelScope.launch {
             dao.unhideReadyItems(System.currentTimeMillis())
+            loadAll()
+            loadGroups()
+            loadTemplates()
         }
-        loadAllDdays()
-        loadAllTodos()
-        loadHiddenDdays()
-        loadGroups()
-        loadTemplates()
     }
 
     fun loadGroups() {
@@ -124,6 +122,9 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadHiddenDdays() {
         viewModelScope.launch {
+            // 표시 시간이 된 항목 활성화
+            dao.unhideReadyItems(System.currentTimeMillis())
+
             val items = dao.getHiddenDdays()
             _hiddenDdays.postValue(items)  // 즉시 UI 갱신
 
@@ -147,7 +148,10 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
             if (anyUpdated) {
+                // 재계산으로 nextShowDate 변경 후 다시 활성화 체크
+                dao.unhideReadyItems(System.currentTimeMillis())
                 _hiddenDdays.postValue(dao.getHiddenDdays())
+                loadAllDdays()  // 새로 활성화된 항목을 D-Day 목록에 반영
             }
         }
     }

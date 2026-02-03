@@ -54,7 +54,23 @@ class RemoteViewsFactory(
                 val db = DdayDatabase.getDatabase(context)
                 val dao = db.ddayDao()
 
-                // 숨겨진 매년 반복 항목 자동 표시
+                // 숨겨진 반복 항목: stale nextShowDate 재계산 후 자동 표시
+                dao.getHiddenDdays().forEach { item ->
+                    val date = item.date ?: return@forEach
+                    val rType = item.repeatTypeEnum()
+                    val advanceDays = when (rType) {
+                        RepeatType.MONTHLY -> 14
+                        RepeatType.YEARLY -> 30
+                        else -> return@forEach
+                    }
+                    val correctShowDate = java.util.Calendar.getInstance().apply {
+                        time = date
+                        add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
+                    }.timeInMillis
+                    if (item.nextShowDate != correctShowDate) {
+                        dao.update(item.copy(nextShowDate = correctShowDate))
+                    }
+                }
                 dao.unhideReadyItems(System.currentTimeMillis())
 
                 // 24시간 전 타임스탬프 계산 (To-Do 체크 후 24시간 유지용)
