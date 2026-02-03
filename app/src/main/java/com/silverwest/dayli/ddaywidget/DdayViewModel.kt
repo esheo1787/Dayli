@@ -210,11 +210,17 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                                 time = nextDate
                                 add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
                             }.timeInMillis
-                            dao.update(item.copy(
-                                date = nextDate, isChecked = false, checkedAt = null,
-                                isHidden = true, nextShowDate = showDate
-                            ))
-                            Log.d("DDAY_WIDGET", "🔁 반복 D-Day 숨김: ${item.title} → 표시일: $showDate")
+                            if (showDate <= System.currentTimeMillis()) {
+                                // 미리 표시 기간 내 → 숨기지 않고 날짜만 갱신
+                                dao.update(item.copy(date = nextDate, isChecked = false, checkedAt = null))
+                                Log.d("DDAY_WIDGET", "🔁 반복 D-Day 갱신(기간 내): ${item.title}")
+                            } else {
+                                dao.update(item.copy(
+                                    date = nextDate, isChecked = false, checkedAt = null,
+                                    isHidden = true, nextShowDate = showDate
+                                ))
+                                Log.d("DDAY_WIDGET", "🔁 반복 D-Day 숨김: ${item.title} → 표시일: $showDate")
+                            }
                         }
                     }
                 } else if (item.isTodo()) {
@@ -256,12 +262,21 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                         }.timeInMillis
                         // 서브태스크 초기화 (모두 미체크)
                         val resetSubTasks = item.getSubTaskList().map { it.copy(isChecked = false) }
-                        dao.update(item.copy(
-                            isChecked = false, checkedAt = null,
-                            isHidden = true, nextShowDate = showDate,
-                            subTasks = DdayItem.subTasksToJson(resetSubTasks)
-                        ))
-                        Log.d("DDAY_WIDGET", "🔁 반복 To-Do 숨김: ${item.title} → 표시일: $showDate")
+                        if (showDate <= System.currentTimeMillis()) {
+                            // 미리 표시 기간 내 → 숨기지 않고 리셋만
+                            dao.update(item.copy(
+                                isChecked = false, checkedAt = null,
+                                subTasks = DdayItem.subTasksToJson(resetSubTasks)
+                            ))
+                            Log.d("DDAY_WIDGET", "🔁 반복 To-Do 리셋(기간 내): ${item.title}")
+                        } else {
+                            dao.update(item.copy(
+                                isChecked = false, checkedAt = null,
+                                isHidden = true, nextShowDate = showDate,
+                                subTasks = DdayItem.subTasksToJson(resetSubTasks)
+                            ))
+                            Log.d("DDAY_WIDGET", "🔁 반복 To-Do 숨김: ${item.title} → 표시일: $showDate")
+                        }
                     }
                 }
             } else {
@@ -359,7 +374,47 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateItem(item: DdayItem) {
         viewModelScope.launch {
-            dao.update(item)
+            // 숨겨진 반복 항목: advanceDisplayDays 변경 시 nextShowDate 재계산
+            val finalItem = if (item.isHidden && item.isRepeating() &&
+                item.repeatTypeEnum() !in listOf(RepeatType.NONE, RepeatType.DAILY)) {
+                val advanceDays = item.getAdvanceDays()
+                if (item.isDday() && item.date != null) {
+                    item.copy(nextShowDate = java.util.Calendar.getInstance().apply {
+                        time = item.date!!
+                        add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
+                    }.timeInMillis)
+                } else if (item.isTodo()) {
+                    val nextOccurrence = java.util.Calendar.getInstance()
+                    when (item.repeatTypeEnum()) {
+                        RepeatType.WEEKLY -> {
+                            val mask = item.repeatDay ?: 0
+                            if (mask != 0) {
+                                val todayDow = nextOccurrence.get(java.util.Calendar.DAY_OF_WEEK)
+                                var found = false
+                                for (i in 1..7) {
+                                    val checkDay = ((todayDow - 1 + i) % 7) + 1
+                                    if (mask and (1 shl (checkDay - 1)) != 0) {
+                                        nextOccurrence.add(java.util.Calendar.DAY_OF_YEAR, i)
+                                        found = true
+                                        break
+                                    }
+                                }
+                                if (!found) nextOccurrence.add(java.util.Calendar.WEEK_OF_YEAR, 1)
+                            } else {
+                                nextOccurrence.add(java.util.Calendar.WEEK_OF_YEAR, 1)
+                            }
+                        }
+                        RepeatType.MONTHLY -> nextOccurrence.add(java.util.Calendar.MONTH, 1)
+                        RepeatType.YEARLY -> nextOccurrence.add(java.util.Calendar.YEAR, 1)
+                        else -> {}
+                    }
+                    item.copy(nextShowDate = java.util.Calendar.getInstance().apply {
+                        timeInMillis = nextOccurrence.timeInMillis
+                        add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
+                    }.timeInMillis)
+                } else item
+            } else item
+            dao.update(finalItem)
             loadAll()
             // 위젯 동기화
             DdayWidgetProvider.refreshAllWidgets(getApplication())
