@@ -586,7 +586,7 @@ fun DdayScreen(
                                                 time = date
                                                 add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
                                             }
-                                            "📅 ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일 표시 예정"
+                                            "📅 ${cal.get(java.util.Calendar.YEAR)}년 ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일 표시 예정"
                                         } else null
                                     }
                                     DdayListItem(

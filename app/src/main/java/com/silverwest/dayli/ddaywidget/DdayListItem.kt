@@ -169,8 +169,8 @@ fun DdayListItem(
                         ) {
                             Text(
                                 text = text,
-                                fontSize = (10 * fontScale).sp,
-                                color = secondaryTextColor
+                                fontSize = (12 * fontScale).sp,
+                                color = primaryTextColor
                             )
                         }
                     }
