@@ -165,10 +165,14 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun loadAll() {
-        loadAllDdays()
-        loadAllTodos()
-        loadHiddenDdays()
-        loadHiddenTodos()
+        viewModelScope.launch {
+            // unhide를 먼저 완료해야 loadAllDdays/loadAllTodos 쿼리에 반영됨
+            dao.unhideReadyItems(System.currentTimeMillis())
+            loadAllDdays()
+            loadAllTodos()
+            loadHiddenDdays()
+            loadHiddenTodos()
+        }
     }
 
     fun setSortOption(option: SortOption) {
