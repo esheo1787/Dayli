@@ -14,7 +14,9 @@
         android:divider="@android:color/transparent"
         android:dividerHeight="8dp"
         android:background="@android:color/transparent"
-        android:scrollbars="none" />
+        android:scrollbars="none"
+        android:paddingBottom="8dp"
+        android:clipToPadding="false" />
 
     <TextView
         android:id="@+id/emptyTextView"
