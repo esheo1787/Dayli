@@ -124,6 +124,24 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadHiddenDdays() {
         viewModelScope.launch {
+            val items = dao.getHiddenDdays()
+            // 저장된 nextShowDate가 item.date 기준과 다르면 재계산
+            items.forEach { item ->
+                val date = item.date ?: return@forEach
+                val rType = item.repeatTypeEnum()
+                val advanceDays = when (rType) {
+                    RepeatType.MONTHLY -> 14
+                    RepeatType.YEARLY -> 30
+                    else -> return@forEach
+                }
+                val correctShowDate = java.util.Calendar.getInstance().apply {
+                    time = date
+                    add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
+                }.timeInMillis
+                if (item.nextShowDate != correctShowDate) {
+                    dao.update(item.copy(nextShowDate = correctShowDate))
+                }
+            }
             _hiddenDdays.postValue(dao.getHiddenDdays())
         }
     }
