@@ -143,19 +143,9 @@ fun DdayListItem(
                         tint = secondaryTextColor
                     )
                 }
-                // 반복 태그 표시 (D-Day와 To-Do 모두)
+                // 반복 태그 표시 (D-Day와 To-Do 모두 통일)
                 if (item.isRepeating()) {
-                    val tagText = if (item.isDday()) {
-                        item.getRepeatTagText()
-                    } else {
-                        // To-Do는 간단한 반복 태그
-                        when (item.repeatTypeEnum()) {
-                            RepeatType.DAILY -> "🔁매일"
-                            RepeatType.WEEKLY -> "🔁매주"
-                            RepeatType.MONTHLY -> "🔁매월"
-                            else -> null
-                        }
-                    }
+                    val tagText = item.getRepeatTagText()
                     tagText?.let { text ->
                         Spacer(modifier = Modifier.width(6.dp))
                         Box(

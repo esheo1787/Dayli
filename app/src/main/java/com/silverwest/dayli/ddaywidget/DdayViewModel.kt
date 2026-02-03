@@ -116,7 +116,16 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 TodoSortOption.LATEST -> dao.getAllTodos()
                 else -> dao.getAllTodosSorted()
             }
-            _todoList.postValue(items)
+            // 매주 반복 To-Do: 오늘 요일에 해당하는 것만 표시
+            val today = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK)
+            val filtered = items.filter { item ->
+                if (!item.isChecked && item.repeatTypeEnum() == RepeatType.WEEKLY && item.repeatDay != null && item.repeatDay != 0) {
+                    item.repeatDay and (1 shl (today - 1)) != 0
+                } else {
+                    true
+                }
+            }
+            _todoList.postValue(filtered)
         }
     }
 
@@ -295,7 +304,8 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         emoji: String = "✅",
         color: Long = 0xFFA8C5DAL,  // Pastel Blue
         repeatType: RepeatType = RepeatType.NONE,
-        subTasks: List<SubTask> = emptyList()
+        subTasks: List<SubTask> = emptyList(),
+        repeatDay: Int? = null
     ) {
         viewModelScope.launch {
             val item = DdayItem(
@@ -306,6 +316,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 iconName = emoji,
                 customColor = color,
                 repeatType = repeatType.name,
+                repeatDay = repeatDay,
                 itemType = ItemType.TODO.name,
                 subTasks = DdayItem.subTasksToJson(subTasks)
             )

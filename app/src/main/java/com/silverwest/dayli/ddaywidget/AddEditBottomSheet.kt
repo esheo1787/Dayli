@@ -42,7 +42,7 @@ fun AddEditBottomSheet(
     existingGroups: List<String> = emptyList(),
     templates: List<TodoTemplate> = emptyList(),
     onDismiss: () -> Unit,
-    onSave: (title: String, memo: String?, date: Date?, emoji: String, color: Long, repeatType: RepeatType, itemType: ItemType, subTasks: List<SubTask>, groupName: String?) -> Unit,
+    onSave: (title: String, memo: String?, date: Date?, emoji: String, color: Long, repeatType: RepeatType, itemType: ItemType, subTasks: List<SubTask>, groupName: String?, repeatDay: Int?) -> Unit,
     onSaveAsTemplate: ((name: String, iconName: String, customColor: Long, subTasks: List<SubTask>) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -66,6 +66,16 @@ fun AddEditBottomSheet(
     }
     var selectedRepeatType by remember(editItem) {
         mutableStateOf(editItem?.repeatTypeEnum() ?: RepeatType.NONE)
+    }
+    // 매주 요일 선택 (To-Do 전용)
+    var selectedWeeklyDays by remember(editItem) {
+        mutableStateOf(
+            if (editItem?.isTodo() == true && editItem.repeatTypeEnum() == RepeatType.WEEKLY && editItem.repeatDay != null) {
+                DdayItem.bitmaskToWeeklyDays(editItem.repeatDay)
+            } else {
+                emptySet<Int>()
+            }
+        )
     }
 
     // 그룹 상태 (D-Day 전용)
@@ -123,6 +133,7 @@ fun AddEditBottomSheet(
             currentType = selectedRepeatType,
             onRepeatSelected = { repeatType ->
                 selectedRepeatType = repeatType
+                if (repeatType != RepeatType.WEEKLY) selectedWeeklyDays = emptySet()
                 showRepeatPicker = false
             },
             onDismiss = { showRepeatPicker = false }
@@ -637,6 +648,35 @@ fun AddEditBottomSheet(
                     }
                 }
 
+                // 매주 요일 선택 (To-Do 전용)
+                if (selectedRepeatType == RepeatType.WEEKLY && actualItemType == ItemType.TODO) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        listOf(
+                            Calendar.MONDAY to "월", Calendar.TUESDAY to "화",
+                            Calendar.WEDNESDAY to "수", Calendar.THURSDAY to "목",
+                            Calendar.FRIDAY to "금", Calendar.SATURDAY to "토",
+                            Calendar.SUNDAY to "일"
+                        ).forEach { (day, label) ->
+                            FilterChip(
+                                selected = day in selectedWeeklyDays,
+                                onClick = {
+                                    selectedWeeklyDays = if (day in selectedWeeklyDays) {
+                                        selectedWeeklyDays - day
+                                    } else {
+                                        selectedWeeklyDays + day
+                                    }
+                                },
+                                label = { Text(label, fontSize = 12.sp) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // 저장 버튼
@@ -646,6 +686,9 @@ fun AddEditBottomSheet(
                             // 빈 제목의 서브태스크 제거
                             val validSubTasks = subTasks.filter { it.title.isNotBlank() }
                             Log.d("DDAY_WIDGET", "✅ 저장: title=$title, type=$actualItemType, repeat=$selectedRepeatType, subTasks=${validSubTasks.size}")
+                            val repeatDayValue = if (selectedRepeatType == RepeatType.WEEKLY && actualItemType == ItemType.TODO && selectedWeeklyDays.isNotEmpty()) {
+                                DdayItem.weeklyDaysToBitmask(selectedWeeklyDays)
+                            } else null
                             onSave(
                                 title,
                                 memo.ifBlank { null },
@@ -655,7 +698,8 @@ fun AddEditBottomSheet(
                                 selectedRepeatType,
                                 actualItemType,
                                 validSubTasks,
-                                if (actualItemType == ItemType.DDAY) selectedGroupName else null
+                                if (actualItemType == ItemType.DDAY) selectedGroupName else null,
+                                repeatDayValue
                             )
                             // 입력 초기화
                             title = ""
@@ -664,6 +708,7 @@ fun AddEditBottomSheet(
                             selectedEmoji = if (actualItemType == ItemType.TODO) "✅" else "📌"
                             selectedColor = 0xFFA8C5DAL  // Pastel Blue
                             selectedRepeatType = RepeatType.NONE
+                            selectedWeeklyDays = emptySet()
                             subTasks = emptyList()
                             newSubTaskText = ""
                             selectedGroupName = null

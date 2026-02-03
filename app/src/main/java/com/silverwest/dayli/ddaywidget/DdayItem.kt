@@ -37,7 +37,7 @@ data class DdayItem(
     val iconName: String? = null,  // 커스텀 이모지 (null = 카테고리 기본 이모지 사용)
     val customColor: Long? = null,  // 커스텀 색상 (null = 카테고리 기본 색상 사용)
     val repeatType: String = RepeatType.NONE.name,  // 반복 타입 (NONE/DAILY/WEEKLY/MONTHLY/YEARLY)
-    val repeatDay: Int? = null,  // 반복 기준 (매주: 요일 1-7, 매월: 날짜 1-31)
+    val repeatDay: Int? = null,  // D-Day: 요일 1-7 / 날짜 1-31, To-Do WEEKLY: 요일 비트마스크
     val itemType: String = ItemType.DDAY.name,  // 아이템 타입 (DDAY / TODO)
     val sortOrder: Int = 0,  // To-Do 드래그 순서 (0 = 기본, 작을수록 위)
     @ColumnInfo(name = "sub_tasks")
@@ -67,6 +67,33 @@ data class DdayItem(
             val jsonArray = JSONArray()
             subTasks.forEach { jsonArray.put(it.toJson()) }
             return jsonArray.toString()
+        }
+
+        // 매주 요일 비트마스크 변환 (To-Do 전용)
+        private val DAY_NAMES = mapOf(
+            Calendar.MONDAY to "월", Calendar.TUESDAY to "화",
+            Calendar.WEDNESDAY to "수", Calendar.THURSDAY to "목",
+            Calendar.FRIDAY to "금", Calendar.SATURDAY to "토",
+            Calendar.SUNDAY to "일"
+        )
+        private val DAY_ORDER = listOf(
+            Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY,
+            Calendar.THURSDAY, Calendar.FRIDAY, Calendar.SATURDAY, Calendar.SUNDAY
+        )
+
+        fun weeklyDaysToBitmask(days: Set<Int>): Int {
+            var mask = 0
+            days.forEach { day -> mask = mask or (1 shl (day - 1)) }
+            return mask
+        }
+
+        fun bitmaskToWeeklyDays(mask: Int): Set<Int> {
+            return (1..7).filter { day -> mask and (1 shl (day - 1)) != 0 }.toSet()
+        }
+
+        fun bitmaskToDayNames(mask: Int): String {
+            val days = bitmaskToWeeklyDays(mask)
+            return DAY_ORDER.filter { it in days }.mapNotNull { DAY_NAMES[it] }.joinToString(",")
         }
     }
     // To-Do 여부 확인
@@ -134,7 +161,7 @@ data class DdayItem(
         return if (isRepeating()) "🔁$emoji" else emoji
     }
 
-    // 반복 태그 텍스트 가져오기 (예: [매주 월], [매월 15일])
+    // 반복 태그 텍스트 가져오기 (예: [매주 월,수,금], [매월 15일])
     fun getRepeatTagText(): String? {
         val type = repeatTypeEnum()
         if (type == RepeatType.NONE) return null
@@ -142,25 +169,25 @@ data class DdayItem(
         return when (type) {
             RepeatType.DAILY -> "[매일]"
             RepeatType.WEEKLY -> {
-                val dayName = repeatDay?.let { day ->
-                    when (day) {
-                        Calendar.SUNDAY -> "일"
-                        Calendar.MONDAY -> "월"
-                        Calendar.TUESDAY -> "화"
-                        Calendar.WEDNESDAY -> "수"
-                        Calendar.THURSDAY -> "목"
-                        Calendar.FRIDAY -> "금"
-                        Calendar.SATURDAY -> "토"
-                        else -> ""
-                    }
-                } ?: ""
-                "[매주 $dayName]"
+                if (isTodo()) {
+                    // To-Do: 비트마스크 다중 요일
+                    val names = repeatDay?.let { bitmaskToDayNames(it) } ?: ""
+                    if (names.isEmpty()) "[매주]" else "[매주 $names]"
+                } else {
+                    // D-Day: 단일 요일
+                    val dayName = repeatDay?.let { DAY_NAMES[it] } ?: ""
+                    "[매주 $dayName]"
+                }
             }
             RepeatType.MONTHLY -> {
-                val dayOfMonth = repeatDay ?: date?.let { d ->
-                    Calendar.getInstance().apply { time = d }.get(Calendar.DAY_OF_MONTH)
-                } ?: 1
-                "[매월 ${dayOfMonth}일]"
+                if (isTodo()) {
+                    "[매월]"
+                } else {
+                    val dayOfMonth = repeatDay ?: date?.let { d ->
+                        Calendar.getInstance().apply { time = d }.get(Calendar.DAY_OF_MONTH)
+                    } ?: 1
+                    "[매월 ${dayOfMonth}일]"
+                }
             }
             RepeatType.YEARLY -> "[매년]"
             RepeatType.NONE -> null

@@ -192,13 +192,12 @@ fun MainDdayScreen(
             showAddSheet = false
             editItem = null
         },
-        onSave = { title, memo, date, emoji, color, repeatType, itemType, subTasks, groupName ->
+        onSave = { title, memo, date, emoji, color, repeatType, itemType, subTasks, groupName, repeatDay ->
             if (editItem != null) {
-                // 수정 모드
-                val calendar = Calendar.getInstance().apply { date?.let { time = it } }
-                val repeatDay = when (repeatType) {
-                    RepeatType.WEEKLY -> calendar.get(Calendar.DAY_OF_WEEK)
-                    RepeatType.MONTHLY -> calendar.get(Calendar.DAY_OF_MONTH)
+                // 수정 모드: To-Do는 전달된 repeatDay 사용, D-Day는 날짜에서 계산
+                val finalRepeatDay = repeatDay ?: when (repeatType) {
+                    RepeatType.WEEKLY -> date?.let { Calendar.getInstance().apply { time = it }.get(Calendar.DAY_OF_WEEK) }
+                    RepeatType.MONTHLY -> date?.let { Calendar.getInstance().apply { time = it }.get(Calendar.DAY_OF_MONTH) }
                     else -> null
                 }
                 viewModel.updateItem(
@@ -209,7 +208,7 @@ fun MainDdayScreen(
                         iconName = emoji,
                         customColor = color,
                         repeatType = repeatType.name,
-                        repeatDay = repeatDay,
+                        repeatDay = finalRepeatDay,
                         subTasks = DdayItem.subTasksToJson(subTasks),
                         groupName = groupName
                     )
@@ -219,7 +218,7 @@ fun MainDdayScreen(
                 if (itemType == ItemType.DDAY) {
                     viewModel.insertDday(title, memo ?: "", date!!, emoji, color, repeatType, groupName)
                 } else {
-                    viewModel.insertTodo(title, memo, emoji, color, repeatType, subTasks)
+                    viewModel.insertTodo(title, memo, emoji, color, repeatType, subTasks, repeatDay)
                 }
             }
             showAddSheet = false
