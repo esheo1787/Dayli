@@ -487,7 +487,8 @@ fun SettingsScreen(
             color = Color(0xFFE53935),
             backgroundEnabled = backgroundEnabled,
             backgroundOpacity = backgroundOpacity,
-            iconBgOpacity = iconBgOpacity
+            iconBgOpacity = iconBgOpacity,
+            appFontSize = appFontSize
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -499,7 +500,8 @@ fun SettingsScreen(
             color = Color(0xFF1E88E5),
             backgroundEnabled = backgroundEnabled,
             backgroundOpacity = backgroundOpacity,
-            iconBgOpacity = iconBgOpacity
+            iconBgOpacity = iconBgOpacity,
+            appFontSize = appFontSize
         )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
@@ -864,10 +866,18 @@ private fun PreviewItem(
     color: Color,
     backgroundEnabled: Boolean,
     backgroundOpacity: Int,
-    iconBgOpacity: Int
+    iconBgOpacity: Int,
+    appFontSize: Int = 1
 ) {
     val bgAlpha = if (backgroundEnabled) backgroundOpacity / 100f else 0f
     val iconAlpha = if (backgroundEnabled) iconBgOpacity / 100f else 0f
+
+    // 앱 글씨 크기 배율 (DdaySettings.getAppFontScale과 동일)
+    val fontScale = when (appFontSize) {
+        0 -> 0.85f  // 작게
+        2 -> 1.2f   // 크게
+        else -> 1f  // 보통
+    }
 
     Row(
         modifier = Modifier
@@ -885,7 +895,7 @@ private fun PreviewItem(
                 .background(color.copy(alpha = iconAlpha)),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = emoji, fontSize = 22.sp)
+            Text(text = emoji, fontSize = (22 * fontScale).sp)
         }
 
         Spacer(modifier = Modifier.width(12.dp))
@@ -893,12 +903,14 @@ private fun PreviewItem(
         Text(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
+            fontSize = (16 * fontScale).sp,
             modifier = Modifier.weight(1f)
         )
 
         Text(
             text = dday,
             style = MaterialTheme.typography.titleMedium,
+            fontSize = (16 * fontScale).sp,
             color = color,
             fontWeight = FontWeight.Bold
         )
