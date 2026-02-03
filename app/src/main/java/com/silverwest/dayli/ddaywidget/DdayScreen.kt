@@ -120,14 +120,11 @@ fun DdayScreen(
         }
     )
 
-    // D-Day 그룹별 분류 (groupOrder보다 먼저 계산)
-    val ddayPendingByGroup = remember(pendingItems, pagerState.currentPage) {
-        if (pagerState.currentPage == 0) {
-            pendingItems.groupBy { it.groupName ?: "미분류" }
-                .toSortedMap(compareBy { if (it == "미분류") "zzz" else it })
-        } else {
-            emptyMap()
-        }
+    // D-Day 그룹별 분류 (탭 전환에 관계없이 항상 D-Day 데이터 유지)
+    val ddayPendingByGroup = remember(ddays) {
+        ddays.filter { !it.isChecked }
+            .groupBy { it.groupName ?: "미분류" }
+            .toSortedMap(compareBy { if (it == "미분류") "zzz" else it })
     }
 
     // D-Day 그룹 드래그 순서 (동기 초기화 — 데이터 로드 즉시 그룹 표시)
