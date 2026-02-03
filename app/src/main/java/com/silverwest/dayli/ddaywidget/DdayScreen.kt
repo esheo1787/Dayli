@@ -66,6 +66,7 @@ fun DdayScreen(
     val ddays by viewModel.ddayList.observeAsState(emptyList())
     val todos by viewModel.todoList.observeAsState(emptyList())
     val hiddenDdays by viewModel.hiddenDdays.observeAsState(emptyList())
+    val hiddenTodos by viewModel.hiddenTodos.observeAsState(emptyList())
     val currentSort by viewModel.sortOption.observeAsState(SortOption.NEAREST)
     val currentTodoSort by viewModel.todoSortOption.observeAsState(TodoSortOption.MY_ORDER)
     val currentCategory by viewModel.categoryFilter.observeAsState(null)
@@ -141,6 +142,7 @@ fun DdayScreen(
 
     // 반복 일정 섹션 펼침/접힘 상태 (기본: 접힘)
     var isHiddenExpanded by remember { mutableStateOf(false) }
+    var isHiddenTodoExpanded by remember { mutableStateOf(false) }
 
     // D-Day 그룹 펼침/접힘 상태 (그룹명 -> 펼침 여부, 기본: 펼침)
     var expandedGroups by remember { mutableStateOf(setOf<String>()) }
@@ -413,6 +415,54 @@ fun DdayScreen(
                                             }
                                         )
                                     }
+                                }
+                            }
+                        }
+                    }
+
+                    // 반복 일정 섹션 (숨겨진 매주/매월/매년 To-Do)
+                    if (hiddenTodos.isNotEmpty()) {
+                        item(key = "header_hidden_todo") {
+                            SectionHeader(
+                                title = "반복 일정",
+                                count = hiddenTodos.size,
+                                isExpandable = true,
+                                isExpanded = isHiddenTodoExpanded,
+                                onToggle = { isHiddenTodoExpanded = !isHiddenTodoExpanded }
+                            )
+                        }
+
+                        if (isHiddenTodoExpanded) {
+                            items(
+                                items = hiddenTodos,
+                                key = { "hidden_todo_${it.id}" }
+                            ) { item ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RectangleShape,
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface
+                                    )
+                                ) {
+                                    val showDateText = item.nextShowDate?.let { showDate ->
+                                        val cal = java.util.Calendar.getInstance().apply {
+                                            timeInMillis = showDate
+                                        }
+                                        "📅 ${cal.get(java.util.Calendar.YEAR)}년 ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일 표시 예정"
+                                    }
+                                    DdayListItem(
+                                        item = item,
+                                        onToggle = { viewModel.toggleChecked(it) },
+                                        onLongPress = {
+                                            selectedItem = it
+                                            showBottomSheet = true
+                                        },
+                                        onSubTaskToggle = { ddayItem, index ->
+                                            viewModel.toggleSubTask(ddayItem, index)
+                                        },
+                                        showCheckbox = false,
+                                        infoText = showDateText
+                                    )
                                 }
                             }
                         }

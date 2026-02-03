@@ -37,7 +37,7 @@ data class DdayItem(
     val iconName: String? = null,  // 커스텀 이모지 (null = 카테고리 기본 이모지 사용)
     val customColor: Long? = null,  // 커스텀 색상 (null = 카테고리 기본 색상 사용)
     val repeatType: String = RepeatType.NONE.name,  // 반복 타입 (NONE/DAILY/WEEKLY/MONTHLY/YEARLY)
-    val repeatDay: Int? = null,  // D-Day: 요일 1-7 / 날짜 1-31, To-Do WEEKLY: 요일 비트마스크
+    val repeatDay: Int? = null,  // WEEKLY: 요일 비트마스크, MONTHLY: 날짜 1-31
     val itemType: String = ItemType.DDAY.name,  // 아이템 타입 (DDAY / TODO)
     val sortOrder: Int = 0,  // To-Do 드래그 순서 (0 = 기본, 작을수록 위)
     @ColumnInfo(name = "sub_tasks")
@@ -69,7 +69,7 @@ data class DdayItem(
             return jsonArray.toString()
         }
 
-        // 매주 요일 비트마스크 변환 (To-Do 전용)
+        // 매주 요일 비트마스크 변환
         private val DAY_NAMES = mapOf(
             Calendar.MONDAY to "월", Calendar.TUESDAY to "화",
             Calendar.WEDNESDAY to "수", Calendar.THURSDAY to "목",
@@ -169,15 +169,8 @@ data class DdayItem(
         return when (type) {
             RepeatType.DAILY -> "[매일]"
             RepeatType.WEEKLY -> {
-                if (isTodo()) {
-                    // To-Do: 비트마스크 다중 요일
-                    val names = repeatDay?.let { bitmaskToDayNames(it) } ?: ""
-                    if (names.isEmpty()) "[매주]" else "[매주 $names]"
-                } else {
-                    // D-Day: 단일 요일
-                    val dayName = repeatDay?.let { DAY_NAMES[it] } ?: ""
-                    "[매주 $dayName]"
-                }
+                val names = repeatDay?.let { bitmaskToDayNames(it) } ?: ""
+                if (names.isEmpty()) "[매주]" else "[매주 $names]"
             }
             RepeatType.MONTHLY -> {
                 if (isTodo()) {

@@ -194,9 +194,9 @@ fun MainDdayScreen(
         },
         onSave = { title, memo, date, emoji, color, repeatType, itemType, subTasks, groupName, repeatDay ->
             if (editItem != null) {
-                // 수정 모드: To-Do는 전달된 repeatDay 사용, D-Day는 날짜에서 계산
+                // 수정 모드: 전달된 repeatDay 사용, 없으면 날짜에서 계산
                 val finalRepeatDay = repeatDay ?: when (repeatType) {
-                    RepeatType.WEEKLY -> date?.let { Calendar.getInstance().apply { time = it }.get(Calendar.DAY_OF_WEEK) }
+                    RepeatType.WEEKLY -> date?.let { 1 shl (Calendar.getInstance().apply { time = it }.get(Calendar.DAY_OF_WEEK) - 1) }
                     RepeatType.MONTHLY -> date?.let { Calendar.getInstance().apply { time = it }.get(Calendar.DAY_OF_MONTH) }
                     else -> null
                 }

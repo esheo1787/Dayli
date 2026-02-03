@@ -44,9 +44,13 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentTab = MutableLiveData(ItemType.DDAY)
     val currentTab: LiveData<ItemType> = _currentTab
 
-    // 숨겨진 D-Day 항목 (매월/매년 반복)
+    // 숨겨진 D-Day 항목 (반복)
     private val _hiddenDdays = MutableLiveData<List<DdayItem>>(emptyList())
     val hiddenDdays: LiveData<List<DdayItem>> = _hiddenDdays
+
+    // 숨겨진 To-Do 항목 (반복)
+    private val _hiddenTodos = MutableLiveData<List<DdayItem>>(emptyList())
+    val hiddenTodos: LiveData<List<DdayItem>> = _hiddenTodos
 
     // 기존 그룹 목록
     private val _existingGroups = MutableLiveData<List<String>>(emptyList())
@@ -165,10 +169,18 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun loadHiddenTodos() {
+        viewModelScope.launch {
+            dao.unhideReadyItems(System.currentTimeMillis())
+            _hiddenTodos.postValue(dao.getHiddenTodos())
+        }
+    }
+
     fun loadAll() {
         loadAllDdays()
         loadAllTodos()
         loadHiddenDdays()
+        loadHiddenTodos()
     }
 
     fun setSortOption(option: SortOption) {
@@ -272,7 +284,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             // 반복 기준 날짜 계산 (매주: 요일, 매월: 날짜)
             val calendar = java.util.Calendar.getInstance().apply { time = date }
             val repeatDay = when (repeatType) {
-                RepeatType.WEEKLY -> calendar.get(java.util.Calendar.DAY_OF_WEEK)
+                RepeatType.WEEKLY -> 1 shl (calendar.get(java.util.Calendar.DAY_OF_WEEK) - 1)
                 RepeatType.MONTHLY -> calendar.get(java.util.Calendar.DAY_OF_MONTH)
                 else -> null
             }

@@ -67,10 +67,10 @@ fun AddEditBottomSheet(
     var selectedRepeatType by remember(editItem) {
         mutableStateOf(editItem?.repeatTypeEnum() ?: RepeatType.NONE)
     }
-    // 매주 요일 선택 (To-Do 전용)
+    // 매주 요일 선택
     var selectedWeeklyDays by remember(editItem) {
         mutableStateOf(
-            if (editItem?.isTodo() == true && editItem.repeatTypeEnum() == RepeatType.WEEKLY && editItem.repeatDay != null) {
+            if (editItem?.repeatTypeEnum() == RepeatType.WEEKLY && editItem.repeatDay != null) {
                 DdayItem.bitmaskToWeeklyDays(editItem.repeatDay)
             } else {
                 emptySet<Int>()
@@ -648,8 +648,8 @@ fun AddEditBottomSheet(
                     }
                 }
 
-                // 매주 요일 선택 (To-Do 전용)
-                if (selectedRepeatType == RepeatType.WEEKLY && actualItemType == ItemType.TODO) {
+                // 매주 요일 선택
+                if (selectedRepeatType == RepeatType.WEEKLY) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -686,7 +686,7 @@ fun AddEditBottomSheet(
                             // 빈 제목의 서브태스크 제거
                             val validSubTasks = subTasks.filter { it.title.isNotBlank() }
                             Log.d("DDAY_WIDGET", "✅ 저장: title=$title, type=$actualItemType, repeat=$selectedRepeatType, subTasks=${validSubTasks.size}")
-                            val repeatDayValue = if (selectedRepeatType == RepeatType.WEEKLY && actualItemType == ItemType.TODO && selectedWeeklyDays.isNotEmpty()) {
+                            val repeatDayValue = if (selectedRepeatType == RepeatType.WEEKLY && selectedWeeklyDays.isNotEmpty()) {
                                 DdayItem.weeklyDaysToBitmask(selectedWeeklyDays)
                             } else null
                             onSave(

@@ -75,16 +75,16 @@ interface DdayDao {
     @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' AND isHidden = 0 ORDER BY date DESC")
     suspend fun getAllDdaysByDateDesc(): List<DdayItem>
 
-    // To-Do 아이템만 (최신순)
-    @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' ORDER BY id DESC")
+    // To-Do 아이템만 (최신순, 숨김 제외)
+    @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' AND isHidden = 0 ORDER BY id DESC")
     suspend fun getAllTodos(): List<DdayItem>
 
-    // To-Do 아이템만 (체크 안 된 것 먼저, 그 다음 sortOrder, 최신순)
-    @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' ORDER BY isChecked ASC, sortOrder ASC, id DESC")
+    // To-Do 아이템만 (체크 안 된 것 먼저, 그 다음 sortOrder, 최신순, 숨김 제외)
+    @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' AND isHidden = 0 ORDER BY isChecked ASC, sortOrder ASC, id DESC")
     suspend fun getAllTodosSorted(): List<DdayItem>
 
-    // To-Do 미완료순 (isChecked ASC, id DESC - sortOrder 무시)
-    @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' ORDER BY isChecked ASC, id DESC")
+    // To-Do 미완료순 (isChecked ASC, id DESC - sortOrder 무시, 숨김 제외)
+    @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' AND isHidden = 0 ORDER BY isChecked ASC, id DESC")
     suspend fun getAllTodosIncompleteFirst(): List<DdayItem>
 
     // sortOrder 업데이트 (드래그 순서 변경용)
@@ -108,7 +108,7 @@ interface DdayDao {
         WHERE
             (itemType = 'DDAY' AND isChecked = 0 AND isHidden = 0)
             OR
-            (itemType = 'TODO' AND (isChecked = 0 OR (isChecked = 1 AND checkedAt > :cutoffTime)))
+            (itemType = 'TODO' AND isHidden = 0 AND (isChecked = 0 OR (isChecked = 1 AND checkedAt > :cutoffTime)))
         ORDER BY
             isChecked ASC,
             CASE WHEN itemType = 'DDAY' AND date IS NOT NULL THEN 0 ELSE 1 END,
@@ -117,9 +117,13 @@ interface DdayDao {
     """)
     suspend fun getAllForWidgetWithTodos(cutoffTime: Long): List<DdayItem>
 
-    // 숨겨진 D-Day 항목 (매월/매년 반복, 표시 예정일 순)
+    // 숨겨진 D-Day 항목 (반복, 표시 예정일 순)
     @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' AND isHidden = 1 ORDER BY nextShowDate ASC")
     suspend fun getHiddenDdays(): List<DdayItem>
+
+    // 숨겨진 To-Do 항목 (반복, 표시 예정일 순)
+    @Query("SELECT * FROM dday_items WHERE itemType = 'TODO' AND isHidden = 1 ORDER BY nextShowDate ASC")
+    suspend fun getHiddenTodos(): List<DdayItem>
 
     // 매년 반복: 표시 시간이 된 숨겨진 항목을 자동으로 다시 표시
     @Query("UPDATE dday_items SET isHidden = 0, nextShowDate = NULL WHERE isHidden = 1 AND nextShowDate IS NOT NULL AND nextShowDate <= :today")
