@@ -316,19 +316,7 @@ class RemoteViewsFactory(
         }
 
         // 텍스트 설정 + 글씨 크기 (반복 태그 포함 - D-Day와 To-Do 모두)
-        val repeatTag = if (item.isRepeating()) {
-            if (item.isDday()) {
-                item.getRepeatTagText() ?: ""
-            } else {
-                // To-Do 반복 태그
-                when (item.repeatTypeEnum()) {
-                    RepeatType.DAILY -> "🔁매일"
-                    RepeatType.WEEKLY -> "🔁매주"
-                    RepeatType.MONTHLY -> "🔁매월"
-                    else -> ""
-                }
-            }
-        } else ""
+        val repeatTag = if (item.isRepeating()) item.getRepeatTagText() ?: "" else ""
         val titleText = if (repeatTag.isNotEmpty()) "${item.title} $repeatTag" else item.title
         views.setTextViewText(R.id.item_title, titleText)
         views.setTextViewTextSize(R.id.item_title, android.util.TypedValue.COMPLEX_UNIT_SP, 15f * fontSizeMultiplier)
@@ -544,14 +532,7 @@ class RemoteViewsFactory(
         views.setTextViewTextSize(R.id.todo_header_icon, android.util.TypedValue.COMPLEX_UNIT_SP, 18f * fontSizeMultiplier)
 
         // 제목 (반복 태그 포함)
-        val repeatTag = if (item.isRepeating()) {
-            when (item.repeatTypeEnum()) {
-                RepeatType.DAILY -> "🔁매일"
-                RepeatType.WEEKLY -> "🔁매주"
-                RepeatType.MONTHLY -> "🔁매월"
-                else -> ""
-            }
-        } else ""
+        val repeatTag = if (item.isRepeating()) item.getRepeatTagText() ?: "" else ""
         val titleText = if (repeatTag.isNotEmpty()) "${item.title} $repeatTag" else item.title
         views.setTextViewText(R.id.todo_header_title, titleText)
         views.setTextViewTextSize(R.id.todo_header_title, android.util.TypedValue.COMPLEX_UNIT_SP, 14f * fontSizeMultiplier)
