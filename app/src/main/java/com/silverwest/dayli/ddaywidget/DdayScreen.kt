@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -140,15 +139,13 @@ fun DdayScreen(
         }
     )
 
-    // 앱 실행 시 스크롤 맨 위로
+    // 앱 실행 시 To-Do 탭 스크롤 맨 위로
     LaunchedEffect(Unit) {
         reorderableState.listState.scrollToItem(0)
     }
-    LaunchedEffect(Unit) {
-        snapshotFlow { groupReorderableState.listState.layoutInfo.totalItemsCount }
-            .first { it > 0 }
-        groupReorderableState.listState.scrollToItem(0)
-    }
+
+    // D-Day 탭 초기 스크롤 플래그
+    var ddayInitialScrollDone by remember { mutableStateOf(false) }
 
     // 완료 섹션 펼침/접힘 상태 (저장된 상태 복원)
     var isCompletedExpanded by remember { mutableStateOf(DdaySettings.isCompletedExpanded(context)) }
@@ -197,6 +194,11 @@ fun DdayScreen(
         savedOrder.forEach { name -> if (name in ddayPendingByGroup) ordered.add(name) }
         ddayPendingByGroup.keys.forEach { name -> if (name !in ordered) ordered.add(name) }
         groupOrder = ordered
+        // 앱 실행 시 D-Day 탭 스크롤 맨 위로 (groupOrder 설정 후 실행)
+        if (!ddayInitialScrollDone && ordered.isNotEmpty()) {
+            ddayInitialScrollDone = true
+            groupReorderableState.listState.scrollToItem(0)
+        }
     }
 
     // 정렬된 그룹 리스트 (항상 드래그 순서 사용)
