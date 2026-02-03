@@ -42,7 +42,7 @@ fun AddEditBottomSheet(
     existingGroups: List<String> = emptyList(),
     templates: List<TodoTemplate> = emptyList(),
     onDismiss: () -> Unit,
-    onSave: (title: String, memo: String?, date: Date?, emoji: String, color: Long, repeatType: RepeatType, itemType: ItemType, subTasks: List<SubTask>, groupName: String?, repeatDay: Int?) -> Unit,
+    onSave: (title: String, memo: String?, date: Date?, emoji: String, color: Long, repeatType: RepeatType, itemType: ItemType, subTasks: List<SubTask>, groupName: String?, repeatDay: Int?, advanceDisplayDays: Int?) -> Unit,
     onSaveAsTemplate: ((name: String, iconName: String, customColor: Long, subTasks: List<SubTask>) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -93,6 +93,12 @@ fun AddEditBottomSheet(
         mutableStateOf(editItem?.getSubTaskList() ?: emptyList())
     }
     var newSubTaskText by remember { mutableStateOf("") }
+
+    // 미리 표시 일수 상태
+    var selectedAdvanceDays by remember(editItem) {
+        mutableStateOf(editItem?.advanceDisplayDays)
+    }
+    var advanceDropdownExpanded by remember { mutableStateOf(false) }
 
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showRepeatPicker by remember { mutableStateOf(false) }
@@ -677,6 +683,54 @@ fun AddEditBottomSheet(
                     }
                 }
 
+                // 미리 표시 설정 (매주/매월/매년일 때만)
+                if (selectedRepeatType in listOf(RepeatType.WEEKLY, RepeatType.MONTHLY, RepeatType.YEARLY)) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "미리 표시",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        Box {
+                            val presets = when (selectedRepeatType) {
+                                RepeatType.WEEKLY -> listOf(0 to "당일", 1 to "1일 전", 2 to "2일 전", 3 to "3일 전")
+                                RepeatType.MONTHLY -> listOf(7 to "1주 전", 14 to "2주 전", 21 to "3주 전")
+                                RepeatType.YEARLY -> listOf(14 to "2주 전", 30 to "1달 전", 60 to "2달 전")
+                                else -> emptyList()
+                            }
+                            val defaultDays = when (selectedRepeatType) {
+                                RepeatType.WEEKLY -> 2
+                                RepeatType.MONTHLY -> 14
+                                RepeatType.YEARLY -> 30
+                                else -> 0
+                            }
+                            val currentDays = selectedAdvanceDays ?: defaultDays
+                            val currentLabel = presets.find { it.first == currentDays }?.second ?: "${currentDays}일 전"
+                            TextButton(onClick = { advanceDropdownExpanded = true }) {
+                                Text(currentLabel)
+                            }
+                            DropdownMenu(
+                                expanded = advanceDropdownExpanded,
+                                onDismissRequest = { advanceDropdownExpanded = false }
+                            ) {
+                                presets.forEach { (days, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            selectedAdvanceDays = days
+                                            advanceDropdownExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // 저장 버튼
@@ -689,6 +743,9 @@ fun AddEditBottomSheet(
                             val repeatDayValue = if (selectedRepeatType == RepeatType.WEEKLY && selectedWeeklyDays.isNotEmpty()) {
                                 DdayItem.weeklyDaysToBitmask(selectedWeeklyDays)
                             } else null
+                            val advanceDaysValue = if (selectedRepeatType in listOf(RepeatType.WEEKLY, RepeatType.MONTHLY, RepeatType.YEARLY)) {
+                                selectedAdvanceDays
+                            } else null
                             onSave(
                                 title,
                                 memo.ifBlank { null },
@@ -699,7 +756,8 @@ fun AddEditBottomSheet(
                                 actualItemType,
                                 validSubTasks,
                                 if (actualItemType == ItemType.DDAY) selectedGroupName else null,
-                                repeatDayValue
+                                repeatDayValue,
+                                advanceDaysValue
                             )
                             // 입력 초기화
                             title = ""
@@ -709,6 +767,7 @@ fun AddEditBottomSheet(
                             selectedColor = 0xFFA8C5DAL  // Pastel Blue
                             selectedRepeatType = RepeatType.NONE
                             selectedWeeklyDays = emptySet()
+                            selectedAdvanceDays = null
                             subTasks = emptyList()
                             newSubTaskText = ""
                             selectedGroupName = null

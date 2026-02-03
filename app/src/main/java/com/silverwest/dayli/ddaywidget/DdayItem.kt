@@ -43,7 +43,8 @@ data class DdayItem(
     @ColumnInfo(name = "sub_tasks")
     val subTasks: String? = null,  // 체크리스트 하위 항목 (JSON 형식)
     val isHidden: Boolean = false,  // 매년 반복: 체크 시 숨김
-    val nextShowDate: Long? = null,  // 매년 반복: 다시 보여줄 날짜 (epoch ms)
+    val nextShowDate: Long? = null,  // 반복: 다시 보여줄 날짜 (epoch ms)
+    val advanceDisplayDays: Int? = null,  // 미리 표시 일수 (null = 기본값 사용)
     @ColumnInfo(name = "group_name")
     val groupName: String? = null  // D-Day 그룹 이름
 ) {
@@ -120,6 +121,17 @@ data class DdayItem(
     // 반복 여부 확인
     fun isRepeating(): Boolean {
         return repeatTypeEnum() != RepeatType.NONE
+    }
+
+    // 미리 표시 일수 (항목별 설정값 또는 기본값)
+    fun getAdvanceDays(): Int {
+        advanceDisplayDays?.let { return it }
+        return when (repeatTypeEnum()) {
+            RepeatType.WEEKLY -> 2
+            RepeatType.MONTHLY -> 14
+            RepeatType.YEARLY -> 30
+            else -> 0
+        }
     }
 
     // 다음 반복 날짜 계산

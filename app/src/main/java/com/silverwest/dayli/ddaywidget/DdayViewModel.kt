@@ -120,16 +120,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 TodoSortOption.LATEST -> dao.getAllTodos()
                 else -> dao.getAllTodosSorted()
             }
-            // 매주 반복 To-Do: 오늘 요일에 해당하는 것만 표시
-            val today = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK)
-            val filtered = items.filter { item ->
-                if (!item.isChecked && item.repeatTypeEnum() == RepeatType.WEEKLY && item.repeatDay != null && item.repeatDay != 0) {
-                    item.repeatDay and (1 shl (today - 1)) != 0
-                } else {
-                    true
-                }
-            }
-            _todoList.postValue(filtered)
+            _todoList.postValue(items)
         }
     }
 
@@ -146,11 +137,8 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             items.forEach { item ->
                 val date = item.date ?: return@forEach
                 val rType = item.repeatTypeEnum()
-                val advanceDays = when (rType) {
-                    RepeatType.MONTHLY -> 14
-                    RepeatType.YEARLY -> 30
-                    else -> return@forEach
-                }
+                if (rType == RepeatType.NONE || rType == RepeatType.DAILY) return@forEach
+                val advanceDays = item.getAdvanceDays()
                 val correctShowDate = java.util.Calendar.getInstance().apply {
                     time = date
                     add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
@@ -206,49 +194,75 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
             // 반복 일정이고 체크하는 경우
             if (newChecked && item.isRepeating()) {
+                val rType = item.repeatTypeEnum()
+
                 if (item.isDday()) {
-                    // D-Day 반복: 다음 날짜로 자동 재생성
                     val nextDate = item.getNextRepeatDate()
                     if (nextDate != null) {
-                        val rType = item.repeatTypeEnum()
-                        if (rType == RepeatType.MONTHLY || rType == RepeatType.YEARLY) {
-                            // 매월/매년 반복: 숨기고 미리 다시 표시
-                            val advanceDays = if (rType == RepeatType.MONTHLY) 14 else 30
+                        if (rType == RepeatType.DAILY) {
+                            // 매일: 다음 날짜로 변경
+                            dao.update(item.copy(date = nextDate, isChecked = false, checkedAt = null))
+                            Log.d("DDAY_WIDGET", "🔁 반복 D-Day 갱신: ${item.title} → ${nextDate}")
+                        } else {
+                            // 매주/매월/매년: 숨기고 미리 표시
+                            val advanceDays = item.getAdvanceDays()
                             val showDate = java.util.Calendar.getInstance().apply {
                                 time = nextDate
                                 add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
                             }.timeInMillis
-                            val updatedItem = item.copy(
-                                date = nextDate,
-                                isChecked = false,
-                                checkedAt = null,
-                                isHidden = true,
-                                nextShowDate = showDate
-                            )
-                            dao.update(updatedItem)
+                            dao.update(item.copy(
+                                date = nextDate, isChecked = false, checkedAt = null,
+                                isHidden = true, nextShowDate = showDate
+                            ))
                             Log.d("DDAY_WIDGET", "🔁 반복 D-Day 숨김: ${item.title} → 표시일: $showDate")
-                        } else {
-                            val updatedItem = item.copy(
-                                date = nextDate,
-                                isChecked = false,
-                                checkedAt = null
-                            )
-                            dao.update(updatedItem)
-                            Log.d("DDAY_WIDGET", "🔁 반복 D-Day 갱신: ${item.title} → ${nextDate}")
                         }
                     }
                 } else if (item.isTodo()) {
-                    // To-Do 반복: 체크 해제 상태로 재생성 (새 항목 생성)
-                    val checkedAt = System.currentTimeMillis()
-                    dao.updateChecked(item.id, true, checkedAt)  // 기존 항목 체크
-                    // 새로운 To-Do 항목 생성 (반복 유지)
-                    val newTodo = item.copy(
-                        id = 0,  // 새 ID 자동 생성
-                        isChecked = false,
-                        checkedAt = null
-                    )
-                    dao.insert(newTodo)
-                    Log.d("DDAY_WIDGET", "🔁 반복 To-Do 재생성: ${item.title}")
+                    if (rType == RepeatType.DAILY) {
+                        // 매일: 기존 체크 후 새로 생성
+                        dao.updateChecked(item.id, true, System.currentTimeMillis())
+                        dao.insert(item.copy(id = 0, isChecked = false, checkedAt = null))
+                        Log.d("DDAY_WIDGET", "🔁 반복 To-Do 재생성: ${item.title}")
+                    } else {
+                        // 매주/매월/매년: 숨기고 미리 표시
+                        val advanceDays = item.getAdvanceDays()
+                        val nextOccurrence = java.util.Calendar.getInstance()
+                        when (rType) {
+                            RepeatType.WEEKLY -> {
+                                val mask = item.repeatDay ?: 0
+                                if (mask != 0) {
+                                    val todayDow = nextOccurrence.get(java.util.Calendar.DAY_OF_WEEK)
+                                    var found = false
+                                    for (i in 1..7) {
+                                        val checkDay = ((todayDow - 1 + i) % 7) + 1
+                                        if (mask and (1 shl (checkDay - 1)) != 0) {
+                                            nextOccurrence.add(java.util.Calendar.DAY_OF_YEAR, i)
+                                            found = true
+                                            break
+                                        }
+                                    }
+                                    if (!found) nextOccurrence.add(java.util.Calendar.WEEK_OF_YEAR, 1)
+                                } else {
+                                    nextOccurrence.add(java.util.Calendar.WEEK_OF_YEAR, 1)
+                                }
+                            }
+                            RepeatType.MONTHLY -> nextOccurrence.add(java.util.Calendar.MONTH, 1)
+                            RepeatType.YEARLY -> nextOccurrence.add(java.util.Calendar.YEAR, 1)
+                            else -> {}
+                        }
+                        val showDate = java.util.Calendar.getInstance().apply {
+                            timeInMillis = nextOccurrence.timeInMillis
+                            add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
+                        }.timeInMillis
+                        // 서브태스크 초기화 (모두 미체크)
+                        val resetSubTasks = item.getSubTaskList().map { it.copy(isChecked = false) }
+                        dao.update(item.copy(
+                            isChecked = false, checkedAt = null,
+                            isHidden = true, nextShowDate = showDate,
+                            subTasks = DdayItem.subTasksToJson(resetSubTasks)
+                        ))
+                        Log.d("DDAY_WIDGET", "🔁 반복 To-Do 숨김: ${item.title} → 표시일: $showDate")
+                    }
                 }
             } else {
                 // 일반 항목 또는 체크 해제: 기존 로직
@@ -278,7 +292,8 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         emoji: String = "📌",
         color: Long = 0xFFA8C5DAL,  // Pastel Blue
         repeatType: RepeatType = RepeatType.NONE,
-        groupName: String? = null
+        groupName: String? = null,
+        advanceDisplayDays: Int? = null
     ) {
         viewModelScope.launch {
             // 반복 기준 날짜 계산 (매주: 요일, 매월: 날짜)
@@ -299,7 +314,8 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 repeatType = repeatType.name,
                 repeatDay = repeatDay,
                 itemType = ItemType.DDAY.name,
-                groupName = groupName
+                groupName = groupName,
+                advanceDisplayDays = advanceDisplayDays
             )
             dao.insert(item)
             loadAll()
@@ -317,7 +333,8 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         color: Long = 0xFFA8C5DAL,  // Pastel Blue
         repeatType: RepeatType = RepeatType.NONE,
         subTasks: List<SubTask> = emptyList(),
-        repeatDay: Int? = null
+        repeatDay: Int? = null,
+        advanceDisplayDays: Int? = null
     ) {
         viewModelScope.launch {
             val item = DdayItem(
@@ -330,7 +347,8 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 repeatType = repeatType.name,
                 repeatDay = repeatDay,
                 itemType = ItemType.TODO.name,
-                subTasks = DdayItem.subTasksToJson(subTasks)
+                subTasks = DdayItem.subTasksToJson(subTasks),
+                advanceDisplayDays = advanceDisplayDays
             )
             dao.insert(item)
             loadAll()

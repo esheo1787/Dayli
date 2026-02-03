@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [DdayItem::class, TodoTemplate::class], version = 14, exportSchema = false)
+@Database(entities = [DdayItem::class, TodoTemplate::class], version = 15, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class DdayDatabase : RoomDatabase() {
     abstract fun ddayDao(): DdayDao
@@ -489,6 +489,13 @@ abstract class DdayDatabase : RoomDatabase() {
             }
         }
 
+        // 마이그레이션: version 14 → 15 (advanceDisplayDays 컬럼 추가 - 미리 표시 일수)
+        private val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE dday_items ADD COLUMN advanceDisplayDays INTEGER DEFAULT NULL")
+            }
+        }
+
         // 마이그레이션: version 7 → 9 (직접 점프)
         private val MIGRATION_7_9 = object : Migration(7, 9) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -535,7 +542,8 @@ abstract class DdayDatabase : RoomDatabase() {
                         MIGRATION_7_8, MIGRATION_1_8, MIGRATION_2_8, MIGRATION_3_8, MIGRATION_4_8, MIGRATION_5_8, MIGRATION_6_8,
                         MIGRATION_8_9, MIGRATION_7_9,
                         MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
-                        MIGRATION_13_14
+                        MIGRATION_13_14,
+                        MIGRATION_14_15
                     )
                     .build()
                     .also { INSTANCE = it }

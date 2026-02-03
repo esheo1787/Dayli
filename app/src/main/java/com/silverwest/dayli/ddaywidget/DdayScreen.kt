@@ -624,20 +624,11 @@ fun DdayScreen(
                                         containerColor = MaterialTheme.colorScheme.surface
                                     )
                                 ) {
-                                    val showDateText = item.date?.let { date ->
-                                        val rType = item.repeatTypeEnum()
-                                        val advanceDays = when (rType) {
-                                            RepeatType.MONTHLY -> 14
-                                            RepeatType.YEARLY -> 30
-                                            else -> 0
+                                    val showDateText = item.nextShowDate?.let { showDate ->
+                                        val cal = java.util.Calendar.getInstance().apply {
+                                            timeInMillis = showDate
                                         }
-                                        if (advanceDays > 0) {
-                                            val cal = java.util.Calendar.getInstance().apply {
-                                                time = date
-                                                add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
-                                            }
-                                            "📅 ${cal.get(java.util.Calendar.YEAR)}년 ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일 표시 예정"
-                                        } else null
+                                        "📅 ${cal.get(java.util.Calendar.YEAR)}년 ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일 표시 예정"
                                     }
                                     DdayListItem(
                                         item = item,
