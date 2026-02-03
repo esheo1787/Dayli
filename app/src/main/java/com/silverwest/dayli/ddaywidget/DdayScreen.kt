@@ -144,8 +144,15 @@ fun DdayScreen(
         reorderableState.listState.scrollToItem(0)
     }
 
-    // D-Day 탭 초기 스크롤 플래그
+    // D-Day 탭 초기 스크롤: groupOrder 변경 후 리컴포지션 완료를 기다린 뒤 scroll
     var ddayInitialScrollDone by remember { mutableStateOf(false) }
+    LaunchedEffect(groupOrder) {
+        if (!ddayInitialScrollDone && groupOrder.isNotEmpty()) {
+            ddayInitialScrollDone = true
+            delay(100) // LazyColumn 리컴포지션 대기
+            groupReorderableState.listState.scrollToItem(0)
+        }
+    }
 
     // 완료 섹션 펼침/접힘 상태 (저장된 상태 복원)
     var isCompletedExpanded by remember { mutableStateOf(DdaySettings.isCompletedExpanded(context)) }
@@ -194,11 +201,6 @@ fun DdayScreen(
         savedOrder.forEach { name -> if (name in ddayPendingByGroup) ordered.add(name) }
         ddayPendingByGroup.keys.forEach { name -> if (name !in ordered) ordered.add(name) }
         groupOrder = ordered
-        // 앱 실행 시 D-Day 탭 스크롤 맨 위로 (groupOrder 설정 후 실행)
-        if (!ddayInitialScrollDone && ordered.isNotEmpty()) {
-            ddayInitialScrollDone = true
-            groupReorderableState.listState.scrollToItem(0)
-        }
     }
 
     // 정렬된 그룹 리스트 (항상 드래그 순서 사용)
