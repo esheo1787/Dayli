@@ -435,38 +435,6 @@ fun SettingsScreen(
             )
         }
 
-        // 앱 미리보기
-        Text(
-            text = "미리보기",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
-
-        PreviewItem(
-            emoji = "📚",
-            title = "시험 공부",
-            dday = "D-7",
-            color = Color(0xFFE53935),
-            backgroundEnabled = backgroundEnabled,
-            backgroundOpacity = backgroundOpacity,
-            iconBgOpacity = iconBgOpacity
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        PreviewItem(
-            emoji = "✈️",
-            title = "여행 출발",
-            dday = "D-14",
-            color = Color(0xFF1E88E5),
-            backgroundEnabled = backgroundEnabled,
-            backgroundOpacity = backgroundOpacity,
-            iconBgOpacity = iconBgOpacity
-        )
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
         // 앱 글씨 크기
         Column(
             modifier = Modifier
@@ -501,6 +469,38 @@ fun SettingsScreen(
                 }
             }
         }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        // 앱 미리보기
+        Text(
+            text = "미리보기",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+
+        PreviewItem(
+            emoji = "📚",
+            title = "시험 공부",
+            dday = "D-7",
+            color = Color(0xFFE53935),
+            backgroundEnabled = backgroundEnabled,
+            backgroundOpacity = backgroundOpacity,
+            iconBgOpacity = iconBgOpacity
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        PreviewItem(
+            emoji = "✈️",
+            title = "여행 출발",
+            dday = "D-14",
+            color = Color(0xFF1E88E5),
+            backgroundEnabled = backgroundEnabled,
+            backgroundOpacity = backgroundOpacity,
+            iconBgOpacity = iconBgOpacity
+        )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
