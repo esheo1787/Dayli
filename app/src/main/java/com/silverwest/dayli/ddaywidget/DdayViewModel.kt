@@ -204,11 +204,14 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                             time = nextDate
                             add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
                         }.timeInMillis
+                        // showDate가 현재 이전이면 unhideReadyItems에 의해 즉시 풀리므로, 다음 발생일로 설정
+                        val now = System.currentTimeMillis()
+                        val effectiveShowDate = if (showDate <= now) nextDate.time else showDate
                         dao.update(item.copy(
                             date = nextDate, isChecked = false, checkedAt = null,
-                            isHidden = true, nextShowDate = showDate
+                            isHidden = true, nextShowDate = effectiveShowDate
                         ))
-                        Log.d("DDAY_WIDGET", "🔁 반복 D-Day 숨김: ${item.title} → 표시일: $showDate")
+                        Log.d("DDAY_WIDGET", "🔁 반복 D-Day 숨김: ${item.title} → 표시일: $effectiveShowDate")
                     }
                 } else if (item.isTodo()) {
                     val nextDate = item.getNextOccurrenceDate()
@@ -218,13 +221,15 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                             time = nextDate
                             add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
                         }.timeInMillis
+                        val now = System.currentTimeMillis()
+                        val effectiveShowDate = if (showDate <= now) nextDate.time else showDate
                         val resetSubTasks = item.getSubTaskList().map { it.copy(isChecked = false) }
                         dao.update(item.copy(
                             isChecked = false, checkedAt = null,
-                            isHidden = true, nextShowDate = showDate,
+                            isHidden = true, nextShowDate = effectiveShowDate,
                             subTasks = DdayItem.subTasksToJson(resetSubTasks)
                         ))
-                        Log.d("DDAY_WIDGET", "🔁 반복 To-Do 숨김: ${item.title} → 표시일: $showDate")
+                        Log.d("DDAY_WIDGET", "🔁 반복 To-Do 숨김: ${item.title} → 표시일: $effectiveShowDate")
                     }
                 }
             } else {
@@ -364,12 +369,39 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
                 // 하위 항목 전체 완료 여부에 따라 상위 아이템 자동 완료/복귀
                 val allChecked = currentSubTasks.all { it.isChecked }
-                val updatedItem = item.copy(
-                    subTasks = DdayItem.subTasksToJson(currentSubTasks),
-                    isChecked = allChecked,
-                    checkedAt = if (allChecked) System.currentTimeMillis() else null
-                )
-                dao.update(updatedItem)
+
+                if (allChecked && item.isRepeating()) {
+                    // 반복 항목: 모든 서브태스크 완료 → 반복 일정 섹션으로 이동
+                    val nextDate = item.getNextOccurrenceDate()
+                    if (nextDate != null) {
+                        val advanceDays = item.getAdvanceDays()
+                        val showDate = java.util.Calendar.getInstance().apply {
+                            time = nextDate
+                            add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
+                        }.timeInMillis
+                        val now = System.currentTimeMillis()
+                        val effectiveShowDate = if (showDate <= now) nextDate.time else showDate
+                        val resetSubTasks = currentSubTasks.map { it.copy(isChecked = false) }
+                        dao.update(item.copy(
+                            date = if (item.isDday()) nextDate else item.date,
+                            subTasks = DdayItem.subTasksToJson(resetSubTasks),
+                            isChecked = false, checkedAt = null,
+                            isHidden = true, nextShowDate = effectiveShowDate
+                        ))
+                    } else {
+                        dao.update(item.copy(
+                            subTasks = DdayItem.subTasksToJson(currentSubTasks),
+                            isChecked = true, checkedAt = System.currentTimeMillis()
+                        ))
+                    }
+                } else {
+                    val updatedItem = item.copy(
+                        subTasks = DdayItem.subTasksToJson(currentSubTasks),
+                        isChecked = allChecked,
+                        checkedAt = if (allChecked) System.currentTimeMillis() else null
+                    )
+                    dao.update(updatedItem)
+                }
                 loadAll()
                 // 위젯 동기화
                 DdayWidgetProvider.refreshAllWidgets(getApplication())
