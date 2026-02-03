@@ -263,12 +263,9 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                         // 서브태스크 초기화 (모두 미체크)
                         val resetSubTasks = item.getSubTaskList().map { it.copy(isChecked = false) }
                         if (showDate <= System.currentTimeMillis()) {
-                            // 미리 표시 기간 내 → 숨기지 않고 리셋만
-                            dao.update(item.copy(
-                                isChecked = false, checkedAt = null,
-                                subTasks = DdayItem.subTasksToJson(resetSubTasks)
-                            ))
-                            Log.d("DDAY_WIDGET", "🔁 반복 To-Do 리셋(기간 내): ${item.title}")
+                            // 미리 표시 기간 내 → 일반 체크 처리
+                            dao.updateChecked(item.id, true, System.currentTimeMillis())
+                            Log.d("DDAY_WIDGET", "🔁 반복 To-Do 체크(기간 내): ${item.title}")
                         } else {
                             dao.update(item.copy(
                                 isChecked = false, checkedAt = null,
@@ -374,45 +371,51 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateItem(item: DdayItem) {
         viewModelScope.launch {
-            // 숨겨진 반복 항목: advanceDisplayDays 변경 시 nextShowDate 재계산
-            val finalItem = if (item.isHidden && item.isRepeating() &&
-                item.repeatTypeEnum() !in listOf(RepeatType.NONE, RepeatType.DAILY)) {
-                val advanceDays = item.getAdvanceDays()
-                if (item.isDday() && item.date != null) {
-                    item.copy(nextShowDate = java.util.Calendar.getInstance().apply {
-                        time = item.date!!
-                        add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
-                    }.timeInMillis)
-                } else if (item.isTodo()) {
-                    val nextOccurrence = java.util.Calendar.getInstance()
-                    when (item.repeatTypeEnum()) {
-                        RepeatType.WEEKLY -> {
-                            val mask = item.repeatDay ?: 0
-                            if (mask != 0) {
-                                val todayDow = nextOccurrence.get(java.util.Calendar.DAY_OF_WEEK)
-                                var found = false
-                                for (i in 1..7) {
-                                    val checkDay = ((todayDow - 1 + i) % 7) + 1
-                                    if (mask and (1 shl (checkDay - 1)) != 0) {
-                                        nextOccurrence.add(java.util.Calendar.DAY_OF_YEAR, i)
-                                        found = true
-                                        break
+            // 숨겨진 항목 처리: 반복 해제 시 숨김 해제, 반복 유지 시 nextShowDate 재계산
+            val finalItem = if (item.isHidden) {
+                val rType = item.repeatTypeEnum()
+                if (rType in listOf(RepeatType.WEEKLY, RepeatType.MONTHLY, RepeatType.YEARLY)) {
+                    // 매주/매월/매년: nextShowDate 재계산
+                    val advanceDays = item.getAdvanceDays()
+                    if (item.isDday() && item.date != null) {
+                        item.copy(nextShowDate = java.util.Calendar.getInstance().apply {
+                            time = item.date!!
+                            add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
+                        }.timeInMillis)
+                    } else if (item.isTodo()) {
+                        val nextOccurrence = java.util.Calendar.getInstance()
+                        when (rType) {
+                            RepeatType.WEEKLY -> {
+                                val mask = item.repeatDay ?: 0
+                                if (mask != 0) {
+                                    val todayDow = nextOccurrence.get(java.util.Calendar.DAY_OF_WEEK)
+                                    var found = false
+                                    for (i in 1..7) {
+                                        val checkDay = ((todayDow - 1 + i) % 7) + 1
+                                        if (mask and (1 shl (checkDay - 1)) != 0) {
+                                            nextOccurrence.add(java.util.Calendar.DAY_OF_YEAR, i)
+                                            found = true
+                                            break
+                                        }
                                     }
+                                    if (!found) nextOccurrence.add(java.util.Calendar.WEEK_OF_YEAR, 1)
+                                } else {
+                                    nextOccurrence.add(java.util.Calendar.WEEK_OF_YEAR, 1)
                                 }
-                                if (!found) nextOccurrence.add(java.util.Calendar.WEEK_OF_YEAR, 1)
-                            } else {
-                                nextOccurrence.add(java.util.Calendar.WEEK_OF_YEAR, 1)
                             }
+                            RepeatType.MONTHLY -> nextOccurrence.add(java.util.Calendar.MONTH, 1)
+                            RepeatType.YEARLY -> nextOccurrence.add(java.util.Calendar.YEAR, 1)
+                            else -> {}
                         }
-                        RepeatType.MONTHLY -> nextOccurrence.add(java.util.Calendar.MONTH, 1)
-                        RepeatType.YEARLY -> nextOccurrence.add(java.util.Calendar.YEAR, 1)
-                        else -> {}
-                    }
-                    item.copy(nextShowDate = java.util.Calendar.getInstance().apply {
-                        timeInMillis = nextOccurrence.timeInMillis
-                        add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
-                    }.timeInMillis)
-                } else item
+                        item.copy(nextShowDate = java.util.Calendar.getInstance().apply {
+                            timeInMillis = nextOccurrence.timeInMillis
+                            add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
+                        }.timeInMillis)
+                    } else item
+                } else {
+                    // 반복 해제 또는 매일/없음 → 숨김 해제하여 일반 목록으로 복귀
+                    item.copy(isHidden = false, nextShowDate = null)
+                }
             } else item
             dao.update(finalItem)
             loadAll()
