@@ -265,6 +265,36 @@ object DdaySettings {
         getPrefs(context).edit().putStringSet(KEY_EXPANDED_SUBTASK_IDS, stringSet).apply()
     }
 
+    // ===== 섹션 펼침/접힘 상태 =====
+
+    private const val KEY_COMPLETED_EXPANDED = "section_completed_expanded"
+    private const val KEY_HIDDEN_DDAY_EXPANDED = "section_hidden_dday_expanded"
+    private const val KEY_HIDDEN_TODO_EXPANDED = "section_hidden_todo_expanded"
+
+    fun isCompletedExpanded(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_COMPLETED_EXPANDED, false)
+    }
+
+    fun setCompletedExpanded(context: Context, expanded: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_COMPLETED_EXPANDED, expanded).apply()
+    }
+
+    fun isHiddenDdayExpanded(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_HIDDEN_DDAY_EXPANDED, false)
+    }
+
+    fun setHiddenDdayExpanded(context: Context, expanded: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_HIDDEN_DDAY_EXPANDED, expanded).apply()
+    }
+
+    fun isHiddenTodoExpanded(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_HIDDEN_TODO_EXPANDED, false)
+    }
+
+    fun setHiddenTodoExpanded(context: Context, expanded: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_HIDDEN_TODO_EXPANDED, expanded).apply()
+    }
+
     // ===== 정렬 설정 (앱 ↔ 위젯 공유) =====
 
     // D-Day 정렬 (NEAREST / FARTHEST)

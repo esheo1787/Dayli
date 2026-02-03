@@ -139,12 +139,21 @@ fun DdayScreen(
         }
     )
 
-    // 완료 섹션 펼침/접힘 상태 (기본: 접힘)
-    var isCompletedExpanded by remember { mutableStateOf(false) }
+    // 완료 섹션 펼침/접힘 상태 (저장된 상태 복원)
+    var isCompletedExpanded by remember { mutableStateOf(DdaySettings.isCompletedExpanded(context)) }
+    LaunchedEffect(isCompletedExpanded) {
+        DdaySettings.setCompletedExpanded(context, isCompletedExpanded)
+    }
 
-    // 반복 일정 섹션 펼침/접힘 상태 (기본: 접힘)
-    var isHiddenExpanded by remember { mutableStateOf(false) }
-    var isHiddenTodoExpanded by remember { mutableStateOf(false) }
+    // 반복 일정 섹션 펼침/접힘 상태 (저장된 상태 복원)
+    var isHiddenExpanded by remember { mutableStateOf(DdaySettings.isHiddenDdayExpanded(context)) }
+    LaunchedEffect(isHiddenExpanded) {
+        DdaySettings.setHiddenDdayExpanded(context, isHiddenExpanded)
+    }
+    var isHiddenTodoExpanded by remember { mutableStateOf(DdaySettings.isHiddenTodoExpanded(context)) }
+    LaunchedEffect(isHiddenTodoExpanded) {
+        DdaySettings.setHiddenTodoExpanded(context, isHiddenTodoExpanded)
+    }
 
     // D-Day 그룹 펼침/접힘 상태 (그룹명 -> 펼침 여부, 기본: 펼침)
     var expandedGroups by remember { mutableStateOf(setOf<String>()) }
