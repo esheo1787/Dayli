@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -198,6 +200,9 @@ fun DdayScreen(
     val scope = rememberCoroutineScope()
     var deletedItem by remember { mutableStateOf<DdayItem?>(null) }
 
+    // Pull to Refresh 상태
+    var isRefreshing by remember { mutableStateOf(false) }
+
     Scaffold(
         snackbarHost = {
             SnackbarHost(
@@ -344,10 +349,22 @@ fun DdayScreen(
             // 리스트 (To-Do 탭: 드래그 가능, D-Day 탭: 일반)
             if (page == 1) {
                 // To-Do 탭: 드래그 순서 변경 가능
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = {
+                        isRefreshing = true
+                        viewModel.loadAll()
+                        scope.launch {
+                            delay(500)
+                            isRefreshing = false
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
                 LazyColumn(
                     state = reorderableState.listState,
                     modifier = Modifier
-                        .weight(1f)
+                        .fillMaxSize()
                         .reorderable(reorderableState),
                     verticalArrangement = Arrangement.spacedBy(1.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)  // FAB 겹침 방지
@@ -521,12 +538,25 @@ fun DdayScreen(
                         }
                     }
                 }
+                } // PullToRefreshBox
             } else {
                 // D-Day 탭: 그룹 드래그 가능, 그룹 내 아이템은 정렬 옵션에 따라
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = {
+                        isRefreshing = true
+                        viewModel.loadAll()
+                        scope.launch {
+                            delay(500)
+                            isRefreshing = false
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
                 LazyColumn(
                     state = groupReorderableState.listState,
                     modifier = Modifier
-                        .weight(1f)
+                        .fillMaxSize()
                         .reorderable(groupReorderableState),
                     verticalArrangement = Arrangement.spacedBy(1.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
@@ -702,6 +732,7 @@ fun DdayScreen(
                         }
                     }
                 }
+                } // PullToRefreshBox
             }
             } // Column (HorizontalPager page)
             } // HorizontalPager
