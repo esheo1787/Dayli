@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -143,12 +144,10 @@ fun DdayScreen(
     LaunchedEffect(Unit) {
         reorderableState.listState.scrollToItem(0)
     }
-    var ddayInitialScrollDone by remember { mutableStateOf(false) }
-    LaunchedEffect(ddays) {
-        if (!ddayInitialScrollDone && ddays.isNotEmpty()) {
-            groupReorderableState.listState.scrollToItem(0)
-            ddayInitialScrollDone = true
-        }
+    LaunchedEffect(Unit) {
+        snapshotFlow { groupReorderableState.listState.layoutInfo.totalItemsCount }
+            .first { it > 0 }
+        groupReorderableState.listState.scrollToItem(0)
     }
 
     // 완료 섹션 펼침/접힘 상태 (저장된 상태 복원)
