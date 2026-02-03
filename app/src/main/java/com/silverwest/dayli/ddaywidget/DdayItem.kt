@@ -167,6 +167,39 @@ data class DdayItem(
         return calendar.time
     }
 
+    // 다음 반복 발생일 계산 (D-Day + To-Do 통합)
+    fun getNextOccurrenceDate(): Date? {
+        if (!isRepeating()) return null
+        if (date != null) return getNextRepeatDate()
+        // To-Do: 오늘 기준 다음 발생일 계산
+        val cal = Calendar.getInstance()
+        when (repeatTypeEnum()) {
+            RepeatType.DAILY -> cal.add(Calendar.DAY_OF_YEAR, 1)
+            RepeatType.WEEKLY -> {
+                val mask = repeatDay ?: 0
+                if (mask != 0) {
+                    val todayDow = cal.get(Calendar.DAY_OF_WEEK)
+                    var found = false
+                    for (i in 1..7) {
+                        val checkDay = ((todayDow - 1 + i) % 7) + 1
+                        if (mask and (1 shl (checkDay - 1)) != 0) {
+                            cal.add(Calendar.DAY_OF_YEAR, i)
+                            found = true
+                            break
+                        }
+                    }
+                    if (!found) cal.add(Calendar.WEEK_OF_YEAR, 1)
+                } else {
+                    cal.add(Calendar.WEEK_OF_YEAR, 1)
+                }
+            }
+            RepeatType.MONTHLY -> cal.add(Calendar.MONTH, 1)
+            RepeatType.YEARLY -> cal.add(Calendar.YEAR, 1)
+            RepeatType.NONE -> return null
+        }
+        return cal.time
+    }
+
     // 반복 아이콘 포함 이모지 가져오기
     fun getDisplayEmoji(): String {
         val emoji = getEmoji()

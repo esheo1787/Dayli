@@ -397,6 +397,12 @@ fun DdayScreen(
                                     }
                                     // 아이템 내용
                                     Box(modifier = Modifier.weight(1f)) {
+                                        val nextDateInfo = if (item.isRepeating()) {
+                                            item.getNextOccurrenceDate()?.let { nextDate ->
+                                                val cal = java.util.Calendar.getInstance().apply { time = nextDate }
+                                                "다음: ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일"
+                                            }
+                                        } else null
                                         DdayListItem(
                                             item = item,
                                             onToggle = { viewModel.toggleChecked(it) },
@@ -412,7 +418,8 @@ fun DdayScreen(
                                                 expandedSubTaskIds = if (item.id in expandedSubTaskIds)
                                                     expandedSubTaskIds - item.id
                                                 else expandedSubTaskIds + item.id
-                                            }
+                                            },
+                                            infoText = nextDateInfo
                                         )
                                     }
                                 }
@@ -581,6 +588,12 @@ fun DdayScreen(
                                                     containerColor = MaterialTheme.colorScheme.surface
                                                 )
                                             ) {
+                                                val nextDateInfo = if (item.isRepeating()) {
+                                                    item.getNextOccurrenceDate()?.let { nextDate ->
+                                                        val cal = java.util.Calendar.getInstance().apply { time = nextDate }
+                                                        "다음: ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일"
+                                                    }
+                                                } else null
                                                 DdayListItem(
                                                     item = item,
                                                     onToggle = { viewModel.toggleChecked(it) },
@@ -590,7 +603,8 @@ fun DdayScreen(
                                                     },
                                                     onSubTaskToggle = { ddayItem, index ->
                                                         viewModel.toggleSubTask(ddayItem, index)
-                                                    }
+                                                    },
+                                                    infoText = nextDateInfo
                                                 )
                                             }
                                         }
