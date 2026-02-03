@@ -125,7 +125,10 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     fun loadHiddenDdays() {
         viewModelScope.launch {
             val items = dao.getHiddenDdays()
-            // 저장된 nextShowDate가 item.date 기준과 다르면 재계산
+            _hiddenDdays.postValue(items)  // 즉시 UI 갱신
+
+            // 저장된 nextShowDate가 item.date 기준과 다르면 재계산 (auto-unhide 타이밍 보정)
+            var anyUpdated = false
             items.forEach { item ->
                 val date = item.date ?: return@forEach
                 val rType = item.repeatTypeEnum()
@@ -140,9 +143,12 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 }.timeInMillis
                 if (item.nextShowDate != correctShowDate) {
                     dao.update(item.copy(nextShowDate = correctShowDate))
+                    anyUpdated = true
                 }
             }
-            _hiddenDdays.postValue(dao.getHiddenDdays())
+            if (anyUpdated) {
+                _hiddenDdays.postValue(dao.getHiddenDdays())
+            }
         }
     }
 
