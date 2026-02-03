@@ -31,7 +31,9 @@ fun DdayListItem(
     onLongPress: (DdayItem) -> Unit = {},
     onSubTaskToggle: (DdayItem, Int) -> Unit = { _, _ -> },
     isExpanded: Boolean = false,
-    onExpandToggle: () -> Unit = {}
+    onExpandToggle: () -> Unit = {},
+    showCheckbox: Boolean = true,
+    infoText: String? = null
 ) {
     val context = LocalContext.current
     val formattedDate = item.date?.let { SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(it) }
@@ -196,6 +198,15 @@ fun DdayListItem(
                     color = secondaryTextColor
                 )
             }
+            infoText?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = (11 * fontScale).sp,
+                    color = secondaryTextColor,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
         }
 
         // D-Day + 체크박스 (D-Day) 또는 체크박스만 (To-Do)
@@ -225,7 +236,7 @@ fun DdayListItem(
                 )
             }
             // 하위 체크리스트가 있는 To-Do는 상위 체크박스 숨김 (자동 완료로 처리)
-            if (!hasSubTasks) {
+            if (!hasSubTasks && showCheckbox) {
                 Checkbox(
                     checked = item.isChecked,
                     onCheckedChange = { onToggle(item) },

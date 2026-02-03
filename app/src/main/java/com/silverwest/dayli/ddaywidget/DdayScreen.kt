@@ -574,30 +574,23 @@ fun DdayScreen(
                                         containerColor = MaterialTheme.colorScheme.surface
                                     )
                                 ) {
-                                    Column {
-                                        DdayListItem(
-                                            item = item,
-                                            onToggle = { viewModel.toggleChecked(it) },
-                                            onLongPress = {
-                                                selectedItem = it
-                                                showBottomSheet = true
-                                            },
-                                            onSubTaskToggle = { ddayItem, index ->
-                                                viewModel.toggleSubTask(ddayItem, index)
-                                            }
-                                        )
-                                        if (item.nextShowDate != null) {
-                                            val cal = java.util.Calendar.getInstance().apply {
-                                                timeInMillis = item.nextShowDate
-                                            }
-                                            Text(
-                                                text = "${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일 표시 예정",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(start = 56.dp, bottom = 8.dp)
-                                            )
-                                        }
+                                    val showDateText = item.nextShowDate?.let { ts ->
+                                        val cal = java.util.Calendar.getInstance().apply { timeInMillis = ts }
+                                        "📅 ${cal.get(java.util.Calendar.MONTH) + 1}월 ${cal.get(java.util.Calendar.DAY_OF_MONTH)}일 표시 예정"
                                     }
+                                    DdayListItem(
+                                        item = item,
+                                        onToggle = { viewModel.toggleChecked(it) },
+                                        onLongPress = {
+                                            selectedItem = it
+                                            showBottomSheet = true
+                                        },
+                                        onSubTaskToggle = { ddayItem, index ->
+                                            viewModel.toggleSubTask(ddayItem, index)
+                                        },
+                                        showCheckbox = false,
+                                        infoText = showDateText
+                                    )
                                 }
                             }
                         }
