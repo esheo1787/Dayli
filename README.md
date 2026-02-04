@@ -52,17 +52,23 @@
 ## ✨ Features
 
 ### D-Day Countdown
-- Track important dates with countdown/count-up display
-- Organize with custom groups and emoji icons
+- Track important dates with countdown/count-up display (D-3, D-2 in blue / D-1, D-Day, D+N in red)
+- Organize with custom groups, drag to reorder groups
+- Group management: rename, delete, custom emoji per group
 - Sort by upcoming or furthest dates
-- Yearly repeat support
-- D-1 and D-Day push notifications
+- Recurring schedules: daily, weekly (with day selection), monthly, yearly
+- Advance display setting (show items days/weeks before due date)
+- Checked repeat items auto-hide and reappear on next occurrence
+- D-1 and D-Day push notifications (configurable time, sound, vibration)
 
 ### To-Do Checklist
 - Sub-checklist items for detailed task breakdown
+- Automatic completion when all sub-items are checked
 - Save & load templates for recurring tasks
 - Progress tracking (e.g., 2/5 completed)
+- Drag to reorder items
 - Multiple sort options: custom order, incomplete first, recently added
+- Recurring schedules: daily, weekly (with day selection), monthly, yearly
 
 ### Home Screen Widgets
 - **Mixed Widget** — D-Day and To-Do combined
@@ -75,9 +81,11 @@
 ### Customization
 - Full system emoji picker for icons
 - 14 distinct pastel color palette
-- Dark mode support
+- Theme modes: System default / Light / Dark
 - App & widget text size adjustment (Small / Default / Large)
-- Item and icon background opacity controls
+- Item background, icon background, and widget background opacity controls
+- Pull-to-refresh on both tabs
+- UI state persistence: last tab, section expand/collapse, sub-checklist expand state
 
 ---
 
@@ -90,9 +98,8 @@
 | **Architecture** | MVVM |
 | **Local Database** | Room |
 | **Widgets** | RemoteViews + AppWidgetProvider |
-| **Async** | Kotlin Coroutines + Flow |
-| **DI** | Manual dependency injection |
-| **Min SDK** | 26 (Android 8.0) |
+| **Async** | Kotlin Coroutines + LiveData |
+| **Min SDK** | 24 (Android 7.0) |
 | **Target SDK** | 35 (Android 15) |
 
 ---
@@ -101,23 +108,31 @@
 
 ```
 com.silverwest.dayli
-├── data/
-│   ├── database/          # Room DB, DAOs, Entities
-│   ├── repository/        # Data repository layer
-│   └── model/             # Data models
-├── ui/
-│   ├── dday/              # D-Day tab screens & components
-│   ├── todo/              # To-Do tab screens & components
-│   ├── settings/          # Settings screen
-│   └── theme/             # App theming (colors, typography)
-├── widget/
-│   ├── mixed/             # Mixed widget (D-Day + To-Do)
-│   ├── dday/              # D-Day only widget
-│   └── todo/              # To-Do only widget
-└── notification/          # D-Day alarm & notification
+├── MainActivity.kt                  # App entry point
+├── ui/theme/                        # App theming (Color, Theme, Type)
+└── ddaywidget/
+    ├── DdayScreen.kt               # Main screen (D-Day + To-Do tabs)
+    ├── DdayListItem.kt             # List item composable
+    ├── AddEditBottomSheet.kt       # Add/edit bottom sheet
+    ├── SettingsScreen.kt           # Settings screen
+    ├── DdayItem.kt                 # Room entity
+    ├── DdayDao.kt                  # Room DAO
+    ├── DdayDatabase.kt             # Room database (v15, 15 migrations)
+    ├── DdayViewModel.kt            # ViewModel
+    ├── DdaySettings.kt             # SharedPreferences helper
+    ├── DdayWidgetProvider.kt       # Mixed widget provider
+    ├── DdayOnlyWidgetProvider.kt   # D-Day only widget provider
+    ├── TodoOnlyWidgetProvider.kt   # To-Do only widget provider
+    ├── NotificationHelper.kt       # Notification channel & delivery
+    ├── NotificationScheduler.kt    # Alarm scheduling
+    ├── NotificationReceiver.kt     # Broadcast receiver
+    ├── BootReceiver.kt             # Boot alarm rescheduling
+    ├── EmojiPickerDialog.kt        # System emoji picker
+    ├── TodoTemplate.kt             # Template entity & DAO
+    └── ...                         # Enums, converters, utilities
 ```
 
-The app follows the **MVVM pattern** with a clear separation between UI, business logic, and data layers. Room database handles all local persistence, and Kotlin Flow provides reactive data updates across the app and widgets.
+The app follows the **MVVM pattern** with ViewModel accessing Room DAO directly. Room database handles all local persistence, and LiveData provides reactive data updates across the app and widgets.
 
 ---
 
@@ -144,7 +159,7 @@ Designed a template save/load system for To-Do items, allowing users to store fr
 git clone https://github.com/esheo1787/Dayli.git
 
 # Open in Android Studio
-# Build and run on emulator or device (min SDK 26)
+# Build and run on emulator or device (min SDK 24)
 ```
 
 **Requirements:**
@@ -158,9 +173,12 @@ git clone https://github.com/esheo1787/Dayli.git
 
 - [x] Core D-Day & To-Do functionality
 - [x] Home screen widgets (Mixed, D-Day, To-Do)
-- [x] Dark mode
+- [x] Dark mode & theme selection
 - [x] Full emoji picker
 - [x] Template system
+- [x] Recurring schedules (daily, weekly, monthly, yearly)
+- [x] Group management & drag reorder
+- [x] Push notifications with customizable settings
 - [ ] Google Play Store release
 - [ ] Theme packs (Clean, Mono)
 - [ ] Banner ad integration

@@ -48,17 +48,23 @@
 ## ✨ 주요 기능
 
 ### D-Day 카운트다운
-- 중요한 날짜를 등록하고 남은 일수 확인
-- 그룹별 분류로 깔끔하게 정리
+- 중요한 날짜를 등록하고 남은 일수 확인 (D-3~D-2 파란색 / D-1, D-Day, D+N 빨간색)
+- 그룹별 분류, 그룹 드래그 순서 변경
+- 그룹 관리: 이름 변경, 삭제, 그룹별 이모지 설정
 - 임박순/여유순 정렬
-- 매년 반복 설정
-- D-1, D-Day 푸시 알림
+- 반복 일정: 매일/매주(요일 선택)/매월/매년
+- 미리 표시 일수 설정 (예: 2주 전, 1달 전부터 표시)
+- 체크한 반복 항목은 자동 숨김 → 다음 발생일에 자동 복귀
+- D-1, D-Day 푸시 알림 (알림 시간, 소리, 진동 설정 가능)
 
 ### To-Do 체크리스트
 - 하위 항목까지 세분화해서 관리
+- 하위 항목 전체 완료 시 자동 체크
 - 템플릿 저장 & 불러오기
 - 진행률 한눈에 확인 (2/5 등)
+- 드래그로 순서 변경
 - 내 순서 / 미완료순 / 최근 추가 정렬
+- 반복 일정: 매일/매주(요일 선택)/매월/매년
 
 ### 홈 화면 위젯
 - **혼합 위젯** — D-Day와 To-Do를 함께 표시
@@ -71,9 +77,11 @@
 ### 커스터마이징
 - 시스템 이모지 전체 사용 가능
 - 14가지 파스텔 색상 팔레트
-- 다크모드 지원
+- 테마 모드: 시스템 설정 / 라이트 / 다크
 - 앱 & 위젯 글씨 크기 조절 (작게 / 보통 / 크게)
-- 아이템/아이콘 배경 투명도 설정
+- 아이템 배경, 아이콘 배경, 위젯 배경 투명도 개별 설정
+- 당겨서 새로고침 (Pull-to-Refresh)
+- UI 상태 저장: 마지막 탭, 섹션 펼침/접힘, 하위 체크리스트 펼침 상태
 
 ---
 
@@ -86,9 +94,8 @@
 | **아키텍처** | MVVM |
 | **로컬 DB** | Room |
 | **위젯** | RemoteViews + AppWidgetProvider |
-| **비동기 처리** | Kotlin Coroutines + Flow |
-| **DI** | Manual dependency injection |
-| **Min SDK** | 26 (Android 8.0) |
+| **비동기 처리** | Kotlin Coroutines + LiveData |
+| **Min SDK** | 24 (Android 7.0) |
 | **Target SDK** | 35 (Android 15) |
 
 ---
@@ -97,23 +104,31 @@
 
 ```
 com.silverwest.dayli
-├── data/
-│   ├── database/          # Room DB, DAO, Entity
-│   ├── repository/        # 데이터 레포지토리
-│   └── model/             # 데이터 모델
-├── ui/
-│   ├── dday/              # D-Day 탭 화면 & 컴포넌트
-│   ├── todo/              # To-Do 탭 화면 & 컴포넌트
-│   ├── settings/          # 설정 화면
-│   └── theme/             # 앱 테마 (색상, 타이포그래피)
-├── widget/
-│   ├── mixed/             # 혼합 위젯 (D-Day + To-Do)
-│   ├── dday/              # D-Day 전용 위젯
-│   └── todo/              # To-Do 전용 위젯
-└── notification/          # D-Day 알림
+├── MainActivity.kt                  # 앱 진입점
+├── ui/theme/                        # 앱 테마 (Color, Theme, Type)
+└── ddaywidget/
+    ├── DdayScreen.kt               # 메인 화면 (D-Day + To-Do 탭)
+    ├── DdayListItem.kt             # 리스트 아이템 컴포저블
+    ├── AddEditBottomSheet.kt       # 추가/수정 바텀시트
+    ├── SettingsScreen.kt           # 설정 화면
+    ├── DdayItem.kt                 # Room 엔티티
+    ├── DdayDao.kt                  # Room DAO
+    ├── DdayDatabase.kt             # Room 데이터베이스 (v15, 15개 마이그레이션)
+    ├── DdayViewModel.kt            # ViewModel
+    ├── DdaySettings.kt             # SharedPreferences 헬퍼
+    ├── DdayWidgetProvider.kt       # 혼합 위젯 프로바이더
+    ├── DdayOnlyWidgetProvider.kt   # D-Day 전용 위젯 프로바이더
+    ├── TodoOnlyWidgetProvider.kt   # To-Do 전용 위젯 프로바이더
+    ├── NotificationHelper.kt       # 알림 채널 & 전달
+    ├── NotificationScheduler.kt    # 알림 스케줄링
+    ├── NotificationReceiver.kt     # 브로드캐스트 리시버
+    ├── BootReceiver.kt             # 부팅 시 알림 재등록
+    ├── EmojiPickerDialog.kt        # 시스템 이모지 피커
+    ├── TodoTemplate.kt             # 템플릿 엔티티 & DAO
+    └── ...                         # Enum, 컨버터, 유틸리티
 ```
 
-**MVVM 패턴**을 따르며 UI, 비즈니스 로직, 데이터 계층을 명확히 분리했습니다. Room 데이터베이스로 로컬 데이터를 관리하고, Kotlin Flow로 앱과 위젯 간 반응형 데이터 업데이트를 구현했습니다.
+**MVVM 패턴**을 따르며 ViewModel이 Room DAO를 직접 호출합니다. Room 데이터베이스로 로컬 데이터를 관리하고, LiveData로 앱과 위젯 간 반응형 데이터 업데이트를 구현했습니다.
 
 ---
 
@@ -140,7 +155,7 @@ com.silverwest.dayli
 git clone https://github.com/esheo1787/Dayli.git
 
 # Android Studio에서 열기
-# 에뮬레이터 또는 실기기에서 빌드 및 실행 (min SDK 26)
+# 에뮬레이터 또는 실기기에서 빌드 및 실행 (min SDK 24)
 ```
 
 **요구사항:**
@@ -154,9 +169,12 @@ git clone https://github.com/esheo1787/Dayli.git
 
 - [x] D-Day & To-Do 핵심 기능
 - [x] 홈 화면 위젯 (혼합, D-Day, To-Do)
-- [x] 다크모드
+- [x] 다크모드 & 테마 선택
 - [x] 시스템 이모지 피커
 - [x] 템플릿 시스템
+- [x] 반복 일정 (매일, 매주, 매월, 매년)
+- [x] 그룹 관리 & 드래그 순서 변경
+- [x] 푸시 알림 (시간/소리/진동 설정)
 - [ ] Google Play 스토어 출시
 - [ ] 테마 팩 (Clean, Mono)
 - [ ] 배너 광고 연동
