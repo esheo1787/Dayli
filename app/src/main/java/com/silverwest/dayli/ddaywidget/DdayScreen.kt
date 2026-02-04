@@ -626,6 +626,7 @@ fun DdayScreen(
                                     }
                                     // 그룹 내 항목들
                                     if (isGroupExpanded) {
+                                      Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                                         groupItems.forEach { item ->
                                             Card(
                                                 modifier = Modifier.fillMaxWidth(),
@@ -654,6 +655,7 @@ fun DdayScreen(
                                                 )
                                             }
                                         }
+                                      }
                                     }
                                 }
                             }
