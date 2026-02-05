@@ -139,9 +139,11 @@ fun DdayScreen(
     // Reorderable 상태 (D-Day 그룹 드래그)
     val groupReorderableState = rememberReorderableLazyListState(
         onMove = { from, to ->
-            if (from.index >= 0 && to.index >= 0 && from.index < groupOrder.size && to.index < groupOrder.size) {
+            val fromIndex = from.index - 1
+            val toIndex = to.index - 1
+            if (fromIndex >= 0 && toIndex >= 0 && fromIndex < groupOrder.size && toIndex < groupOrder.size) {
                 groupOrder = groupOrder.toMutableList().apply {
-                    add(to.index, removeAt(from.index))
+                    add(toIndex, removeAt(fromIndex))
                 }
             }
         },
@@ -579,6 +581,9 @@ fun DdayScreen(
                     verticalArrangement = Arrangement.spacedBy(1.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
+                    item(key = "header_dday_groups") {
+                        Spacer(modifier = Modifier.height(1.dp))
+                    }
                     items(
                         items = orderedGroupList,
                         key = { "group_${it.first}" }
@@ -606,7 +611,7 @@ fun DdayScreen(
                                             modifier = Modifier
                                                 .detectReorder(groupReorderableState)
                                                 .padding(start = 8.dp, end = 4.dp)
-                                                .padding(vertical = 8.dp)
+                                                .padding(vertical = 12.dp)
                                                 .size(24.dp),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                         )
