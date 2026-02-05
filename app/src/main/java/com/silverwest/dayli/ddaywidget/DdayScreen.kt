@@ -1216,6 +1216,8 @@ private fun GroupManageDialog(
             categoryColor = MaterialTheme.colorScheme.primary,
             onEmojiSelected = { emoji ->
                 DdaySettings.setGroupEmoji(context, emojiPickerGroup!!, emoji)
+                viewModel.loadAllDdays()
+                DdayWidgetProvider.refreshAllWidgets(context)
             },
             onDismiss = { emojiPickerGroup = null }
         )
