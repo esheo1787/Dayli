@@ -306,7 +306,8 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         repeatType: RepeatType = RepeatType.NONE,
         subTasks: List<SubTask> = emptyList(),
         repeatDay: Int? = null,
-        advanceDisplayDays: Int? = null
+        advanceDisplayDays: Int? = null,
+        templateId: Int? = null
     ) {
         viewModelScope.launch {
             val item = DdayItem(
@@ -320,7 +321,8 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 repeatDay = repeatDay,
                 itemType = ItemType.TODO.name,
                 subTasks = DdayItem.subTasksToJson(subTasks),
-                advanceDisplayDays = advanceDisplayDays
+                advanceDisplayDays = advanceDisplayDays,
+                templateId = templateId
             )
             dao.insert(item)
             loadAll()
@@ -509,7 +511,8 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 customColor = template.customColor,
                 repeatType = RepeatType.NONE.name,
                 itemType = ItemType.TODO.name,
-                subTasks = DdayItem.subTasksToJson(subTasks)
+                subTasks = DdayItem.subTasksToJson(subTasks),
+                templateId = template.id
             )
             dao.insert(item)
             loadAll()

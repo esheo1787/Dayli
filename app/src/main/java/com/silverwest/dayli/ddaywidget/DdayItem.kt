@@ -46,7 +46,8 @@ data class DdayItem(
     val nextShowDate: Long? = null,  // 반복: 다시 보여줄 날짜 (epoch ms)
     val advanceDisplayDays: Int? = null,  // 미리 표시 일수 (null = 기본값 사용)
     @ColumnInfo(name = "group_name")
-    val groupName: String? = null  // D-Day 그룹 이름
+    val groupName: String? = null,  // D-Day 그룹 이름
+    val templateId: Int? = null  // 원본 템플릿 ID (To-Do 전용)
 ) {
     // SubTask 리스트로 변환
     fun getSubTaskList(): List<SubTask> {

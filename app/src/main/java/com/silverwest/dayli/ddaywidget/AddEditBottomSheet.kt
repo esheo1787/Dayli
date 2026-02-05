@@ -42,7 +42,7 @@ fun AddEditBottomSheet(
     existingGroups: List<String> = emptyList(),
     templates: List<TodoTemplate> = emptyList(),
     onDismiss: () -> Unit,
-    onSave: (title: String, memo: String?, date: Date?, emoji: String, color: Long, repeatType: RepeatType, itemType: ItemType, subTasks: List<SubTask>, groupName: String?, repeatDay: Int?, advanceDisplayDays: Int?) -> Unit,
+    onSave: (title: String, memo: String?, date: Date?, emoji: String, color: Long, repeatType: RepeatType, itemType: ItemType, subTasks: List<SubTask>, groupName: String?, repeatDay: Int?, advanceDisplayDays: Int?, templateId: Int?) -> Unit,
     onSaveAsTemplate: ((name: String, iconName: String, customColor: Long, subTasks: List<SubTask>) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -107,6 +107,7 @@ fun AddEditBottomSheet(
     var showSaveTemplateDialog by remember { mutableStateOf(false) }
     var showLoadTemplateDialog by remember { mutableStateOf(false) }
     var templateName by remember { mutableStateOf("") }
+    var selectedTemplateId by remember(editItem) { mutableStateOf<Int?>(editItem?.templateId) }
 
     // DatePicker
     val calendar = Calendar.getInstance().apply { time = selectedDate }
@@ -310,6 +311,7 @@ fun AddEditBottomSheet(
                                         selectedEmoji = template.iconName
                                         selectedColor = template.customColor
                                         subTasks = template.getSubTaskList()
+                                        selectedTemplateId = template.id
                                         showLoadTemplateDialog = false
                                     },
                                 colors = CardDefaults.cardColors(
@@ -757,7 +759,8 @@ fun AddEditBottomSheet(
                                 validSubTasks,
                                 if (actualItemType == ItemType.DDAY) selectedGroupName else null,
                                 repeatDayValue,
-                                advanceDaysValue
+                                advanceDaysValue,
+                                if (actualItemType == ItemType.TODO) selectedTemplateId else null
                             )
                             // 입력 초기화
                             title = ""
@@ -771,6 +774,7 @@ fun AddEditBottomSheet(
                             subTasks = emptyList()
                             newSubTaskText = ""
                             selectedGroupName = null
+                            selectedTemplateId = null
                         }
                     },
                     modifier = Modifier

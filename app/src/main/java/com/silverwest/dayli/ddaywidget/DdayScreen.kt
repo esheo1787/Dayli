@@ -872,7 +872,11 @@ fun DdayScreen(
                 },
                 onDeleteTemplate = { template ->
                     viewModel.deleteTemplate(template)
-                }
+                },
+                onUpdateEmoji = { template, emoji ->
+                    viewModel.updateTemplate(template.copy(iconName = emoji))
+                },
+                onEmojiChanged = { viewModel.loadAll() }
             )
         }
     }
@@ -935,7 +939,9 @@ private fun GroupHeader(
     emojiVersion: Int = 0
 ) {
     val context = LocalContext.current
-    val groupEmoji = DdaySettings.getGroupEmoji(context, groupName)
+    val groupEmoji = remember(groupName, emojiVersion) {
+        DdaySettings.getGroupEmoji(context, groupName)
+    }
     val fontScale = DdaySettings.getAppFontScale(context)
 
     Row(
@@ -1352,11 +1358,15 @@ private fun TemplateManageDialog(
     templates: List<TodoTemplate>,
     onDismiss: () -> Unit,
     onRenameTemplate: (TodoTemplate, String) -> Unit,
-    onDeleteTemplate: (TodoTemplate) -> Unit
+    onDeleteTemplate: (TodoTemplate) -> Unit,
+    onUpdateEmoji: (TodoTemplate, String) -> Unit = { _, _ -> },
+    onEmojiChanged: () -> Unit = {}
 ) {
     var editingTemplate by remember { mutableStateOf<TodoTemplate?>(null) }
     var editingName by remember { mutableStateOf("") }
     var deleteConfirmTemplate by remember { mutableStateOf<TodoTemplate?>(null) }
+    var emojiPickerTemplate by remember { mutableStateOf<TodoTemplate?>(null) }
+    var emojiVersion by remember { mutableStateOf(0) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1390,7 +1400,7 @@ private fun TemplateManageDialog(
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        items(templates) { template ->
+                        items(templates, key = { "${it.id}_$emojiVersion" }) { template ->
                             TemplateManageItem(
                                 template = template,
                                 isEditing = editingTemplate?.id == template.id,
@@ -1413,6 +1423,9 @@ private fun TemplateManageDialog(
                                 },
                                 onDeleteClick = {
                                     deleteConfirmTemplate = template
+                                },
+                                onEmojiClick = {
+                                    emojiPickerTemplate = template
                                 }
                             )
                         }
@@ -1455,6 +1468,20 @@ private fun TemplateManageDialog(
             }
         )
     }
+
+    // 템플릿 이모지 피커
+    if (emojiPickerTemplate != null) {
+        EmojiPickerDialog(
+            currentEmoji = emojiPickerTemplate!!.iconName,
+            categoryColor = MaterialTheme.colorScheme.primary,
+            onEmojiSelected = { emoji ->
+                emojiPickerTemplate?.let { onUpdateEmoji(it, emoji) }
+                emojiVersion++
+                onEmojiChanged()
+            },
+            onDismiss = { emojiPickerTemplate = null }
+        )
+    }
 }
 
 @Composable
@@ -1466,7 +1493,8 @@ private fun TemplateManageItem(
     onEditChange: (String) -> Unit,
     onEditConfirm: () -> Unit,
     onEditCancel: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    onEmojiClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1480,8 +1508,17 @@ private fun TemplateManageItem(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 템플릿 아이콘
-            Text(template.iconName, fontSize = 18.sp)
+            // 템플릿 아이콘 (클릭하여 변경)
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { onEmojiClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(template.iconName, fontSize = 18.sp)
+            }
             Spacer(modifier = Modifier.width(8.dp))
 
             if (isEditing) {
