@@ -136,16 +136,22 @@ fun DdayScreen(
         mutableStateOf(ordered.toList())
     }
 
-    // Reorderable 상태 (D-Day 그룹 드래그)
+    // 그룹 드래그 중 여부 (드래그 중에는 그룹 접어서 To-Do처럼 평평하게)
+    var isDraggingGroups by remember { mutableStateOf(false) }
+
+    // Reorderable 상태 (D-Day 그룹 드래그 — To-Do와 동일 패턴)
     val groupReorderableState = rememberReorderableLazyListState(
         onMove = { from, to ->
-            if (from.index >= 0 && to.index >= 0 && from.index < groupOrder.size && to.index < groupOrder.size) {
+            val fromIndex = from.index - 1
+            val toIndex = to.index - 1
+            if (fromIndex >= 0 && toIndex >= 0 && fromIndex < groupOrder.size && toIndex < groupOrder.size) {
                 groupOrder = groupOrder.toMutableList().apply {
-                    add(to.index, removeAt(from.index))
+                    add(toIndex, removeAt(fromIndex))
                 }
             }
         },
         onDragEnd = { _, _ ->
+            isDraggingGroups = false
             DdaySettings.setGroupOrder(context, groupOrder)
             // 위젯 동기화
             DdayWidgetProvider.refreshAllWidgets(context)
@@ -579,12 +585,21 @@ fun DdayScreen(
                     verticalArrangement = Arrangement.spacedBy(1.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
+                    // 비드래그 헤더 (To-Do의 header_pending과 동일 역할 — 인덱스 오프셋용)
+                    item(key = "header_dday_groups") {
+                        Spacer(modifier = Modifier.height(1.dp))
+                    }
+
                     items(
                         items = orderedGroupList,
                         key = { "group_${it.first}" }
                     ) { (groupName, groupItems) ->
                         ReorderableItem(groupReorderableState, key = "group_${groupName}") { isDragging ->
-                            val isGroupExpanded = expandedGroups.contains(groupName)
+                            // 드래그 시작 시점에 isDraggingGroups = true (onMove 대신 여기서 설정)
+                            LaunchedEffect(isDragging) {
+                                if (isDragging) isDraggingGroups = true
+                            }
+                            val isGroupExpanded = expandedGroups.contains(groupName) && !isDraggingGroups
                             val elevation = if (isDragging) 8.dp else 0.dp
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -595,7 +610,7 @@ fun DdayScreen(
                                 )
                             ) {
                                 Column {
-                                    // 드래그 핸들 + 그룹 헤더
+                                    // 드래그 핸들 + 그룹 헤더 (To-Do와 동일 패턴)
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
@@ -606,7 +621,7 @@ fun DdayScreen(
                                             modifier = Modifier
                                                 .detectReorder(groupReorderableState)
                                                 .padding(start = 8.dp, end = 4.dp)
-                                                .padding(vertical = 8.dp)
+                                                .padding(vertical = 12.dp)
                                                 .size(24.dp),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                         )
@@ -617,7 +632,7 @@ fun DdayScreen(
                                                 isExpanded = isGroupExpanded,
                                                 emojiVersion = groupEmojiVersion,
                                                 onToggle = {
-                                                    expandedGroups = if (isGroupExpanded) {
+                                                    expandedGroups = if (expandedGroups.contains(groupName)) {
                                                         expandedGroups - groupName
                                                     } else {
                                                         expandedGroups + groupName
@@ -627,7 +642,7 @@ fun DdayScreen(
                                             )
                                         }
                                     }
-                                    // 그룹 내 항목들
+                                    // 그룹 내 항목들 (드래그 중에는 접힘)
                                     if (isGroupExpanded) {
                                       Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                                         groupItems.forEach { item ->
@@ -929,7 +944,9 @@ private fun GroupHeader(
     emojiVersion: Int = 0
 ) {
     val context = LocalContext.current
-    val groupEmoji = DdaySettings.getGroupEmoji(context, groupName)
+    val groupEmoji = remember(groupName, emojiVersion) {
+        DdaySettings.getGroupEmoji(context, groupName)
+    }
     val fontScale = DdaySettings.getAppFontScale(context)
 
     Row(
