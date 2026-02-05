@@ -1092,6 +1092,7 @@ private fun GroupManageDialog(
     var deleteConfirmGroup by remember { mutableStateOf<String?>(null) }
     var deleteGroupItemCount by remember { mutableStateOf(0) }
     var emojiPickerGroup by remember { mutableStateOf<String?>(null) }
+    var emojiVersion by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
     AlertDialog(
@@ -1130,7 +1131,7 @@ private fun GroupManageDialog(
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        items(groups) { groupName ->
+                        items(groups, key = { "${it}_$emojiVersion" }) { groupName ->
                             GroupManageItem(
                                 groupName = groupName,
                                 isEditing = editingGroup == groupName,
@@ -1216,6 +1217,7 @@ private fun GroupManageDialog(
             categoryColor = MaterialTheme.colorScheme.primary,
             onEmojiSelected = { emoji ->
                 DdaySettings.setGroupEmoji(context, emojiPickerGroup!!, emoji)
+                emojiVersion++
                 viewModel.loadAllDdays()
                 DdayWidgetProvider.refreshAllWidgets(context)
             },
