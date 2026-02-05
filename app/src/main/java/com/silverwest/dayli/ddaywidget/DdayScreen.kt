@@ -181,6 +181,7 @@ fun DdayScreen(
 
     // 그룹 관리 다이얼로그 상태
     var showGroupManageDialog by remember { mutableStateOf(false) }
+    var groupEmojiVersion by remember { mutableStateOf(0) }
     val existingGroups by viewModel.existingGroups.observeAsState(emptyList())
 
     // 템플릿 관리 다이얼로그 상태
@@ -613,6 +614,7 @@ fun DdayScreen(
                                                 groupName = groupName,
                                                 count = groupItems.size,
                                                 isExpanded = isGroupExpanded,
+                                                emojiVersion = groupEmojiVersion,
                                                 onToggle = {
                                                     expandedGroups = if (isGroupExpanded) {
                                                         expandedGroups - groupName
@@ -848,7 +850,8 @@ fun DdayScreen(
                 onDeleteGroup = { groupName ->
                     viewModel.deleteGroup(groupName)
                 },
-                viewModel = viewModel
+                viewModel = viewModel,
+                onEmojiChanged = { groupEmojiVersion++ }
             )
         }
 
@@ -921,7 +924,8 @@ private fun GroupHeader(
     groupName: String,
     count: Int,
     isExpanded: Boolean,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    emojiVersion: Int = 0
 ) {
     val context = LocalContext.current
     val groupEmoji = DdaySettings.getGroupEmoji(context, groupName)
@@ -1084,7 +1088,8 @@ private fun GroupManageDialog(
     onDismiss: () -> Unit,
     onRenameGroup: (oldName: String, newName: String) -> Unit,
     onDeleteGroup: (groupName: String) -> Unit,
-    viewModel: DdayViewModel
+    viewModel: DdayViewModel,
+    onEmojiChanged: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var editingGroup by remember { mutableStateOf<String?>(null) }
@@ -1218,7 +1223,7 @@ private fun GroupManageDialog(
             onEmojiSelected = { emoji ->
                 DdaySettings.setGroupEmoji(context, emojiPickerGroup!!, emoji)
                 emojiVersion++
-                viewModel.loadAllDdays()
+                onEmojiChanged()
                 DdayWidgetProvider.refreshAllWidgets(context)
             },
             onDismiss = { emojiPickerGroup = null }
