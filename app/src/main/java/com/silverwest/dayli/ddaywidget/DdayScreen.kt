@@ -127,13 +127,14 @@ fun DdayScreen(
             .toSortedMap(compareBy { if (it == "미분류") "zzz" else it })
     }
 
-    // D-Day 그룹 드래그 순서 (동기 초기화 — 데이터 로드 즉시 그룹 표시)
-    var groupOrder by remember(ddayPendingByGroup.keys) {
+    // D-Day 그룹 드래그 순서 (안정적인 MutableState — To-Do와 동일 패턴)
+    var groupOrder by remember { mutableStateOf(emptyList<String>()) }
+    LaunchedEffect(ddayPendingByGroup.keys.toSet()) {
         val savedOrder = DdaySettings.getGroupOrder(context)
         val ordered = mutableListOf<String>()
         savedOrder.forEach { name -> if (name in ddayPendingByGroup) ordered.add(name) }
         ddayPendingByGroup.keys.forEach { name -> if (name !in ordered) ordered.add(name) }
-        mutableStateOf(ordered.toList())
+        groupOrder = ordered.toList()
     }
 
     // Reorderable 상태 (D-Day 그룹 드래그)
