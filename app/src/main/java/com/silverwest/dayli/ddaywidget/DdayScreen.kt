@@ -562,6 +562,7 @@ fun DdayScreen(
                     isRefreshing = isRefreshing,
                     onRefresh = {
                         isRefreshing = true
+                        groupEmojiVersion++
                         viewModel.loadAll()
                         scope.launch {
                             delay(500)
