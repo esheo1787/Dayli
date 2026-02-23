@@ -1,8 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("org.jetbrains.kotlin.kapt")
+}
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) load(file.inputStream())
 }
 
 android {
@@ -17,6 +24,13 @@ android {
         versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties.getProperty("GEMINI_API_KEY", "")}\"")
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
     }
 
     buildTypes {
@@ -37,10 +51,6 @@ android {
 
     kotlinOptions {
         jvmTarget = "11"
-    }
-
-    buildFeatures {
-        compose = true
     }
 }
 
@@ -84,6 +94,12 @@ dependencies {
 
     // Google AdMob
     implementation("com.google.android.gms:play-services-ads:23.6.0")
+
+    // ML Kit Text Recognition (한국어 OCR)
+    implementation("com.google.mlkit:text-recognition-korean:16.0.1")
+
+    // Google Generative AI (Gemini)
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 
     // Java 8+ API 지원 (LocalDateTime 등)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
