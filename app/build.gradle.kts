@@ -81,6 +81,9 @@ dependencies {
     // Kotlin Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
+    // Google AdMob
+    implementation("com.google.android.gms:play-services-ads:23.6.0")
+
     // Java 8+ API 지원 (LocalDateTime 등)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
