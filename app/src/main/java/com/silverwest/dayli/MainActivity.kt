@@ -262,7 +262,7 @@ fun MainDdayScreen(
             showAddSheet = false
             editItem = null
         },
-        onSave = { title, memo, date, emoji, color, repeatType, itemType, subTasks, groupName, repeatDay, advanceDisplayDays, templateId ->
+        onSave = { title, memo, date, emoji, color, repeatType, itemType, subTasks, groupName, repeatDay, advanceDisplayDays, templateId, timeHour, timeMinute, notificationRules ->
             if (editItem != null) {
                 // 수정 모드: 전달된 repeatDay 사용, 없으면 날짜에서 계산
                 val finalRepeatDay = repeatDay ?: when (repeatType) {
@@ -280,13 +280,16 @@ fun MainDdayScreen(
                     repeatDay = finalRepeatDay,
                     subTasks = DdayItem.subTasksToJson(subTasks),
                     groupName = groupName,
-                    advanceDisplayDays = advanceDisplayDays
+                    advanceDisplayDays = advanceDisplayDays,
+                    timeHour = timeHour,
+                    timeMinute = timeMinute,
+                    notifications = DdayItem.notificationRulesToJson(notificationRules)
                 )
                 viewModel.updateItem(updatedItem)
             } else {
                 // 추가 모드
                 if (itemType == ItemType.DDAY) {
-                    viewModel.insertDday(title, memo ?: "", date!!, emoji, color, repeatType, groupName, advanceDisplayDays)
+                    viewModel.insertDday(title, memo ?: "", date!!, emoji, color, repeatType, groupName, advanceDisplayDays, timeHour, timeMinute, notificationRules)
                 } else {
                     viewModel.insertTodo(title, memo, emoji, color, repeatType, subTasks, repeatDay, advanceDisplayDays, templateId)
                 }

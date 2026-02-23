@@ -489,7 +489,8 @@ fun DdayScreen(
                                                     expandedSubTaskIds - item.id
                                                 else expandedSubTaskIds + item.id
                                             },
-                                            infoText = nextDateInfo
+                                            infoText = nextDateInfo,
+                                            searchQuery = searchQuery
                                         )
                                     }
                                 }
@@ -546,7 +547,8 @@ fun DdayScreen(
                                             else expandedSubTaskIds + item.id
                                         },
                                         forceCheckbox = true,
-                                        infoText = showDateText
+                                        infoText = showDateText,
+                                        searchQuery = searchQuery
                                     )
                                 }
                             }
@@ -592,7 +594,8 @@ fun DdayScreen(
                                             expandedSubTaskIds = if (item.id in expandedSubTaskIds)
                                                 expandedSubTaskIds - item.id
                                             else expandedSubTaskIds + item.id
-                                        }
+                                        },
+                                        searchQuery = searchQuery
                                     )
                                 }
                             }
@@ -717,7 +720,8 @@ fun DdayScreen(
                                                     onSubTaskToggle = { ddayItem, index ->
                                                         viewModel.toggleSubTask(ddayItem, index)
                                                     },
-                                                    infoText = nextDateInfo
+                                                    infoText = nextDateInfo,
+                                                    searchQuery = searchQuery
                                                 )
                                             }
                                         }
@@ -769,7 +773,8 @@ fun DdayScreen(
                                             viewModel.toggleSubTask(ddayItem, index)
                                         },
                                         showCheckbox = false,
-                                        infoText = showDateText
+                                        infoText = showDateText,
+                                        searchQuery = searchQuery
                                     )
                                 }
                             }
@@ -809,7 +814,8 @@ fun DdayScreen(
                                         },
                                         onSubTaskToggle = { ddayItem, index ->
                                             viewModel.toggleSubTask(ddayItem, index)
-                                        }
+                                        },
+                                        searchQuery = searchQuery
                                     )
                                 }
                             }
@@ -1045,7 +1051,8 @@ private fun SwipeableDdayItem(
     onDelete: () -> Unit,
     onToggle: (DdayItem) -> Unit,
     onLongPress: (DdayItem) -> Unit,
-    onSubTaskToggle: (DdayItem, Int) -> Unit = { _, _ -> }
+    onSubTaskToggle: (DdayItem, Int) -> Unit = { _, _ -> },
+    searchQuery: String = ""
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { dismissValue ->
@@ -1098,7 +1105,8 @@ private fun SwipeableDdayItem(
                 item = item,
                 onToggle = onToggle,
                 onLongPress = onLongPress,
-                onSubTaskToggle = onSubTaskToggle
+                onSubTaskToggle = onSubTaskToggle,
+                searchQuery = searchQuery
             )
         }
     }

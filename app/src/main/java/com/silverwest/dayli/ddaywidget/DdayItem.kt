@@ -7,6 +7,31 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.*
 
+// 개별 알림 규칙 데이터 클래스
+data class NotificationRule(
+    val type: String,  // "minutes", "hours", "days"
+    val value: Int
+) {
+    fun toJson(): JSONObject = JSONObject().apply {
+        put("type", type)
+        put("value", value)
+    }
+
+    fun displayText(): String = when (type) {
+        "minutes" -> "${value}분 전"
+        "hours" -> "${value}시간 전"
+        "days" -> "${value}일 전"
+        else -> "${value} 전"
+    }
+
+    companion object {
+        fun fromJson(json: JSONObject): NotificationRule = NotificationRule(
+            type = json.optString("type", "days"),
+            value = json.optInt("value", 1)
+        )
+    }
+}
+
 // SubTask 데이터 클래스 (체크리스트 하위 항목)
 data class SubTask(
     val title: String,
@@ -47,7 +72,11 @@ data class DdayItem(
     val advanceDisplayDays: Int? = null,  // 미리 표시 일수 (null = 기본값 사용)
     @ColumnInfo(name = "group_name")
     val groupName: String? = null,  // D-Day 그룹 이름
-    val templateId: Int? = null  // 원본 템플릿 ID (To-Do 전용)
+    val templateId: Int? = null,  // 원본 템플릿 ID (To-Do 전용)
+    val timeHour: Int? = null,  // 시간 (0-23), null=시간 미설정
+    val timeMinute: Int? = null,  // 분 (0-59), null=시간 미설정
+    @ColumnInfo(name = "notifications")
+    val notifications: String? = null  // 개별 알림 규칙 (JSON 배열)
 ) {
     // SubTask 리스트로 변환
     fun getSubTaskList(): List<SubTask> {
@@ -68,6 +97,13 @@ data class DdayItem(
             if (subTasks.isEmpty()) return null
             val jsonArray = JSONArray()
             subTasks.forEach { jsonArray.put(it.toJson()) }
+            return jsonArray.toString()
+        }
+
+        fun notificationRulesToJson(rules: List<NotificationRule>): String? {
+            if (rules.isEmpty()) return null
+            val jsonArray = JSONArray()
+            rules.forEach { jsonArray.put(it.toJson()) }
             return jsonArray.toString()
         }
 
@@ -103,6 +139,32 @@ data class DdayItem(
 
     // D-Day 여부 확인
     fun isDday(): Boolean = itemType == ItemType.DDAY.name
+
+    // 시간 설정 여부
+    fun hasTime(): Boolean = timeHour != null && timeMinute != null
+
+    // 시간 문자열 (ex: "오후 2시", "오후 2시 30분")
+    fun getTimeString(): String? {
+        if (!hasTime()) return null
+        val h = timeHour!!
+        val m = timeMinute!!
+        val amPm = if (h < 12) "오전" else "오후"
+        val displayHour = when {
+            h == 0 -> 12
+            h > 12 -> h - 12
+            else -> h
+        }
+        return if (m == 0) "$amPm ${displayHour}시" else "$amPm ${displayHour}시 ${m}분"
+    }
+
+    // 개별 알림 규칙 파싱
+    fun getNotificationRules(): List<NotificationRule> {
+        if (notifications.isNullOrBlank()) return emptyList()
+        return try {
+            val jsonArray = JSONArray(notifications)
+            (0 until jsonArray.length()).map { NotificationRule.fromJson(jsonArray.getJSONObject(it)) }
+        } catch (e: Exception) { emptyList() }
+    }
 
     // 이모지 가져오기 (커스텀 이모지 또는 카테고리 기본 이모지)
     fun getEmoji(): String {

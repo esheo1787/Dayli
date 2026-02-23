@@ -42,7 +42,7 @@ fun AddEditBottomSheet(
     existingGroups: List<String> = emptyList(),
     templates: List<TodoTemplate> = emptyList(),
     onDismiss: () -> Unit,
-    onSave: (title: String, memo: String?, date: Date?, emoji: String, color: Long, repeatType: RepeatType, itemType: ItemType, subTasks: List<SubTask>, groupName: String?, repeatDay: Int?, advanceDisplayDays: Int?, templateId: Int?) -> Unit,
+    onSave: (title: String, memo: String?, date: Date?, emoji: String, color: Long, repeatType: RepeatType, itemType: ItemType, subTasks: List<SubTask>, groupName: String?, repeatDay: Int?, advanceDisplayDays: Int?, templateId: Int?, timeHour: Int?, timeMinute: Int?, notificationRules: List<NotificationRule>) -> Unit,
     onSaveAsTemplate: ((name: String, iconName: String, customColor: Long, subTasks: List<SubTask>) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -100,6 +100,16 @@ fun AddEditBottomSheet(
     }
     var advanceDropdownExpanded by remember { mutableStateOf(false) }
 
+    // 시간 상태 (D-Day 전용)
+    var hasTime by remember(editItem) { mutableStateOf(editItem?.hasTime() == true) }
+    var selectedHour by remember(editItem) { mutableStateOf(editItem?.timeHour ?: 12) }
+    var selectedMinute by remember(editItem) { mutableStateOf(editItem?.timeMinute ?: 0) }
+
+    // 개별 알림 상태 (D-Day 전용)
+    var notificationRules by remember(editItem) {
+        mutableStateOf(editItem?.getNotificationRules() ?: emptyList())
+    }
+
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showRepeatPicker by remember { mutableStateOf(false) }
 
@@ -120,6 +130,19 @@ fun AddEditBottomSheet(
         calendar.get(Calendar.YEAR),
         calendar.get(Calendar.MONTH),
         calendar.get(Calendar.DAY_OF_MONTH)
+    )
+
+    // TimePicker
+    val timePickerDialog = android.app.TimePickerDialog(
+        context,
+        { _, hour, minute ->
+            selectedHour = hour
+            selectedMinute = minute
+            hasTime = true
+        },
+        selectedHour,
+        selectedMinute,
+        false  // 12시간 형식
     )
 
     // 이모지 선택 다이얼로그
@@ -584,6 +607,48 @@ fun AddEditBottomSheet(
                         }
                     }
 
+                    // 시간 설정
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "시간",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        if (hasTime) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                val amPm = if (selectedHour < 12) "오전" else "오후"
+                                val displayHour = when {
+                                    selectedHour == 0 -> 12
+                                    selectedHour > 12 -> selectedHour - 12
+                                    else -> selectedHour
+                                }
+                                val timeText = if (selectedMinute == 0) "$amPm ${displayHour}시"
+                                    else "$amPm ${displayHour}시 ${selectedMinute}분"
+                                Text(
+                                    text = timeText,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                TextButton(onClick = { timePickerDialog.show() }) {
+                                    Text("변경")
+                                }
+                                TextButton(onClick = {
+                                    hasTime = false
+                                    // 시간 제거 시 분/시간 단위 알림 제거
+                                    notificationRules = notificationRules.filter { it.type == "days" }
+                                }) {
+                                    Text("삭제", color = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        } else {
+                            TextButton(onClick = { timePickerDialog.show() }) {
+                                Text("시간 추가")
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // 그룹 선택
@@ -733,6 +798,87 @@ fun AddEditBottomSheet(
                     }
                 }
 
+                // 개별 알림 설정 (D-Day 전용)
+                if (actualItemType == ItemType.DDAY) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "개별 알림",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 기존 알림 규칙 표시
+                    notificationRules.forEachIndexed { index, rule ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "🔔 ${rule.displayText()}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            IconButton(
+                                onClick = {
+                                    notificationRules = notificationRules.toMutableList().apply { removeAt(index) }
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "삭제",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // 알림 추가 버튼
+                    var showNotifDropdown by remember { mutableStateOf(false) }
+                    Box {
+                        TextButton(onClick = { showNotifDropdown = true }) {
+                            Text("+ 알림 추가")
+                        }
+                        DropdownMenu(
+                            expanded = showNotifDropdown,
+                            onDismissRequest = { showNotifDropdown = false }
+                        ) {
+                            if (hasTime) {
+                                listOf(
+                                    NotificationRule("minutes", 10),
+                                    NotificationRule("minutes", 30),
+                                    NotificationRule("hours", 1),
+                                    NotificationRule("hours", 2)
+                                ).forEach { rule ->
+                                    DropdownMenuItem(
+                                        text = { Text(rule.displayText()) },
+                                        onClick = {
+                                            notificationRules = notificationRules + rule
+                                            showNotifDropdown = false
+                                        }
+                                    )
+                                }
+                            } else {
+                                listOf(
+                                    NotificationRule("days", 1),
+                                    NotificationRule("days", 3),
+                                    NotificationRule("days", 7),
+                                    NotificationRule("days", 14)
+                                ).forEach { rule ->
+                                    DropdownMenuItem(
+                                        text = { Text(rule.displayText()) },
+                                        onClick = {
+                                            notificationRules = notificationRules + rule
+                                            showNotifDropdown = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // 저장 버튼
@@ -760,7 +906,10 @@ fun AddEditBottomSheet(
                                 if (actualItemType == ItemType.DDAY) selectedGroupName else null,
                                 repeatDayValue,
                                 advanceDaysValue,
-                                if (actualItemType == ItemType.TODO) selectedTemplateId else null
+                                if (actualItemType == ItemType.TODO) selectedTemplateId else null,
+                                if (actualItemType == ItemType.DDAY && hasTime) selectedHour else null,
+                                if (actualItemType == ItemType.DDAY && hasTime) selectedMinute else null,
+                                if (actualItemType == ItemType.DDAY) notificationRules else emptyList()
                             )
                             // 입력 초기화
                             title = ""
@@ -775,6 +924,10 @@ fun AddEditBottomSheet(
                             newSubTaskText = ""
                             selectedGroupName = null
                             selectedTemplateId = null
+                            hasTime = false
+                            selectedHour = 12
+                            selectedMinute = 0
+                            notificationRules = emptyList()
                         }
                     },
                     modifier = Modifier

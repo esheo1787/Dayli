@@ -100,6 +100,7 @@
             <intent-filter>
                 <action android:name="com.silverwest.dayli.ACTION_SHOW_NOTIFICATION" />
                 <action android:name="com.silverwest.dayli.ACTION_DAILY_CHECK" />
+                <action android:name="com.silverwest.dayli.ACTION_ITEM_NOTIFICATION" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>

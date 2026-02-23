@@ -98,4 +98,54 @@ object NotificationHelper {
 
         notificationManager.notify(itemId, builder.build())
     }
+
+    fun showItemNotification(
+        context: Context,
+        item: DdayItem,
+        ruleText: String
+    ) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val notificationId = item.id + 10000
+        val pendingIntent = PendingIntent.getActivity(
+            context, notificationId, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val emoji = item.getEmoji()
+        val timeText = item.getTimeString()
+        val contentText = if (timeText != null) "$ruleText ($timeText)" else ruleText
+
+        val soundEnabled = DdaySettings.isNotifySoundEnabled(context)
+        val vibrateEnabled = DdaySettings.isNotifyVibrateEnabled(context)
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("$emoji ${item.title}")
+            .setContentText(contentText)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+
+        if (soundEnabled) {
+            builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+        } else {
+            builder.setSilent(true)
+        }
+
+        if (vibrateEnabled) {
+            builder.setVibrate(longArrayOf(0, 300, 100, 300))
+        }
+
+        if (!soundEnabled && !vibrateEnabled) {
+            builder.setSilent(true)
+        }
+
+        notificationManager.notify(notificationId, builder.build())
+        android.util.Log.d("DDAY_NOTIFICATION", "🔔 개별 알림 표시: ${item.title} - $ruleText")
+    }
 }

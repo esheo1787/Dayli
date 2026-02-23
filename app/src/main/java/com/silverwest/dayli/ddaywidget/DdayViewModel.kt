@@ -265,7 +265,10 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         color: Long = 0xFFA8C5DAL,  // Pastel Blue
         repeatType: RepeatType = RepeatType.NONE,
         groupName: String? = null,
-        advanceDisplayDays: Int? = null
+        advanceDisplayDays: Int? = null,
+        timeHour: Int? = null,
+        timeMinute: Int? = null,
+        notificationRules: List<NotificationRule> = emptyList()
     ) {
         viewModelScope.launch {
             // 반복 기준 날짜 계산 (매주: 요일, 매월: 날짜)
@@ -287,11 +290,19 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 repeatDay = repeatDay,
                 itemType = ItemType.DDAY.name,
                 groupName = groupName,
-                advanceDisplayDays = advanceDisplayDays
+                advanceDisplayDays = advanceDisplayDays,
+                timeHour = timeHour,
+                timeMinute = timeMinute,
+                notifications = DdayItem.notificationRulesToJson(notificationRules)
             )
-            dao.insert(item)
+            val insertedId = dao.insert(item)
             loadAll()
             loadGroups()  // 그룹 목록 갱신
+            // 개별 알림 스케줄링
+            if (notificationRules.isNotEmpty()) {
+                val insertedItem = item.copy(id = insertedId.toInt())
+                NotificationScheduler.scheduleItemNotifications(getApplication(), insertedItem)
+            }
             // 위젯 동기화
             DdayWidgetProvider.refreshAllWidgets(getApplication())
         }
@@ -360,6 +371,11 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             } else item
             dao.update(finalItem)
             loadAll()
+            // 개별 알림 재스케줄링
+            NotificationScheduler.cancelItemNotifications(getApplication(), finalItem.id)
+            if (finalItem.getNotificationRules().isNotEmpty() && !finalItem.isChecked) {
+                NotificationScheduler.scheduleItemNotifications(getApplication(), finalItem)
+            }
             // 위젯 동기화
             DdayWidgetProvider.refreshAllWidgets(getApplication())
         }

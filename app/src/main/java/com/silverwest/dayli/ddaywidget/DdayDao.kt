@@ -21,7 +21,7 @@ interface DdayDao {
     suspend fun getAllByDday(): List<DdayItem>
 
     @Insert
-    suspend fun insert(item: DdayItem)
+    suspend fun insert(item: DdayItem): Long
 
     @Update
     suspend fun update(item: DdayItem)

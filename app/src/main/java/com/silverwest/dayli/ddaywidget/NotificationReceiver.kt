@@ -34,10 +34,36 @@ class NotificationReceiver : BroadcastReceiver() {
                 // 다음 날 알람 재설정
                 NotificationScheduler.scheduleDailyCheck(context)
             }
+            ACTION_ITEM_NOTIFICATION -> {
+                // 개별 아이템 시간 기반 알림 (분/시간 전)
+                val itemId = intent.getIntExtra(EXTRA_ITEM_ID, -1)
+                val ruleIndex = intent.getIntExtra(EXTRA_NOTIFICATION_INDEX, -1)
+                android.util.Log.d("DDAY_NOTIFICATION", "📬 개별 알림: itemId=$itemId, ruleIndex=$ruleIndex")
+                if (itemId != -1) {
+                    handleItemNotification(context, itemId, ruleIndex)
+                }
+            }
             Intent.ACTION_BOOT_COMPLETED -> {
                 // 기기 재부팅 후 알람 재설정
                 android.util.Log.d("DDAY_NOTIFICATION", "📬 부팅 완료 - 알람 재설정")
                 NotificationScheduler.scheduleDailyCheck(context)
+            }
+        }
+    }
+
+    private fun handleItemNotification(context: Context, itemId: Int, ruleIndex: Int) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val db = DdayDatabase.getDatabase(context)
+                val item = db.ddayDao().getById(itemId) ?: return@launch
+                if (item.isChecked) return@launch
+
+                val rules = item.getNotificationRules()
+                val ruleText = if (ruleIndex in rules.indices) rules[ruleIndex].displayText() else "알림"
+
+                NotificationHelper.showItemNotification(context, item, ruleText)
+            } catch (e: Exception) {
+                android.util.Log.e("DDAY_NOTIFICATION", "❌ 개별 알림 처리 실패", e)
             }
         }
     }
@@ -79,28 +105,28 @@ class NotificationReceiver : BroadcastReceiver() {
 
                     android.util.Log.d("DDAY_NOTIFICATION", "📬 아이템 체크: ${item.title}, daysUntil=$daysUntil")
 
+                    // 글로벌 D-1 / D-Day 알림
                     when {
                         daysUntil == 1 && notifyDayBefore -> {
-                            // D-1 알림
                             android.util.Log.d("DDAY_NOTIFICATION", "📬 D-1 알림 표시: ${item.title}")
                             NotificationHelper.showNotification(
-                                context,
-                                item.id,
-                                item.getEmoji(),
-                                item.title,
-                                daysUntil
+                                context, item.id, item.getEmoji(), item.title, daysUntil
                             )
                         }
                         daysUntil == 0 && notifySameDay -> {
-                            // D-Day 알림
                             android.util.Log.d("DDAY_NOTIFICATION", "📬 D-Day 알림 표시: ${item.title}")
                             NotificationHelper.showNotification(
-                                context,
-                                item.id,
-                                item.getEmoji(),
-                                item.title,
-                                daysUntil
+                                context, item.id, item.getEmoji(), item.title, daysUntil
                             )
+                        }
+                    }
+
+                    // 개별 아이템 day-based 알림 규칙 체크
+                    val rules = item.getNotificationRules()
+                    rules.forEach { rule ->
+                        if (rule.type == "days" && daysUntil == rule.value) {
+                            android.util.Log.d("DDAY_NOTIFICATION", "📬 개별 알림(${rule.displayText()}): ${item.title}")
+                            NotificationHelper.showItemNotification(context, item, rule.displayText())
                         }
                     }
                 }
@@ -113,10 +139,12 @@ class NotificationReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_SHOW_NOTIFICATION = "com.silverwest.dayli.ACTION_SHOW_NOTIFICATION"
         const val ACTION_DAILY_CHECK = "com.silverwest.dayli.ACTION_DAILY_CHECK"
+        const val ACTION_ITEM_NOTIFICATION = "com.silverwest.dayli.ACTION_ITEM_NOTIFICATION"
 
         const val EXTRA_ITEM_ID = "extra_item_id"
         const val EXTRA_EMOJI = "extra_emoji"
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_DAYS_UNTIL = "extra_days_until"
+        const val EXTRA_NOTIFICATION_INDEX = "extra_notification_index"
     }
 }

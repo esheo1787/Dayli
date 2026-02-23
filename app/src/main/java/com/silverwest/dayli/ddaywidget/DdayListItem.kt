@@ -16,7 +16,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
@@ -34,11 +39,13 @@ fun DdayListItem(
     onExpandToggle: () -> Unit = {},
     showCheckbox: Boolean = true,
     forceCheckbox: Boolean = false,
-    infoText: String? = null
+    infoText: String? = null,
+    searchQuery: String = ""
 ) {
     val context = LocalContext.current
     val formattedDate = item.date?.let { SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(it) }
-    val ddayText = item.date?.let { calculateDday(it) }
+    val ddayLabel = item.date?.let { calculateDday(it) }
+    val timeLabel = item.getTimeString()
     val ddayDiff = item.date?.let { calculateDdayDiff(it) }
 
     // 체크리스트 상태
@@ -46,6 +53,10 @@ fun DdayListItem(
     val hasSubTasks = subTasks.isNotEmpty()
     val completedCount = subTasks.count { it.isChecked }
     val totalCount = subTasks.size
+
+    // 메모 펼치기 상태
+    var memoExpanded by remember { mutableStateOf(false) }
+    var memoOverflows by remember { mutableStateOf(false) }
 
     // 커스텀 색상 또는 카테고리 기본 색상 사용
     val itemColor = item.getColorLong().toComposeColor()
@@ -60,9 +71,22 @@ fun DdayListItem(
 
     // 체크 시 스타일
     val textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None
-    // 다크모드 대응: 체크되면 회색, 아니면 기본 텍스트 색상 (다크모드에서 자동으로 흰색)
-    val primaryTextColor = if (item.isChecked) Color.Gray else MaterialTheme.colorScheme.onSurface
-    val secondaryTextColor = if (item.isChecked) Color.Gray else MaterialTheme.colorScheme.onSurfaceVariant
+    // 배경 밝기에 따른 텍스트 색 자동 조절 (밝은 배경 → 진한 텍스트, 어두운 배경 → 흰색)
+    val isLightBg = (0.2126f * itemColor.red + 0.7152f * itemColor.green + 0.0722f * itemColor.blue) > 0.5f
+    val primaryTextColor = if (item.isChecked) {
+        Color.Gray
+    } else if (backgroundEnabled && bgOpacity > 0.3f) {
+        if (isLightBg) Color(0xFF1A1A1A) else Color.White
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    val secondaryTextColor = if (item.isChecked) {
+        Color.Gray
+    } else if (backgroundEnabled && bgOpacity > 0.3f) {
+        if (isLightBg) Color(0xFF555555) else Color(0xFFCCCCCC)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     // 배경색 (설정에 따라 적용)
     val backgroundColor = if (backgroundEnabled) {
@@ -114,81 +138,149 @@ fun DdayListItem(
 
         // 내용
         Column(modifier = Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontSize = (16 * fontScale).sp,
-                    textDecoration = textDecoration,
-                    color = primaryTextColor,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-                // 체크리스트 진행률 표시 (To-Do만)
-                if (hasSubTasks) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "$completedCount/$totalCount",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontSize = (12 * fontScale).sp,
-                        color = secondaryTextColor
+            // 첫째 줄: [제목 + 태그] ... [D-Day] 양쪽 끝 정렬
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // 왼쪽: 제목 + 태그 (남은 공간 차지)
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    HighlightedText(
+                        text = item.title,
+                        highlight = searchQuery,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontSize = (16 * fontScale).sp,
+                        textDecoration = textDecoration,
+                        color = primaryTextColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
-                    // 펼치기/접기 버튼
-                    Icon(
-                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (isExpanded) "접기" else "펼치기",
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clickable { onExpandToggle() },
-                        tint = secondaryTextColor
-                    )
-                }
-                // 반복 태그 표시 (D-Day와 To-Do 모두 통일)
-                if (item.isRepeating()) {
-                    val tagText = item.getRepeatTagText()
-                    tagText?.let { text ->
+                    if (hasSubTasks) {
                         Spacer(modifier = Modifier.width(6.dp))
-                        Box(
+                        Text(
+                            text = "$completedCount/$totalCount",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = (12 * fontScale).sp,
+                            color = secondaryTextColor
+                        )
+                        Icon(
+                            imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (isExpanded) "접기" else "펼치기",
                             modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(
-                                    if (item.isChecked) Color.Gray.copy(alpha = 0.15f)
-                                    else MaterialTheme.colorScheme.surfaceVariant
-                                )
-                                .padding(horizontal = 5.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = text,
-                                fontSize = (12 * fontScale).sp,
-                                color = primaryTextColor
-                            )
+                                .size(20.dp)
+                                .clickable { onExpandToggle() },
+                            tint = secondaryTextColor
+                        )
+                    }
+                    if (item.isRepeating()) {
+                        val tagText = item.getRepeatTagText()
+                        tagText?.let { text ->
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(
+                                        if (item.isChecked) Color.Gray.copy(alpha = 0.15f)
+                                        else MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                            ) {
+                                Text(text = text, fontSize = (12 * fontScale).sp, color = primaryTextColor)
+                            }
                         }
                     }
+                    if (item.getNotificationRules().isNotEmpty()) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("🔔", fontSize = (10 * fontScale).sp)
+                    }
                 }
-                // 날짜 표시 (D-Day만)
-                formattedDate?.let { dateStr ->
+                // 오른쪽: D-Day (항상 우측 끝)
+                ddayLabel?.let { text ->
+                    val ddayColor = if (item.isChecked) {
+                        Color.Gray
+                    } else {
+                        when {
+                            ddayDiff == 2 || ddayDiff == 3 -> Color(0xFF2F6BFF)
+                            ddayDiff != null && ddayDiff <= 1 -> Color(0xFFE53935)
+                            else -> primaryTextColor
+                        }
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = dateStr,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontSize = (12 * fontScale).sp,
-                        color = secondaryTextColor,
-                        textDecoration = textDecoration
+                        text = text,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontSize = (16 * fontScale).sp,
+                        fontWeight = FontWeight.Bold,
+                        textDecoration = textDecoration,
+                        color = ddayColor
                     )
                 }
             }
 
-            if (!item.memo.isNullOrBlank()) {
-                Text(
-                    text = item.memo,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontSize = (12 * fontScale).sp,
-                    modifier = Modifier.padding(top = 2.dp),
-                    textDecoration = textDecoration,
-                    color = secondaryTextColor
-                )
+            // 둘째 줄: [날짜 + 메모] ... [시간] 양쪽 끝 정렬
+            if (formattedDate != null || !item.memo.isNullOrBlank() || timeLabel != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    // 왼쪽: 날짜 + 메모
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        formattedDate?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontSize = (12 * fontScale).sp,
+                                color = secondaryTextColor,
+                                textDecoration = textDecoration
+                            )
+                        }
+                        if (!item.memo.isNullOrBlank()) {
+                            if (formattedDate != null) Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "[메모: ${item.memo}]",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontSize = (12 * fontScale).sp,
+                                color = secondaryTextColor,
+                                textDecoration = textDecoration,
+                                maxLines = if (memoExpanded) Int.MAX_VALUE else 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
+                                onTextLayout = { result ->
+                                    if (!memoExpanded) {
+                                        memoOverflows = result.hasVisualOverflow
+                                    }
+                                }
+                            )
+                            if (memoOverflows || memoExpanded) {
+                                Text(
+                                    text = if (memoExpanded) "▲" else "▼",
+                                    fontSize = (10 * fontScale).sp,
+                                    color = secondaryTextColor,
+                                    modifier = Modifier
+                                        .padding(start = 2.dp)
+                                        .clickable { memoExpanded = !memoExpanded }
+                                )
+                            }
+                        }
+                    }
+                    // 오른쪽: 시간 (항상 우측 끝)
+                    timeLabel?.let {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = (12 * fontScale).sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textDecoration = textDecoration
+                        )
+                    }
+                }
             }
+
             infoText?.let {
                 Text(
                     text = it,
@@ -200,43 +292,16 @@ fun DdayListItem(
             }
         }
 
-        // D-Day + 체크박스 (D-Day) 또는 체크박스만 (To-Do)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.defaultMinSize(minHeight = 48.dp)
-        ) {
-            // D-Day 텍스트는 D-Day 아이템일 때만 표시
-            ddayText?.let { text ->
-                // D-Day 숫자 색상: D-3~D-2 파란색, D-1/D-Day/D+N 빨간색, D-4 이상 기본색
-                val ddayColor = if (item.isChecked) {
-                    Color.Gray
-                } else {
-                    when {
-                        ddayDiff == 2 || ddayDiff == 3 -> Color(0xFF2F6BFF)  // 파란색
-                        ddayDiff != null && ddayDiff <= 1 -> Color(0xFFE53935)  // 빨간색
-                        else -> MaterialTheme.colorScheme.onSurface  // 기본색 (D-4 이상)
-                    }
-                }
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontSize = (16 * fontScale).sp,
-                    modifier = Modifier.padding(end = 4.dp),
-                    textDecoration = textDecoration,
-                    color = ddayColor
+        // 체크박스
+        if (showCheckbox && (forceCheckbox || !hasSubTasks)) {
+            Checkbox(
+                checked = item.isChecked,
+                onCheckedChange = { onToggle(item) },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = itemColor,
+                    uncheckedColor = Color(0xFF888888)
                 )
-            }
-            // 하위 체크리스트가 있는 To-Do는 상위 체크박스 숨김 (자동 완료로 처리)
-            if (showCheckbox && (forceCheckbox || !hasSubTasks)) {
-                Checkbox(
-                    checked = item.isChecked,
-                    onCheckedChange = { onToggle(item) },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = itemColor,
-                        uncheckedColor = Color(0xFF888888)
-                    )
-                )
-            }
+            )
         }
         }
 
@@ -265,8 +330,9 @@ fun DdayListItem(
                             )
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
+                        HighlightedText(
                             text = subTask.title,
+                            highlight = searchQuery,
                             style = MaterialTheme.typography.bodyMedium,
                             fontSize = (14 * fontScale).sp,
                             textDecoration = if (subTask.isChecked) TextDecoration.LineThrough else TextDecoration.None,
@@ -305,4 +371,43 @@ fun calculateDdayDiff(date: Date): Int {
     }.time
 
     return ((targetDate.time - today.time) / (1000 * 60 * 60 * 24)).toInt()
+}
+
+@Composable
+fun HighlightedText(
+    text: String,
+    highlight: String,
+    modifier: Modifier = Modifier,
+    style: androidx.compose.ui.text.TextStyle = LocalTextStyle.current,
+    fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    color: Color = Color.Unspecified,
+    textDecoration: TextDecoration? = null,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip
+) {
+    if (highlight.isBlank()) {
+        Text(text, modifier, color, fontSize, textDecoration = textDecoration, style = style, maxLines = maxLines, overflow = overflow)
+        return
+    }
+
+    val highlightColor = MaterialTheme.colorScheme.primary
+    val annotated = buildAnnotatedString {
+        val lowerText = text.lowercase()
+        val lowerQuery = highlight.lowercase()
+        var start = 0
+        while (start < text.length) {
+            val index = lowerText.indexOf(lowerQuery, start)
+            if (index == -1) {
+                append(text.substring(start))
+                break
+            }
+            append(text.substring(start, index))
+            withStyle(SpanStyle(background = highlightColor.copy(alpha = 0.35f))) {
+                append(text.substring(index, index + highlight.length))
+            }
+            start = index + highlight.length
+        }
+    }
+
+    Text(annotated, modifier, color, fontSize, textDecoration = textDecoration, style = style, maxLines = maxLines, overflow = overflow)
 }

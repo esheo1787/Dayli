@@ -5,6 +5,9 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 object NotificationScheduler {
@@ -133,6 +136,119 @@ object NotificationScheduler {
             }
         } catch (e: Exception) {
             android.util.Log.e("DDAY_NOTIFICATION", "❌ 알람 스케줄 업데이트 실패", e)
+        }
+    }
+
+    /**
+     * 개별 아이템 시간 기반 알림 스케줄링
+     */
+    fun scheduleItemNotifications(context: Context, item: DdayItem) {
+        if (item.date == null) return
+        val rules = item.getNotificationRules()
+        if (rules.isEmpty()) return
+
+        try {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+
+            rules.forEachIndexed { index, rule ->
+                // day-based 알림은 daily check에서 처리
+                if (rule.type == "days") return@forEachIndexed
+                // 시간 미설정이면 분/시간 알림 스킵
+                if (!item.hasTime()) return@forEachIndexed
+
+                val targetCal = Calendar.getInstance().apply {
+                    time = item.date!!
+                    set(Calendar.HOUR_OF_DAY, item.timeHour!!)
+                    set(Calendar.MINUTE, item.timeMinute!!)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+
+                when (rule.type) {
+                    "minutes" -> targetCal.add(Calendar.MINUTE, -rule.value)
+                    "hours" -> targetCal.add(Calendar.HOUR_OF_DAY, -rule.value)
+                }
+
+                // 이미 지난 시간이면 스킵
+                if (targetCal.timeInMillis <= System.currentTimeMillis()) return@forEachIndexed
+
+                val requestCode = item.id * 100 + index
+                val intent = Intent(context, NotificationReceiver::class.java).apply {
+                    action = NotificationReceiver.ACTION_ITEM_NOTIFICATION
+                    putExtra(NotificationReceiver.EXTRA_ITEM_ID, item.id)
+                    putExtra(NotificationReceiver.EXTRA_NOTIFICATION_INDEX, index)
+                }
+                val pendingIntent = PendingIntent.getBroadcast(
+                    context, requestCode, intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    try {
+                        if (alarmManager.canScheduleExactAlarms()) {
+                            alarmManager.setExactAndAllowWhileIdle(
+                                AlarmManager.RTC_WAKEUP, targetCal.timeInMillis, pendingIntent
+                            )
+                        } else {
+                            alarmManager.setAndAllowWhileIdle(
+                                AlarmManager.RTC_WAKEUP, targetCal.timeInMillis, pendingIntent
+                            )
+                        }
+                    } catch (e: SecurityException) {
+                        alarmManager.setAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP, targetCal.timeInMillis, pendingIntent
+                        )
+                    }
+                } else {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP, targetCal.timeInMillis, pendingIntent
+                    )
+                }
+                android.util.Log.d("DDAY_NOTIFICATION", "⏰ 개별 알림 설정: ${item.title} - ${rule.displayText()} at ${targetCal.time}")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("DDAY_NOTIFICATION", "❌ 개별 알림 설정 실패", e)
+        }
+    }
+
+    /**
+     * 개별 아이템 알림 취소
+     */
+    fun cancelItemNotifications(context: Context, itemId: Int) {
+        try {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+            for (i in 0 until 10) {
+                val requestCode = itemId * 100 + i
+                val intent = Intent(context, NotificationReceiver::class.java).apply {
+                    action = NotificationReceiver.ACTION_ITEM_NOTIFICATION
+                }
+                val pendingIntent = PendingIntent.getBroadcast(
+                    context, requestCode, intent,
+                    PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+                )
+                pendingIntent?.let { alarmManager.cancel(it) }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("DDAY_NOTIFICATION", "❌ 개별 알림 취소 실패", e)
+        }
+    }
+
+    /**
+     * 모든 아이템 알림 재스케줄링 (부팅/앱 시작 시)
+     */
+    fun rescheduleAllItemNotifications(context: Context) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val db = DdayDatabase.getDatabase(context)
+                val items = db.ddayDao().getAll()
+                items.forEach { item ->
+                    if (item.hasTime() && item.getNotificationRules().isNotEmpty() && !item.isChecked) {
+                        scheduleItemNotifications(context, item)
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("DDAY_NOTIFICATION", "❌ 전체 개별 알림 재설정 실패", e)
+            }
         }
     }
 

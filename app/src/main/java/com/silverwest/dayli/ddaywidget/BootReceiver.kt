@@ -17,6 +17,9 @@ class BootReceiver : BroadcastReceiver() {
 
             // 알림 알람 재설정
             NotificationScheduler.updateSchedule(context)
+
+            // 개별 아이템 알림 재스케줄링
+            NotificationScheduler.rescheduleAllItemNotifications(context)
         }
     }
 }
