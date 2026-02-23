@@ -11,6 +11,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,6 +46,7 @@ fun DdayCalendarView(
 
     // 선택된 날짜 (year, month, day) — null이면 미선택
     var selectedDate by remember { mutableStateOf<Triple<Int, Int, Int>?>(null) }
+    var showShareDialog by remember { mutableStateOf(false) }
 
     // 오늘 날짜
     val today = remember { Calendar.getInstance() }
@@ -235,6 +238,19 @@ fun DdayCalendarView(
                     fontSize = (12 * fontScale).sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Spacer(Modifier.weight(1f))
+                if (itemsForSelectedDate.isNotEmpty()) {
+                    IconButton(
+                        onClick = { showShareDialog = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "공유",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
 
             if (itemsForSelectedDate.isEmpty()) {
@@ -291,6 +307,55 @@ fun DdayCalendarView(
                 )
             }
         }
+    }
+
+    // 공유 방식 선택 다이얼로그
+    if (showShareDialog && selectedDate != null) {
+        val (sy, sm, sd) = selectedDate!!
+        AlertDialog(
+            onDismissRequest = { showShareDialog = false },
+            title = { Text("공유") },
+            text = {
+                Column {
+                    Surface(
+                        onClick = {
+                            DdayShareHelper.shareDateItems(
+                                context, sy, sm, sd, itemsForSelectedDate
+                            )
+                            showShareDialog = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        ListItem(
+                            headlineContent = { Text("이미지로 공유") },
+                            leadingContent = {
+                                Icon(Icons.Default.Image, contentDescription = null)
+                            }
+                        )
+                    }
+                    Surface(
+                        onClick = {
+                            DdayShareHelper.shareDateText(
+                                context, sy, sm, sd, itemsForSelectedDate
+                            )
+                            showShareDialog = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        ListItem(
+                            headlineContent = { Text("텍스트로 공유") },
+                            leadingContent = {
+                                Icon(Icons.Default.Share, contentDescription = null)
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showShareDialog = false }) { Text("취소") }
+            }
+        )
     }
 }
 

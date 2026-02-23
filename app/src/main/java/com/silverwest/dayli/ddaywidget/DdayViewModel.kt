@@ -389,6 +389,11 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 val subTask = currentSubTasks[subTaskIndex]
                 currentSubTasks[subTaskIndex] = subTask.copy(isChecked = !subTask.isChecked)
 
+                // 완료 항목을 하단으로 이동 (미완료 유지, 완료끼리는 기존 순서 유지)
+                val sorted = currentSubTasks.sortedBy { it.isChecked }
+                currentSubTasks.clear()
+                currentSubTasks.addAll(sorted)
+
                 // 하위 항목 전체 완료 여부에 따라 상위 아이템 자동 완료/복귀
                 val allChecked = currentSubTasks.all { it.isChecked }
 

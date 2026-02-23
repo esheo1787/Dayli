@@ -18,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Menu
@@ -232,6 +234,7 @@ fun DdayScreen(
     var showBottomSheet by remember { mutableStateOf(false) }
     var selectedItem by remember { mutableStateOf<DdayItem?>(null) }
     val bottomSheetState = rememberModalBottomSheetState()
+    var showShareDialog by remember { mutableStateOf(false) }
 
     // Snackbar 상태
     val snackbarHostState = remember { SnackbarHostState() }
@@ -889,6 +892,23 @@ fun DdayScreen(
                         )
                     }
 
+                    // 공유 버튼
+                    Surface(
+                        onClick = {
+                            showShareDialog = true
+                        }
+                    ) {
+                        ListItem(
+                            headlineContent = { Text("공유") },
+                            leadingContent = {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = "공유"
+                                )
+                            }
+                        )
+                    }
+
                     // 삭제 버튼
                     Surface(
                         onClick = {
@@ -928,6 +948,60 @@ fun DdayScreen(
                     Spacer(modifier = Modifier.height(32.dp))
                 }
             }
+        }
+
+        // 공유 방식 선택 다이얼로그
+        if (showShareDialog && selectedItem != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    showShareDialog = false
+                    selectedItem = null
+                },
+                title = { Text("공유") },
+                text = {
+                    Column {
+                        Surface(
+                            onClick = {
+                                selectedItem?.let { DdayShareHelper.shareImage(context, it) }
+                                showShareDialog = false
+                                showBottomSheet = false
+                                selectedItem = null
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            ListItem(
+                                headlineContent = { Text("이미지로 공유") },
+                                leadingContent = {
+                                    Icon(Icons.Default.Image, contentDescription = null)
+                                }
+                            )
+                        }
+                        Surface(
+                            onClick = {
+                                selectedItem?.let { DdayShareHelper.shareText(context, it) }
+                                showShareDialog = false
+                                showBottomSheet = false
+                                selectedItem = null
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            ListItem(
+                                headlineContent = { Text("텍스트로 공유") },
+                                leadingContent = {
+                                    Icon(Icons.Default.Share, contentDescription = null)
+                                }
+                            )
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = {
+                        showShareDialog = false
+                        selectedItem = null
+                    }) { Text("취소") }
+                }
+            )
         }
 
         // 그룹 관리 다이얼로그
