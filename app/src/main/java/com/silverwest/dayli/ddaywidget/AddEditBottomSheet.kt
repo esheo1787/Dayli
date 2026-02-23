@@ -1,7 +1,13 @@
 package com.silverwest.dayli.ddaywidget
 
 import android.app.DatePickerDialog
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,7 +16,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +28,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -119,6 +131,43 @@ fun AddEditBottomSheet(
     var templateName by remember { mutableStateOf("") }
     var selectedTemplateId by remember(editItem) { mutableStateOf<Int?>(editItem?.templateId) }
 
+    // 자동 입력 (OCR + Gemini) 상태
+    var showAutoInputDialog by remember { mutableStateOf(false) }
+    var showAiConsentDialog by remember { mutableStateOf(false) }
+    var autoInputText by remember { mutableStateOf("") }
+    var isParsingText by remember { mutableStateOf(false) }
+    var isOcrProcessing by remember { mutableStateOf(false) }
+    var parseError by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // 이미지 선택 런처 (갤러리)
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let {
+            isOcrProcessing = true
+            parseError = null
+            try {
+                val image = InputImage.fromFilePath(context, it)
+                val recognizer = TextRecognition.getClient(
+                    KoreanTextRecognizerOptions.Builder().build()
+                )
+                recognizer.process(image)
+                    .addOnSuccessListener { result ->
+                        autoInputText = result.text
+                        isOcrProcessing = false
+                    }
+                    .addOnFailureListener { e ->
+                        parseError = "텍스트 인식 실패: ${e.localizedMessage}"
+                        isOcrProcessing = false
+                    }
+            } catch (e: Exception) {
+                parseError = "이미지 로드 실패"
+                isOcrProcessing = false
+            }
+        }
+    }
+
     // DatePicker
     val calendar = Calendar.getInstance().apply { time = selectedDate }
     val datePickerDialog = DatePickerDialog(
@@ -144,6 +193,176 @@ fun AddEditBottomSheet(
         selectedMinute,
         false  // 12시간 형식
     )
+
+    // AI 자동 입력 최초 사용 안내 다이얼로그
+    if (showAiConsentDialog) {
+        AlertDialog(
+            onDismissRequest = { showAiConsentDialog = false },
+            title = { Text("AI 자동 입력 안내") },
+            text = {
+                Text("선택한 이미지 또는 텍스트가 Google Gemini AI 서버로 전송되어 일정을 자동으로 파싱합니다.\n\n전송된 데이터는 별도로 저장되지 않습니다.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    DdaySettings.setAiConsentShown(context)
+                    showAiConsentDialog = false
+                    autoInputText = ""
+                    parseError = null
+                    showAutoInputDialog = true
+                }) {
+                    Text("확인 후 사용")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAiConsentDialog = false }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+
+    // 자동 입력 다이얼로그 (OCR + Gemini)
+    if (showAutoInputDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isParsingText && !isOcrProcessing) {
+                    showAutoInputDialog = false
+                }
+            },
+            title = { Text("텍스트로 자동 입력") },
+            text = {
+                Column {
+                    // 이미지에서 텍스트 추출 버튼
+                    OutlinedButton(
+                        onClick = {
+                            imagePickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isOcrProcessing && !isParsingText
+                    ) {
+                        Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (isOcrProcessing) "텍스트 인식 중..." else "이미지에서 텍스트 추출")
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // 텍스트 입력 필드
+                    OutlinedTextField(
+                        value = autoInputText,
+                        onValueChange = { autoInputText = it },
+                        label = { Text("텍스트 입력 또는 OCR 결과") },
+                        placeholder = { Text("일정 정보가 담긴 텍스트를 입력하세요") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 120.dp),
+                        maxLines = 8,
+                        enabled = !isParsingText
+                    )
+
+                    // 로딩 인디케이터
+                    if (isParsingText) {
+                        Spacer(Modifier.height(12.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text("AI 분석 중...", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+
+                    // 에러 메시지
+                    parseError?.let { error ->
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = error,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (autoInputText.isBlank()) return@TextButton
+                        isParsingText = true
+                        parseError = null
+                        coroutineScope.launch {
+                            try {
+                                val results = GeminiParser.parse(autoInputText)
+                                if (results.size > 1) {
+                                    // 복수 일정 → 일괄 생성
+                                    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                    results.forEach { parsed ->
+                                        val eventDate = parsed.date?.let { dateFormat.parse(it) }
+                                        onSave(
+                                            parsed.title ?: "",
+                                            parsed.memo,
+                                            eventDate,
+                                            parsed.emoji ?: "📌",
+                                            selectedColor,
+                                            parsed.repeatType?.let {
+                                                try { RepeatType.valueOf(it) } catch (_: Exception) { RepeatType.NONE }
+                                            } ?: RepeatType.NONE,
+                                            ItemType.DDAY,
+                                            emptyList(),
+                                            null, null, null, null,
+                                            parsed.timeHour,
+                                            parsed.timeMinute,
+                                            emptyList()
+                                        )
+                                    }
+                                    android.widget.Toast.makeText(
+                                        context, "${results.size}개 D-Day가 추가되었습니다", android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                    showAutoInputDialog = false
+                                } else {
+                                    // 단일 일정 → 폼 자동완성
+                                    val parsed = results.firstOrNull() ?: GeminiParser.ParsedEvent()
+                                    parsed.title?.let { title = it }
+                                    parsed.date?.let { dateStr ->
+                                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                            .parse(dateStr)?.let { selectedDate = it }
+                                    }
+                                    parsed.timeHour?.let { h ->
+                                        selectedHour = h
+                                        selectedMinute = parsed.timeMinute ?: 0
+                                        hasTime = true
+                                    }
+                                    parsed.repeatType?.let {
+                                        try { selectedRepeatType = RepeatType.valueOf(it) } catch (_: Exception) {}
+                                    }
+                                    if (parsed.subTasks.isNotEmpty()) {
+                                        subTasks = parsed.subTasks.map { SubTask(title = it) }
+                                    }
+                                    parsed.emoji?.let { selectedEmoji = it }
+                                    parsed.memo?.let { memo = it }
+                                    showAutoInputDialog = false
+                                }
+                            } catch (e: Exception) {
+                                parseError = "분석 실패: ${e.localizedMessage}"
+                            } finally {
+                                isParsingText = false
+                            }
+                        }
+                    },
+                    enabled = autoInputText.isNotBlank() && !isParsingText && !isOcrProcessing
+                ) { Text("분석") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showAutoInputDialog = false },
+                    enabled = !isParsingText && !isOcrProcessing
+                ) { Text("취소") }
+            }
+        )
+    }
 
     // 이모지 선택 다이얼로그
     if (showEmojiPicker) {
@@ -447,6 +666,40 @@ fun AddEditBottomSheet(
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
+
+                // 텍스트로 자동 입력 버튼 (추가 모드에서만)
+                if (!isEditMode) {
+                    OutlinedButton(
+                        onClick = {
+                            // 네트워크 체크
+                            val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                            val isOnline = cm?.getNetworkCapabilities(cm.activeNetwork)
+                                ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+                            if (!isOnline) {
+                                Toast.makeText(context, "인터넷 연결이 필요합니다. 연결 후 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
+                                return@OutlinedButton
+                            }
+                            // 최초 사용 동의
+                            if (!DdaySettings.isAiConsentShown(context)) {
+                                showAiConsentDialog = true
+                            } else {
+                                autoInputText = ""
+                                parseError = null
+                                showAutoInputDialog = true
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("텍스트로 자동 입력")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
 
                 // 제목 입력
                 OutlinedTextField(
@@ -800,72 +1053,51 @@ fun AddEditBottomSheet(
 
                 // 개별 알림 설정 (D-Day 전용)
                 if (actualItemType == ItemType.DDAY) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "개별 알림",
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // 기존 알림 규칙 표시
-                    notificationRules.forEachIndexed { index, rule ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "🔔 ${rule.displayText()}",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            IconButton(
-                                onClick = {
-                                    notificationRules = notificationRules.toMutableList().apply { removeAt(index) }
-                                },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "삭제",
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    // 알림 추가 버튼
                     var showNotifDropdown by remember { mutableStateOf(false) }
-                    Box {
-                        TextButton(onClick = { showNotifDropdown = true }) {
-                            Text("+ 알림 추가")
-                        }
-                        DropdownMenu(
-                            expanded = showNotifDropdown,
-                            onDismissRequest = { showNotifDropdown = false }
-                        ) {
-                            if (hasTime) {
-                                listOf(
-                                    NotificationRule("minutes", 10),
-                                    NotificationRule("minutes", 30),
-                                    NotificationRule("hours", 1),
-                                    NotificationRule("hours", 2)
-                                ).forEach { rule ->
-                                    DropdownMenuItem(
-                                        text = { Text(rule.displayText()) },
-                                        onClick = {
-                                            notificationRules = notificationRules + rule
-                                            showNotifDropdown = false
-                                        }
-                                    )
+
+                    // 라벨 + 추가 버튼 (반복 행과 동일 패턴)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "개별 알림",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        Box {
+                            TextButton(onClick = { showNotifDropdown = true }) {
+                                Text("+ 알림 추가")
+                            }
+                            DropdownMenu(
+                                expanded = showNotifDropdown,
+                                onDismissRequest = { showNotifDropdown = false }
+                            ) {
+                                // 시간 설정 시 분/시간 단위 옵션 표시
+                                if (hasTime) {
+                                    listOf(
+                                        NotificationRule("minutes", 10),
+                                        NotificationRule("minutes", 30),
+                                        NotificationRule("hours", 1),
+                                        NotificationRule("hours", 2)
+                                    ).filter { rule -> rule !in notificationRules }.forEach { rule ->
+                                        DropdownMenuItem(
+                                            text = { Text(rule.displayText()) },
+                                            onClick = {
+                                                notificationRules = notificationRules + rule
+                                                showNotifDropdown = false
+                                            }
+                                        )
+                                    }
                                 }
-                            } else {
+                                // 일 단위 옵션은 항상 표시
                                 listOf(
                                     NotificationRule("days", 1),
                                     NotificationRule("days", 3),
                                     NotificationRule("days", 7),
-                                    NotificationRule("days", 14)
-                                ).forEach { rule ->
+                                    NotificationRule("days", 14),
+                                    NotificationRule("days", 30)
+                                ).filter { rule -> rule !in notificationRules }.forEach { rule ->
                                     DropdownMenuItem(
                                         text = { Text(rule.displayText()) },
                                         onClick = {
@@ -874,6 +1106,34 @@ fun AddEditBottomSheet(
                                         }
                                     )
                                 }
+                            }
+                        }
+                    }
+
+                    // 추가된 알림 Chip 표시
+                    if (notificationRules.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            notificationRules.forEachIndexed { index, rule ->
+                                FilterChip(
+                                    selected = true,
+                                    onClick = {
+                                        notificationRules = notificationRules.toMutableList().apply { removeAt(index) }
+                                    },
+                                    label = { Text("🔔 ${rule.displayText()}", style = MaterialTheme.typography.bodySmall) },
+                                    trailingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "삭제",
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
+                                )
                             }
                         }
                     }
@@ -881,64 +1141,97 @@ fun AddEditBottomSheet(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 저장 버튼
-                Button(
-                    onClick = {
-                        if (title.isNotBlank()) {
-                            // 빈 제목의 서브태스크 제거
-                            val validSubTasks = subTasks.filter { it.title.isNotBlank() }
-                            Log.d("DDAY_WIDGET", "✅ 저장: title=$title, type=$actualItemType, repeat=$selectedRepeatType, subTasks=${validSubTasks.size}")
-                            val repeatDayValue = if (selectedRepeatType == RepeatType.WEEKLY && selectedWeeklyDays.isNotEmpty()) {
-                                DdayItem.weeklyDaysToBitmask(selectedWeeklyDays)
-                            } else null
-                            val advanceDaysValue = if (selectedRepeatType in listOf(RepeatType.WEEKLY, RepeatType.MONTHLY, RepeatType.YEARLY)) {
-                                selectedAdvanceDays
-                            } else null
-                            onSave(
-                                title,
-                                memo.ifBlank { null },
-                                if (actualItemType == ItemType.DDAY) selectedDate else null,
-                                selectedEmoji,
-                                selectedColor,
-                                selectedRepeatType,
-                                actualItemType,
-                                validSubTasks,
-                                if (actualItemType == ItemType.DDAY) selectedGroupName else null,
-                                repeatDayValue,
-                                advanceDaysValue,
-                                if (actualItemType == ItemType.TODO) selectedTemplateId else null,
-                                if (actualItemType == ItemType.DDAY && hasTime) selectedHour else null,
-                                if (actualItemType == ItemType.DDAY && hasTime) selectedMinute else null,
-                                if (actualItemType == ItemType.DDAY) notificationRules else emptyList()
-                            )
-                            // 입력 초기화
-                            title = ""
-                            memo = ""
-                            selectedDate = Date()
-                            selectedEmoji = if (actualItemType == ItemType.TODO) "✅" else "📌"
-                            selectedColor = 0xFFA8C5DAL  // Pastel Blue
-                            selectedRepeatType = RepeatType.NONE
-                            selectedWeeklyDays = emptySet()
-                            selectedAdvanceDays = null
-                            subTasks = emptyList()
-                            newSubTaskText = ""
-                            selectedGroupName = null
-                            selectedTemplateId = null
-                            hasTime = false
-                            selectedHour = 12
-                            selectedMinute = 0
-                            notificationRules = emptyList()
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    enabled = title.isNotBlank()
+                // 저장 + 초기화 버튼
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = if (isEditMode) "저장" else "추가",
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    // 초기화 버튼 (추가 모드에서만)
+                    if (!isEditMode) {
+                        OutlinedButton(
+                            onClick = {
+                                title = ""
+                                memo = ""
+                                selectedDate = Date()
+                                selectedEmoji = if (actualItemType == ItemType.TODO) "✅" else "📌"
+                                selectedColor = 0xFFA8C5DAL
+                                selectedRepeatType = RepeatType.NONE
+                                selectedWeeklyDays = emptySet()
+                                selectedAdvanceDays = null
+                                subTasks = emptyList()
+                                newSubTaskText = ""
+                                selectedGroupName = null
+                                selectedTemplateId = null
+                                hasTime = false
+                                selectedHour = 12
+                                selectedMinute = 0
+                                notificationRules = emptyList()
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp)
+                        ) {
+                            Text("초기화", style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
+
+                    // 저장 버튼
+                    Button(
+                        onClick = {
+                            if (title.isNotBlank()) {
+                                val validSubTasks = subTasks.filter { it.title.isNotBlank() }
+                                Log.d("DDAY_WIDGET", "✅ 저장: title=$title, type=$actualItemType, repeat=$selectedRepeatType, subTasks=${validSubTasks.size}")
+                                val repeatDayValue = if (selectedRepeatType == RepeatType.WEEKLY && selectedWeeklyDays.isNotEmpty()) {
+                                    DdayItem.weeklyDaysToBitmask(selectedWeeklyDays)
+                                } else null
+                                val advanceDaysValue = if (selectedRepeatType in listOf(RepeatType.WEEKLY, RepeatType.MONTHLY, RepeatType.YEARLY)) {
+                                    selectedAdvanceDays
+                                } else null
+                                onSave(
+                                    title,
+                                    memo.ifBlank { null },
+                                    if (actualItemType == ItemType.DDAY) selectedDate else null,
+                                    selectedEmoji,
+                                    selectedColor,
+                                    selectedRepeatType,
+                                    actualItemType,
+                                    validSubTasks,
+                                    if (actualItemType == ItemType.DDAY) selectedGroupName else null,
+                                    repeatDayValue,
+                                    advanceDaysValue,
+                                    if (actualItemType == ItemType.TODO) selectedTemplateId else null,
+                                    if (actualItemType == ItemType.DDAY && hasTime) selectedHour else null,
+                                    if (actualItemType == ItemType.DDAY && hasTime) selectedMinute else null,
+                                    if (actualItemType == ItemType.DDAY) notificationRules else emptyList()
+                                )
+                                title = ""
+                                memo = ""
+                                selectedDate = Date()
+                                selectedEmoji = if (actualItemType == ItemType.TODO) "✅" else "📌"
+                                selectedColor = 0xFFA8C5DAL
+                                selectedRepeatType = RepeatType.NONE
+                                selectedWeeklyDays = emptySet()
+                                selectedAdvanceDays = null
+                                subTasks = emptyList()
+                                newSubTaskText = ""
+                                selectedGroupName = null
+                                selectedTemplateId = null
+                                hasTime = false
+                                selectedHour = 12
+                                selectedMinute = 0
+                                notificationRules = emptyList()
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(if (isEditMode) 1f else 2f)
+                            .height(50.dp),
+                        enabled = title.isNotBlank()
+                    ) {
+                        Text(
+                            text = if (isEditMode) "저장" else "추가",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
                 }
             }
         }

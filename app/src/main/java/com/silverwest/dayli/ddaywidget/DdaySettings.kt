@@ -416,4 +416,15 @@ object DdaySettings {
         }
         getPrefs(context).edit().putStringSet(KEY_COLLAPSED_TODOS, collapsed).apply()
     }
+
+    // AI 자동 입력 동의 여부
+    private const val KEY_AI_CONSENT_SHOWN = "ai_consent_shown"
+
+    fun isAiConsentShown(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_AI_CONSENT_SHOWN, false)
+    }
+
+    fun setAiConsentShown(context: Context) {
+        getPrefs(context).edit().putBoolean(KEY_AI_CONSENT_SHOWN, true).apply()
+    }
 }

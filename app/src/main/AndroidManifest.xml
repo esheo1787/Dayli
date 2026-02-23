@@ -11,6 +11,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- 진동 권한 -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 인터넷 (Gemini API) -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"
