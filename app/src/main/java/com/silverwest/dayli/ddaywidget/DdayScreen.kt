@@ -47,7 +47,8 @@ import kotlinx.coroutines.launch
 fun DdayScreen(
     viewModel: DdayViewModel = viewModel(),
     onTabChanged: (Int) -> Unit = {},
-    onEditItem: (DdayItem) -> Unit = {}
+    onEditItem: (DdayItem) -> Unit = {},
+    searchQuery: String = ""
 ) {
     val context = LocalContext.current
 
@@ -84,8 +85,32 @@ fun DdayScreen(
         onTabChanged(pagerState.currentPage)
     }
 
+    // 검색 필터 적용 (remember로 캐싱하여 불필요한 재계산 방지)
+    val filteredDdays = remember(searchQuery, ddays) {
+        if (searchQuery.isBlank()) ddays
+        else ddays.filter { it.title.contains(searchQuery, ignoreCase = true) }
+    }
+    val filteredTodos = remember(searchQuery, todos) {
+        if (searchQuery.isBlank()) todos
+        else todos.filter { item ->
+            item.title.contains(searchQuery, ignoreCase = true) ||
+                item.getSubTaskList().any { it.title.contains(searchQuery, ignoreCase = true) }
+        }
+    }
+    val filteredHiddenDdays = remember(searchQuery, hiddenDdays) {
+        if (searchQuery.isBlank()) hiddenDdays
+        else hiddenDdays.filter { it.title.contains(searchQuery, ignoreCase = true) }
+    }
+    val filteredHiddenTodos = remember(searchQuery, hiddenTodos) {
+        if (searchQuery.isBlank()) hiddenTodos
+        else hiddenTodos.filter { item ->
+            item.title.contains(searchQuery, ignoreCase = true) ||
+                item.getSubTaskList().any { it.title.contains(searchQuery, ignoreCase = true) }
+        }
+    }
+
     // 현재 탭에 따른 아이템 리스트
-    val currentItems = if (pagerState.currentPage == 0) ddays else todos
+    val currentItems = if (pagerState.currentPage == 0) filteredDdays else filteredTodos
 
     // 진행중/완료 항목 분리
     val pendingItems = currentItems.filter { !it.isChecked }
@@ -121,8 +146,8 @@ fun DdayScreen(
     )
 
     // D-Day 그룹별 분류 (탭 전환에 관계없이 항상 D-Day 데이터 유지)
-    val ddayPendingByGroup = remember(ddays) {
-        ddays.filter { !it.isChecked }
+    val ddayPendingByGroup = remember(filteredDdays) {
+        filteredDdays.filter { !it.isChecked }
             .groupBy { it.groupName ?: "미분류" }
             .toSortedMap(compareBy { if (it == "미분류") "zzz" else it })
     }
@@ -381,6 +406,22 @@ fun DdayScreen(
                     verticalArrangement = Arrangement.spacedBy(1.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)  // FAB 겹침 방지
                 ) {
+                    // 검색 결과 없음 표시 (To-Do 탭)
+                    if (searchQuery.isNotBlank() && filteredTodos.isEmpty() && filteredHiddenTodos.isEmpty()) {
+                        item(key = "no_results_todo") {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "검색 결과가 없습니다",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
                     // 진행중 섹션 헤더
                     item(key = "header_pending") {
                         SectionHeader(
@@ -411,8 +452,8 @@ fun DdayScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // 드래그 핸들 (내 순서일 때만 표시)
-                                    if (currentTodoSort == TodoSortOption.MY_ORDER) {
+                                    // 드래그 핸들 (내 순서 + 검색 중이 아닐 때만 표시)
+                                    if (currentTodoSort == TodoSortOption.MY_ORDER && searchQuery.isBlank()) {
                                         Icon(
                                             imageVector = Icons.Default.Menu,
                                             contentDescription = "드래그",
@@ -457,11 +498,11 @@ fun DdayScreen(
                     }
 
                     // 반복 일정 섹션 (숨겨진 매주/매월/매년 To-Do)
-                    if (hiddenTodos.isNotEmpty()) {
+                    if (filteredHiddenTodos.isNotEmpty()) {
                         item(key = "header_hidden_todo") {
                             SectionHeader(
                                 title = "반복 일정",
-                                count = hiddenTodos.size,
+                                count = filteredHiddenTodos.size,
                                 isExpandable = true,
                                 isExpanded = isHiddenTodoExpanded,
                                 onToggle = { isHiddenTodoExpanded = !isHiddenTodoExpanded }
@@ -470,7 +511,7 @@ fun DdayScreen(
 
                         if (isHiddenTodoExpanded) {
                             items(
-                                items = hiddenTodos,
+                                items = filteredHiddenTodos,
                                 key = { "hidden_todo_${it.id}" }
                             ) { item ->
                                 Card(
@@ -582,6 +623,22 @@ fun DdayScreen(
                     verticalArrangement = Arrangement.spacedBy(1.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
+                    // 검색 결과 없음 표시 (D-Day 탭)
+                    if (searchQuery.isNotBlank() && filteredDdays.isEmpty() && filteredHiddenDdays.isEmpty()) {
+                        item(key = "no_results_dday") {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "검색 결과가 없습니다",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
                     item(key = "header_dday_groups") {
                         Spacer(modifier = Modifier.height(1.dp))
                     }
@@ -672,11 +729,11 @@ fun DdayScreen(
                     }
 
                     // 반복 일정 섹션 (숨겨진 매월/매년 항목)
-                    if (hiddenDdays.isNotEmpty()) {
+                    if (filteredHiddenDdays.isNotEmpty()) {
                         item(key = "header_hidden") {
                             SectionHeader(
                                 title = "반복 일정",
-                                count = hiddenDdays.size,
+                                count = filteredHiddenDdays.size,
                                 isExpandable = true,
                                 isExpanded = isHiddenExpanded,
                                 onToggle = { isHiddenExpanded = !isHiddenExpanded }
@@ -685,7 +742,7 @@ fun DdayScreen(
 
                         if (isHiddenExpanded) {
                             items(
-                                items = hiddenDdays,
+                                items = filteredHiddenDdays,
                                 key = { "hidden_${it.id}" }
                             ) { item ->
                                 Card(

@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -16,12 +17,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -123,6 +128,17 @@ fun MainDdayScreen(
 ) {
     val context = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
+    // 검색 상태
+    var isSearchActive by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val searchFocusRequester = remember { FocusRequester() }
+
+    // 검색 모드에서 뒤로가기 시 검색 닫기
+    BackHandler(enabled = isSearchActive) {
+        searchQuery = ""
+        isSearchActive = false
+    }
+
     // 설정 변경 시 리스트 새로고침을 위한 키
     var settingsKey by remember { mutableStateOf(0) }
     // 현재 탭 (0: D-Day, 1: To-Do)
@@ -142,17 +158,56 @@ fun MainDdayScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = if (selectedTab == 0) "D-Day" else "To-Do",
-                        style = MaterialTheme.typography.headlineMedium
-                    )
+                    if (isSearchActive) {
+                        LaunchedEffect(Unit) {
+                            searchFocusRequester.requestFocus()
+                        }
+                        TextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("검색...") },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(searchFocusRequester)
+                        )
+                    } else {
+                        Text(
+                            text = if (selectedTab == 0) "D-Day" else "To-Do",
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                    }
                 },
                 actions = {
-                    IconButton(onClick = { showSettings = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "설정"
-                        )
+                    if (isSearchActive) {
+                        IconButton(onClick = {
+                            searchQuery = ""
+                            isSearchActive = false
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "검색 닫기"
+                            )
+                        }
+                    } else {
+                        IconButton(onClick = { isSearchActive = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "검색"
+                            )
+                        }
+                        IconButton(onClick = { showSettings = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "설정"
+                            )
+                        }
                     }
                 }
             )
@@ -186,7 +241,8 @@ fun MainDdayScreen(
                         onEditItem = { item ->
                             editItem = item
                             showAddSheet = true
-                        }
+                        },
+                        searchQuery = searchQuery
                     )
                 }
             }
