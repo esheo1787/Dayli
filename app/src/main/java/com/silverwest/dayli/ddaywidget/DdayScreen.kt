@@ -48,7 +48,8 @@ fun DdayScreen(
     viewModel: DdayViewModel = viewModel(),
     onTabChanged: (Int) -> Unit = {},
     onEditItem: (DdayItem) -> Unit = {},
-    searchQuery: String = ""
+    searchQuery: String = "",
+    isCalendarView: Boolean = false
 ) {
     val context = LocalContext.current
 
@@ -292,8 +293,8 @@ fun DdayScreen(
                 modifier = Modifier.weight(1f)
             ) { page ->
             Column(modifier = Modifier.fillMaxSize()) {
-            // D-Day 탭일 때만 정렬 옵션 표시
-            if (page == 0) {
+            // D-Day 탭일 때만 정렬 옵션 표시 (리스트 모드만)
+            if (page == 0 && !isCalendarView) {
                 // 정렬 옵션 버튼 + 그룹 관리 버튼
                 Row(
                     modifier = Modifier
@@ -603,6 +604,26 @@ fun DdayScreen(
                     }
                 }
                 } // PullToRefreshBox
+            } else if (isCalendarView) {
+                // D-Day 캘린더 뷰 모드
+                DdayCalendarView(
+                    ddayItems = filteredDdays + filteredHiddenDdays,
+                    onToggle = { viewModel.toggleChecked(it) },
+                    onLongPress = {
+                        selectedItem = it
+                        showBottomSheet = true
+                    },
+                    onSubTaskToggle = { ddayItem, index ->
+                        viewModel.toggleSubTask(ddayItem, index)
+                    },
+                    expandedSubTaskIds = expandedSubTaskIds,
+                    onExpandSubTask = { id ->
+                        expandedSubTaskIds = if (id in expandedSubTaskIds)
+                            expandedSubTaskIds - id
+                        else expandedSubTaskIds + id
+                    },
+                    searchQuery = searchQuery
+                )
             } else {
                 // D-Day 탭: 그룹 드래그 가능, 그룹 내 아이템은 정렬 옵션에 따라
                 PullToRefreshBox(

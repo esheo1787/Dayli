@@ -295,6 +295,18 @@ object DdaySettings {
         getPrefs(context).edit().putBoolean(KEY_HIDDEN_TODO_EXPANDED, expanded).apply()
     }
 
+    // ===== 캘린더 뷰 모드 =====
+
+    private const val KEY_CALENDAR_VIEW = "dday_calendar_view"
+
+    fun isCalendarView(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_CALENDAR_VIEW, false)
+    }
+
+    fun setCalendarView(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_CALENDAR_VIEW, enabled).apply()
+    }
+
     // ===== 정렬 설정 (앱 ↔ 위젯 공유) =====
 
     // D-Day 정렬 (NEAREST / FARTHEST)

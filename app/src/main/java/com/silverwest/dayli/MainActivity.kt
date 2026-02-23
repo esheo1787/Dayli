@@ -17,9 +17,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -144,6 +146,12 @@ fun MainDdayScreen(
     // 현재 탭 (0: D-Day, 1: To-Do)
     var selectedTab by remember { mutableStateOf(0) }
 
+    // 캘린더 뷰 토글 상태
+    var isCalendarView by remember { mutableStateOf(DdaySettings.isCalendarView(context)) }
+    LaunchedEffect(isCalendarView) {
+        DdaySettings.setCalendarView(context, isCalendarView)
+    }
+
     // 추가/수정 바텀시트 상태
     var showAddSheet by remember { mutableStateOf(false) }
     var editItem by remember { mutableStateOf<DdayItem?>(null) }
@@ -196,6 +204,18 @@ fun MainDdayScreen(
                             )
                         }
                     } else {
+                        // D-Day 탭일 때만 캘린더/리스트 토글 아이콘 표시
+                        if (selectedTab == 0) {
+                            IconButton(onClick = { isCalendarView = !isCalendarView }) {
+                                Icon(
+                                    imageVector = if (isCalendarView)
+                                        Icons.AutoMirrored.Filled.List
+                                    else
+                                        Icons.Default.CalendarMonth,
+                                    contentDescription = if (isCalendarView) "리스트 보기" else "캘린더 보기"
+                                )
+                            }
+                        }
                         IconButton(onClick = { isSearchActive = true }) {
                             Icon(
                                 imageVector = Icons.Default.Search,
@@ -242,7 +262,8 @@ fun MainDdayScreen(
                             editItem = item
                             showAddSheet = true
                         },
-                        searchQuery = searchQuery
+                        searchQuery = searchQuery,
+                        isCalendarView = isCalendarView
                     )
                 }
             }
