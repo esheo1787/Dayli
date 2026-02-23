@@ -277,8 +277,7 @@ fun BannerAd() {
         factory = { context ->
             AdView(context).apply {
                 setAdSize(AdSize.BANNER)
-                // 테스트 광고 ID (출시 시 실제 ID로 교체)
-                adUnitId = "ca-app-pub-3940256099942544/6300978111"
+                adUnitId = "ca-app-pub-1913317477324858/1275802348"
                 loadAd(AdRequest.Builder().build())
             }
         }
