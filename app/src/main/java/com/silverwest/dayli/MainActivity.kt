@@ -28,7 +28,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.MobileAds
 import com.silverwest.dayli.ddaywidget.*
 import com.silverwest.dayli.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.delay
@@ -55,6 +60,9 @@ class MainActivity : ComponentActivity() {
 
         // 알림 스케줄 초기화
         NotificationScheduler.updateSchedule(this)
+
+        // AdMob 초기화
+        MobileAds.initialize(this) {}
 
         // Android 13+ 알림 권한 요청
         requestNotificationPermission()
@@ -168,16 +176,20 @@ fun MainDdayScreen(
                 .padding(paddingValues)
         ) {
             // settingsKey를 key로 사용하여 설정 변경 시 리컴포지션
-            key(settingsKey) {
-                DdayScreen(
-                    viewModel = viewModel,
-                    onTabChanged = { tabIndex -> selectedTab = tabIndex },
-                    onEditItem = { item ->
-                        editItem = item
-                        showAddSheet = true
-                    }
-                )
+            Box(modifier = Modifier.weight(1f)) {
+                key(settingsKey) {
+                    DdayScreen(
+                        viewModel = viewModel,
+                        onTabChanged = { tabIndex -> selectedTab = tabIndex },
+                        onEditItem = { item ->
+                            editItem = item
+                            showAddSheet = true
+                        }
+                    )
+                }
             }
+            // 하단 배너 광고
+            BannerAd()
         }
     }
 
@@ -256,6 +268,21 @@ fun MainDdayScreen(
             }
         )
     }
+}
+
+@Composable
+fun BannerAd() {
+    AndroidView(
+        modifier = Modifier.fillMaxWidth(),
+        factory = { context ->
+            AdView(context).apply {
+                setAdSize(AdSize.BANNER)
+                // 테스트 광고 ID (출시 시 실제 ID로 교체)
+                adUnitId = "ca-app-pub-3940256099942544/6300978111"
+                loadAd(AdRequest.Builder().build())
+            }
+        }
+    )
 }
 
 @Composable
