@@ -11,6 +11,7 @@
 [![Android](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-UI-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![Google Play](https://img.shields.io/badge/Google%20Play-Download-414141?logo=googleplay)](https://play.google.com/store/apps/details?id=com.silverwest.dayli)
 
 </div>
 
@@ -49,13 +50,29 @@
 
 ### D-Day 카운트다운
 - 중요한 날짜를 등록하고 남은 일수 확인 (D-3~D-2 파란색 / D-1, D-Day, D+N 빨간색)
+- 시간 설정 가능 (예: 오후 2시 30분)
+- 메모 필드로 장소, 참고사항 등 부가 정보 기록
 - 그룹별 분류, 그룹 드래그 순서 변경
 - 그룹 관리: 이름 변경, 삭제, 그룹별 이모지 설정
 - 임박순/여유순 정렬
 - 반복 일정: 매일/매주(요일 선택)/매월/매년
 - 미리 표시 일수 설정 (예: 2주 전, 1달 전부터 표시)
 - 체크한 반복 항목은 자동 숨김 → 다음 발생일에 자동 복귀
-- D-1, D-Day 푸시 알림 (알림 시간, 소리, 진동 설정 가능)
+- 캘린더 뷰로 월별 D-Day 한눈에 확인
+
+### 개별 알림
+- 항목별 맞춤 알림 규칙 설정
+- 일 단위: 1일/3일/7일/14일/30일 전
+- 시간 단위: 10분/30분/1시간/2시간 전 (시간 설정된 항목)
+- D-1, D-Day 전체 푸시 알림 (알림 시간, 소리, 진동 설정 가능)
+
+### AI 자동 입력
+- 텍스트 입력 또는 이미지(갤러리)에서 일정 자동 추출
+- Google Gemini 2.5 Flash AI로 자연어 파싱
+- ML Kit 한국어 OCR로 이미지에서 텍스트 인식
+- 시험 시간표, 레시피, 쇼핑 목록, 약속 등 다양한 형식 지원
+- 여러 일정 한 번에 일괄 등록
+- 내용에 맞는 이모지 자동 추천
 
 ### To-Do 체크리스트
 - 하위 항목까지 세분화해서 관리
@@ -65,6 +82,12 @@
 - 드래그로 순서 변경
 - 내 순서 / 미완료순 / 최근 추가 정렬
 - 반복 일정: 매일/매주(요일 선택)/매월/매년
+
+### 공유 & 내보내기
+- 텍스트 공유: 이모지 + D-Day 카운트다운 형식
+- 이미지 공유: 색상 카드 스타일 PNG 이미지 생성
+- 날짜별 D-Day 묶어서 공유
+- To-Do 공유 시 진행률 바 포함
 
 ### 홈 화면 위젯
 - **혼합 위젯** — D-Day와 To-Do를 함께 표시
@@ -95,6 +118,9 @@
 | **로컬 DB** | Room |
 | **위젯** | RemoteViews + AppWidgetProvider |
 | **비동기 처리** | Kotlin Coroutines + LiveData |
+| **AI** | Google Gemini 2.5 Flash |
+| **OCR** | ML Kit (한국어 텍스트 인식) |
+| **광고** | Google AdMob |
 | **Min SDK** | 24 (Android 7.0) |
 | **Target SDK** | 35 (Android 15) |
 
@@ -123,6 +149,9 @@ com.silverwest.dayli
     ├── NotificationScheduler.kt    # 알림 스케줄링
     ├── NotificationReceiver.kt     # 브로드캐스트 리시버
     ├── BootReceiver.kt             # 부팅 시 알림 재등록
+    ├── GeminiParser.kt              # Gemini AI 파싱 래퍼
+    ├── DdayCalendarView.kt         # 캘린더 뷰
+    ├── DdayShareHelper.kt          # 공유 (텍스트/이미지)
     ├── EmojiPickerDialog.kt        # 시스템 이모지 피커
     ├── TodoTemplate.kt             # 템플릿 엔티티 & DAO
     └── ...                         # Enum, 컨버터, 유틸리티
@@ -145,6 +174,12 @@ com.silverwest.dayli
 
 ### 템플릿 시스템
 자주 사용하는 체크리스트 구조를 저장하고 한 번의 탭으로 빠르게 재생성할 수 있는 To-Do 템플릿 저장/불러오기 시스템을 설계했습니다.
+
+### AI 자연어 파싱 (Gemini + ML Kit)
+Google Gemini 2.5 Flash API와 ML Kit 한국어 OCR을 결합하여 자연어/이미지에서 일정을 자동 추출합니다. 시험 시간표는 교시 단위로 그룹화하고, 레시피는 재료를 하위 항목으로, 쇼핑 목록은 품목만 추출하는 등 맥락별 최적화된 프롬프트 엔지니어링을 적용했습니다.
+
+### 이미지 공유 카드 생성
+D-Day와 To-Do 항목을 카드 스타일 PNG 이미지로 변환하여 공유하는 기능을 구현했습니다. Canvas API로 둥근 모서리, 배경 색상에 따른 자동 텍스트 색상 조정, 진행률 바 등을 렌더링합니다.
 
 ---
 
@@ -175,18 +210,21 @@ git clone https://github.com/esheo1787/Dayli.git
 - [x] 반복 일정 (매일, 매주, 매월, 매년)
 - [x] 그룹 관리 & 드래그 순서 변경
 - [x] 푸시 알림 (시간/소리/진동 설정)
-- [ ] Google Play 스토어 출시
+- [x] 항목별 개별 알림 규칙
+- [x] 시간 설정 & 메모 필드
+- [x] AI 자동 입력 (Gemini + ML Kit OCR)
+- [x] 캘린더 뷰
+- [x] 텍스트 & 이미지 공유
+- [x] 배너 광고 연동 (AdMob)
+- [x] Google Play 스토어 출시
 - [ ] 테마 팩 (Clean, Mono)
-- [ ] 배너 광고 연동
-- [ ] 캘린더 연동
-- [ ] 시간 기반 스케줄링
 - [ ] 클라우드 백업 & 동기화
 
 ---
 
 ## 📄 개인정보처리방침
 
-Dayli는 개인정보를 수집하지 않습니다. 모든 데이터는 사용자의 기기에만 저장됩니다.
+Dayli는 모든 데이터를 사용자의 기기에만 저장합니다. AI 자동 입력 기능은 텍스트 처리를 위해 Google Gemini API와 ML Kit를 사용하며, 개인정보는 외부 서버에 저장되지 않습니다.
 
 [개인정보처리방침 보기](https://esheo1787.github.io/Dayli/privacy-policy.html)
 
