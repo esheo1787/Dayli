@@ -12,9 +12,7 @@
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-UI-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 
-<!-- Play Store badge (uncomment after release)
 [![Google Play](https://img.shields.io/badge/Google%20Play-Download-414141?logo=googleplay)](https://play.google.com/store/apps/details?id=com.silverwest.dayli)
--->
 
 </div>
 
@@ -53,13 +51,29 @@
 
 ### D-Day Countdown
 - Track important dates with countdown/count-up display (D-3, D-2 in blue / D-1, D-Day, D+N in red)
+- Time scheduling (e.g., 2:30 PM)
+- Memo field for location, notes, and additional context
 - Organize with custom groups, drag to reorder groups
 - Group management: rename, delete, custom emoji per group
 - Sort by upcoming or furthest dates
 - Recurring schedules: daily, weekly (with day selection), monthly, yearly
 - Advance display setting (show items days/weeks before due date)
 - Checked repeat items auto-hide and reappear on next occurrence
-- D-1 and D-Day push notifications (configurable time, sound, vibration)
+- Calendar view for monthly D-Day overview
+
+### Per-Item Notifications
+- Custom notification rules per item
+- Day-based: 1 / 3 / 7 / 14 / 30 days before
+- Time-based: 10 / 30 min, 1 / 2 hours before (when time is set)
+- Global D-1 and D-Day push notifications (configurable time, sound, vibration)
+
+### AI Auto-Input
+- Auto-extract events from text input or gallery images
+- Natural language parsing powered by Google Gemini 2.5 Flash
+- Korean OCR via ML Kit text recognition
+- Supports exam schedules, recipes, shopping lists, appointments, and more
+- Batch creation of multiple events at once
+- Context-aware emoji recommendations
 
 ### To-Do Checklist
 - Sub-checklist items for detailed task breakdown
@@ -69,6 +83,12 @@
 - Drag to reorder items
 - Multiple sort options: custom order, incomplete first, recently added
 - Recurring schedules: daily, weekly (with day selection), monthly, yearly
+
+### Share & Export
+- Text sharing with emoji + D-Day countdown format
+- Image sharing with color card-style PNG generation
+- Bundle D-Days by date for sharing
+- To-Do sharing includes progress bar
 
 ### Home Screen Widgets
 - **Mixed Widget** — D-Day and To-Do combined
@@ -99,6 +119,9 @@
 | **Local Database** | Room |
 | **Widgets** | RemoteViews + AppWidgetProvider |
 | **Async** | Kotlin Coroutines + LiveData |
+| **AI** | Google Gemini 2.5 Flash |
+| **OCR** | ML Kit (Korean Text Recognition) |
+| **Ads** | Google AdMob |
 | **Min SDK** | 24 (Android 7.0) |
 | **Target SDK** | 35 (Android 15) |
 
@@ -127,6 +150,9 @@ com.silverwest.dayli
     ├── NotificationScheduler.kt    # Alarm scheduling
     ├── NotificationReceiver.kt     # Broadcast receiver
     ├── BootReceiver.kt             # Boot alarm rescheduling
+    ├── GeminiParser.kt              # Gemini AI parsing wrapper
+    ├── DdayCalendarView.kt         # Calendar view
+    ├── DdayShareHelper.kt          # Share (text/image)
     ├── EmojiPickerDialog.kt        # System emoji picker
     ├── TodoTemplate.kt             # Template entity & DAO
     └── ...                         # Enums, converters, utilities
@@ -149,6 +175,12 @@ Integrated `androidx.emoji2:emoji2-emojipicker` to provide access to all system 
 
 ### Template System
 Designed a template save/load system for To-Do items, allowing users to store frequently used checklist structures and quickly recreate them with a single tap.
+
+### AI Natural Language Parsing (Gemini + ML Kit)
+Combined Google Gemini 2.5 Flash API with ML Kit Korean OCR to auto-extract events from natural language and images. Applied context-optimized prompt engineering: exam schedules grouped by time slot, recipes with ingredients as sub-tasks, shopping lists with product-only extraction, and more.
+
+### Image Share Card Generation
+Built a feature to render D-Day and To-Do items as card-style PNG images for sharing. Uses Canvas API to draw rounded corners, auto-adjusted text color based on background brightness, and progress bars for To-Do items.
 
 ---
 
@@ -179,18 +211,21 @@ git clone https://github.com/esheo1787/Dayli.git
 - [x] Recurring schedules (daily, weekly, monthly, yearly)
 - [x] Group management & drag reorder
 - [x] Push notifications with customizable settings
-- [ ] Google Play Store release
+- [x] Per-item notification rules
+- [x] Time scheduling & memo field
+- [x] AI auto-input (Gemini + ML Kit OCR)
+- [x] Calendar view
+- [x] Text & image sharing
+- [x] Banner ad integration (AdMob)
+- [x] Google Play Store release
 - [ ] Theme packs (Clean, Mono)
-- [ ] Banner ad integration
-- [ ] Calendar integration
-- [ ] Time-based scheduling
 - [ ] Cloud backup & sync
 
 ---
 
 ## 📄 Privacy Policy
 
-Dayli does not collect any personal data. All data is stored locally on your device.
+Dayli stores all data locally on your device. The AI auto-input feature uses Google Gemini API and ML Kit for text processing only — no personal data is stored on external servers.
 
 [View Privacy Policy](https://esheo1787.github.io/Dayli/privacy-policy.html)
 
