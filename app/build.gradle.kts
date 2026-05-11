@@ -52,6 +52,18 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+
+    sourceSets {
+        // Room schema JSON을 androidTest assets로 노출해 MigrationTestHelper가 사용 가능하게 함
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    }
+}
+
+// Room schema export 위치 (마이그레이션 검증 기반)
+kapt {
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
 }
 
 dependencies {
@@ -111,6 +123,7 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    androidTestImplementation("androidx.room:room-testing:2.6.1")  // MigrationTestHelper
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }

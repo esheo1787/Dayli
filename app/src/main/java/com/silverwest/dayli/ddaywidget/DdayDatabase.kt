@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [DdayItem::class, TodoTemplate::class], version = 17, exportSchema = false)
+@Database(entities = [DdayItem::class, TodoTemplate::class], version = 17, exportSchema = true)
 @TypeConverters(Converters::class)
 abstract class DdayDatabase : RoomDatabase() {
     abstract fun ddayDao(): DdayDao
