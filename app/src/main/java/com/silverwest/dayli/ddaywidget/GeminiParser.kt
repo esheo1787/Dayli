@@ -1,5 +1,6 @@
 package com.silverwest.dayli.ddaywidget
 
+import android.content.Context
 import com.google.ai.client.generativeai.GenerativeModel
 import com.silverwest.dayli.BuildConfig
 import org.json.JSONArray
@@ -25,7 +26,9 @@ object GeminiParser {
         val memo: String? = null
     )
 
-    suspend fun parse(text: String): List<ParsedEvent> {
+    suspend fun parse(context: Context, text: String): List<ParsedEvent> {
+        DdaySettings.recordAiCall(context)
+
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val prompt = """
 다음 텍스트에서 일정/이벤트 정보를 추출하세요.

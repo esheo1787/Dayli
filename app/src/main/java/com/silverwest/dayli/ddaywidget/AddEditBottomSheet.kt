@@ -295,7 +295,7 @@ fun AddEditBottomSheet(
                         parseError = null
                         coroutineScope.launch {
                             try {
-                                val results = GeminiParser.parse(autoInputText)
+                                val results = GeminiParser.parse(context, autoInputText)
                                 if (results.size > 1) {
                                     // 복수 일정 → 일괄 생성
                                     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())

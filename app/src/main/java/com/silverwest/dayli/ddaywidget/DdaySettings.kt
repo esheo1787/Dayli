@@ -1,7 +1,10 @@
 package com.silverwest.dayli.ddaywidget
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
+import org.json.JSONArray
+import java.util.Calendar
 
 /**
  * D-Day 위젯 설정 관리
@@ -419,6 +422,7 @@ object DdaySettings {
 
     // AI 자동 입력 동의 여부
     private const val KEY_AI_CONSENT_SHOWN = "ai_consent_shown"
+    private const val KEY_AI_CALL_HISTORY = "ai_call_history"
 
     fun isAiConsentShown(context: Context): Boolean {
         return getPrefs(context).getBoolean(KEY_AI_CONSENT_SHOWN, false)
@@ -426,5 +430,66 @@ object DdaySettings {
 
     fun setAiConsentShown(context: Context) {
         getPrefs(context).edit().putBoolean(KEY_AI_CONSENT_SHOWN, true).apply()
+    }
+
+    // ===== AI 사용량 측정 =====
+
+    fun recordAiCall(context: Context, timestamp: Long = System.currentTimeMillis()) {
+        val history = getAiCallHistory(context, timestamp).toMutableList()
+        history.add(timestamp)
+        saveAiCallHistory(context, history)
+    }
+
+    fun getAiCallsThisMonth(context: Context, nowMillis: Long = System.currentTimeMillis()): Int {
+        return getAiCallHistory(context, nowMillis).size
+    }
+
+    fun getAiCallsToday(context: Context, nowMillis: Long = System.currentTimeMillis()): Int {
+        val todayStart = Calendar.getInstance().apply {
+            timeInMillis = nowMillis
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        return getAiCallHistory(context, nowMillis).count { it >= todayStart && it <= nowMillis }
+    }
+
+    private fun getAiCallHistory(
+        context: Context,
+        nowMillis: Long = System.currentTimeMillis()
+    ): List<Long> {
+        val json = getPrefs(context).getString(KEY_AI_CALL_HISTORY, null) ?: return emptyList()
+        val monthStart = Calendar.getInstance().apply {
+            timeInMillis = nowMillis
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val parsed = try {
+            val arr = JSONArray(json)
+            (0 until arr.length()).mapNotNull { index ->
+                arr.optLong(index, -1L).takeIf { it > 0L }
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+
+        val filtered = parsed.filter { it >= monthStart && it <= nowMillis }
+        if (filtered.size != parsed.size) {
+            saveAiCallHistory(context, filtered)
+        }
+        return filtered
+    }
+
+    @SuppressLint("UseKtx")
+    private fun saveAiCallHistory(context: Context, history: List<Long>) {
+        val arr = JSONArray()
+        history.sorted().forEach { arr.put(it) }
+        getPrefs(context).edit().putString(KEY_AI_CALL_HISTORY, arr.toString()).apply()
     }
 }

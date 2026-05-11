@@ -84,6 +84,9 @@ fun SettingsScreen(
         mutableStateOf(DdaySettings.isNotifyVibrateEnabled(context))
     }
     var showTimePicker by remember { mutableStateOf(false) }
+    val aiCallsThisMonth = remember {
+        DdaySettings.getAiCallsThisMonth(context)
+    }
 
     // 다크 모드 여부 (위젯 미리보기용)
     val isDark = when (themeMode) {
@@ -639,6 +642,25 @@ fun SettingsScreen(
             }
             Text(
                 text = versionName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
+        }
+
+        // AI 사용량
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "이번 달 AI 사용",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = "${aiCallsThisMonth}회",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray
             )
