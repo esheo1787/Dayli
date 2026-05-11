@@ -11,16 +11,15 @@
     android:gravity="center_vertical"
     android:background="?android:attr/selectableItemBackground">
 
-    <!-- 체크박스 -->
-    <CheckBox
+    <!-- 체크박스 (ImageView, RemoteViews 호환) -->
+    <ImageView
         android:id="@+id/subtask_checkbox"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
         android:focusable="false"
         android:clickable="false"
-        android:minWidth="0dp"
-        android:minHeight="0dp"
-        android:buttonTint="@color/widget_checkbox_tint" />
+        android:src="@drawable/widget_checkbox_unchecked"
+        android:contentDescription="@string/cd_checkbox_unchecked" />
 
     <!-- 서브태스크 제목 -->
     <TextView

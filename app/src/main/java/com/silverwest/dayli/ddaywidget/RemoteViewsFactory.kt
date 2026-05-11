@@ -55,20 +55,14 @@ class RemoteViewsFactory(
                 val dao = db.ddayDao()
 
                 // 숨겨진 반복 항목: stale nextShowDate 재계산 후 자동 표시
+                // 핸들러와 동일한 effective 식을 사용 (advanceDays는 item.getAdvanceDays() 기반)
+                val now = System.currentTimeMillis()
                 dao.getHiddenDdays().forEach { item ->
                     val date = item.date ?: return@forEach
-                    val rType = item.repeatTypeEnum()
-                    val advanceDays = when (rType) {
-                        RepeatType.MONTHLY -> 14
-                        RepeatType.YEARLY -> 30
-                        else -> return@forEach
-                    }
-                    val correctShowDate = java.util.Calendar.getInstance().apply {
-                        time = date
-                        add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
-                    }.timeInMillis
-                    if (item.nextShowDate != correctShowDate) {
-                        dao.update(item.copy(nextShowDate = correctShowDate))
+                    if (item.repeatTypeEnum() == RepeatType.NONE) return@forEach
+                    val effectiveShowDate = DdayRepeatHandler.computeEffectiveShowDate(item, date, now)
+                    if (item.nextShowDate != effectiveShowDate) {
+                        dao.update(item.copy(nextShowDate = effectiveShowDate))
                     }
                 }
                 dao.unhideReadyItems(System.currentTimeMillis())
@@ -381,7 +375,18 @@ class RemoteViewsFactory(
             views.setViewVisibility(R.id.item_checkbox, View.GONE)
         } else {
             views.setViewVisibility(R.id.item_checkbox, View.VISIBLE)
-            views.setCompoundButtonChecked(R.id.item_checkbox, item.isChecked)
+            views.setImageViewResource(
+                R.id.item_checkbox,
+                if (item.isChecked) R.drawable.widget_checkbox_checked
+                else R.drawable.widget_checkbox_unchecked
+            )
+            views.setContentDescription(
+                R.id.item_checkbox,
+                context.getString(
+                    if (item.isChecked) R.string.cd_checkbox_checked
+                    else R.string.cd_checkbox_unchecked
+                )
+            )
         }
 
         // Soft Pastel 테마 텍스트 색상 정의
@@ -619,8 +624,19 @@ class RemoteViewsFactory(
         views.setTextViewText(R.id.subtask_title, subTask.title)
         views.setTextViewTextSize(R.id.subtask_title, android.util.TypedValue.COMPLEX_UNIT_SP, 13f * fontSizeMultiplier)
 
-        // 체크박스 상태
-        views.setCompoundButtonChecked(R.id.subtask_checkbox, subTask.isChecked)
+        // 체크박스 상태 (ImageView)
+        views.setImageViewResource(
+            R.id.subtask_checkbox,
+            if (subTask.isChecked) R.drawable.widget_checkbox_checked
+            else R.drawable.widget_checkbox_unchecked
+        )
+        views.setContentDescription(
+            R.id.subtask_checkbox,
+            context.getString(
+                if (subTask.isChecked) R.string.cd_checkbox_checked
+                else R.string.cd_checkbox_unchecked
+            )
+        )
 
         // 텍스트 색상 (체크 여부에 따라)
         val titleColor: Int

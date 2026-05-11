@@ -52,6 +52,7 @@ class NotificationReceiver : BroadcastReceiver() {
     }
 
     private fun handleItemNotification(context: Context, itemId: Int, ruleIndex: Int) {
+        val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val db = DdayDatabase.getDatabase(context)
@@ -64,6 +65,8 @@ class NotificationReceiver : BroadcastReceiver() {
                 NotificationHelper.showItemNotification(context, item, ruleText)
             } catch (e: Exception) {
                 android.util.Log.e("DDAY_NOTIFICATION", "❌ 개별 알림 처리 실패", e)
+            } finally {
+                pendingResult.finish()
             }
         }
     }
@@ -77,10 +80,15 @@ class NotificationReceiver : BroadcastReceiver() {
             return
         }
 
+        val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val db = DdayDatabase.getDatabase(context)
-                val items = db.ddayDao().getAll()
+                // 반복 항목 중 다시 표시해야 할 항목 unhide (nextShowDate <= 지금)
+                // 이게 없으면 사용자가 앱/위젯을 한 번도 안 열었을 때 알림 누락 발생
+                db.ddayDao().unhideReadyItems(System.currentTimeMillis())
+                // D-Day 알림 대상만 조회: itemType=DDAY, 미체크, 숨김 제외, 날짜 있음
+                val items = db.ddayDao().getDdaysForNotification()
 
                 val today = Calendar.getInstance().apply {
                     set(Calendar.HOUR_OF_DAY, 0)
@@ -90,11 +98,10 @@ class NotificationReceiver : BroadcastReceiver() {
                 }.time
 
                 items.forEach { item ->
-                    // 체크된 항목은 알림 제외
-                    if (item.isChecked) return@forEach
+                    val itemDate = item.date ?: return@forEach
 
                     val targetDate = Calendar.getInstance().apply {
-                        time = item.date
+                        time = itemDate
                         set(Calendar.HOUR_OF_DAY, 0)
                         set(Calendar.MINUTE, 0)
                         set(Calendar.SECOND, 0)
@@ -132,6 +139,8 @@ class NotificationReceiver : BroadcastReceiver() {
                 }
             } catch (e: Exception) {
                 android.util.Log.e("DDAY_NOTIFICATION", "❌ 알림 체크 실패", e)
+            } finally {
+                pendingResult.finish()
             }
         }
     }

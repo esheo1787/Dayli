@@ -20,8 +20,8 @@ android {
         applicationId = "com.silverwest.dayli"
         minSdk = 24
         targetSdk = 35
-        versionCode = 7
-        versionName = "1.1.0"
+        versionCode = 13
+        versionName = "1.1.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -106,6 +106,7 @@ dependencies {
 
     // Test
     testImplementation(libs.junit)
+    testImplementation("org.json:json:20240303")  // 단위 테스트에서 JSONObject/Array 실제 구현 사용
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

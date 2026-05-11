@@ -54,18 +54,31 @@ class DdayWidgetProvider : AppWidgetProvider() {
                 when (clickType) {
                     CLICK_TYPE_CHECKBOX -> {
                         val itemId = intent.getIntExtra(EXTRA_ITEM_ID, -1)
-                        val isChecked = intent.getBooleanExtra(EXTRA_IS_CHECKED, false)
-
-                        android.util.Log.d("DDAY_WIDGET", "☑️ 체크박스 클릭: id=$itemId, checked=$isChecked")
+                        // 인텐트의 isChecked는 토글 의도값이지만, 핸들러가 item.isChecked로 판단하므로 사용하지 않음
+                        android.util.Log.d("DDAY_WIDGET", "☑️ 체크박스 클릭: id=$itemId")
 
                         if (itemId != -1) {
+                            val pendingResult = goAsync()
                             CoroutineScope(Dispatchers.IO).launch {
-                                val db = DdayDatabase.getDatabase(context)
-                                val checkedAt = if (isChecked) System.currentTimeMillis() else null
-                                db.ddayDao().updateChecked(itemId, isChecked, checkedAt)
-
-                                android.util.Log.d("DDAY_WIDGET", "✅ DB 업데이트 완료 (checkedAt=$checkedAt)")
-                                refreshAllWidgets(context)
+                                try {
+                                    val dao = DdayDatabase.getDatabase(context).ddayDao()
+                                    val item = dao.getById(itemId)
+                                    if (item != null) {
+                                        val result = DdayRepeatHandler.toggleChecked(
+                                            dao, item, System.currentTimeMillis()
+                                        )
+                                        android.util.Log.d("DDAY_WIDGET", "✅ 체크박스 처리: $result")
+                                        if (result !is ToggleCheckResult.NoOp) {
+                                            refreshAllWidgets(context)
+                                        }
+                                    } else {
+                                        android.util.Log.w("DDAY_WIDGET", "⚠️ 항목 없음: id=$itemId")
+                                    }
+                                } catch (e: Exception) {
+                                    android.util.Log.e("DDAY_WIDGET", "❌ 체크박스 처리 실패", e)
+                                } finally {
+                                    pendingResult.finish()
+                                }
                             }
                         }
                     }
@@ -81,31 +94,30 @@ class DdayWidgetProvider : AppWidgetProvider() {
                     CLICK_TYPE_SUBTASK -> {
                         val itemId = intent.getIntExtra(EXTRA_ITEM_ID, -1)
                         val subTaskIndex = intent.getIntExtra(EXTRA_SUBTASK_INDEX, -1)
-                        val isChecked = intent.getBooleanExtra(EXTRA_IS_CHECKED, false)
-
-                        android.util.Log.d("DDAY_WIDGET", "☑️ 서브태스크 클릭: itemId=$itemId, index=$subTaskIndex, checked=$isChecked")
+                        // 인텐트의 isChecked는 토글 의도값. 핸들러가 현재 상태 기준으로 반전 처리.
+                        android.util.Log.d("DDAY_WIDGET", "☑️ 서브태스크 클릭: itemId=$itemId, index=$subTaskIndex")
 
                         if (itemId != -1 && subTaskIndex != -1) {
+                            val pendingResult = goAsync()
                             CoroutineScope(Dispatchers.IO).launch {
-                                val db = DdayDatabase.getDatabase(context)
-                                val item = db.ddayDao().getById(itemId)
-                                if (item != null) {
-                                    val subTasks = item.getSubTaskList().toMutableList()
-                                    if (subTaskIndex < subTasks.size) {
-                                        subTasks[subTaskIndex] = subTasks[subTaskIndex].copy(isChecked = isChecked)
-                                        db.ddayDao().updateSubTasks(itemId, DdayItem.subTasksToJson(subTasks))
-
-                                        // 하위 항목 전체 완료 시 상위 자동 완료/복귀
-                                        val allChecked = subTasks.all { it.isChecked }
-                                        db.ddayDao().updateChecked(
-                                            itemId,
-                                            allChecked,
-                                            if (allChecked) System.currentTimeMillis() else null
+                                try {
+                                    val dao = DdayDatabase.getDatabase(context).ddayDao()
+                                    val item = dao.getById(itemId)
+                                    if (item != null) {
+                                        val result = DdayRepeatHandler.toggleSubTask(
+                                            dao, item, subTaskIndex, System.currentTimeMillis()
                                         )
-
-                                        android.util.Log.d("DDAY_WIDGET", "✅ 서브태스크 업데이트 완료 (auto=${if (allChecked) "완료" else "미완료"})")
-                                        refreshAllWidgets(context)
+                                        android.util.Log.d("DDAY_WIDGET", "✅ 서브태스크 처리: $result")
+                                        if (result !is ToggleCheckResult.NoOp) {
+                                            refreshAllWidgets(context)
+                                        }
+                                    } else {
+                                        android.util.Log.w("DDAY_WIDGET", "⚠️ 항목 없음: id=$itemId")
                                     }
+                                } catch (e: Exception) {
+                                    android.util.Log.e("DDAY_WIDGET", "❌ 서브태스크 처리 실패", e)
+                                } finally {
+                                    pendingResult.finish()
                                 }
                             }
                         }

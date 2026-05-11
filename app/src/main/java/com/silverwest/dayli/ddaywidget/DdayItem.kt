@@ -197,45 +197,94 @@ data class DdayItem(
         }
     }
 
-    // 다음 반복 날짜 계산
-    fun getNextRepeatDate(): Date? {
+    // 다음 반복 날짜 계산.
+    // 의미: "최소 1주기 진행 후, 결과가 여전히 과거이면 주기 단위 jump로 미래까지 보정".
+    // 즉 원래 date가 미래여도 항상 1주기 더 미루고, 과거 회차는 점프로 따라잡는다.
+    fun getNextRepeatDate(nowMillis: Long = System.currentTimeMillis()): Date? {
         val type = repeatTypeEnum()
         if (type == RepeatType.NONE || date == null) return null
 
-        val calendar = Calendar.getInstance().apply {
-            time = date
-        }
+        val calendar = Calendar.getInstance().apply { time = date }
+        // 미세 보정 가드 (정상이면 0~1회 안에 수렴)
+        val guardMax = 100
 
         when (type) {
             RepeatType.DAILY -> {
-                calendar.add(Calendar.DAY_OF_YEAR, 1)
+                calendar.add(Calendar.DAY_OF_YEAR, 1)  // 최소 1주기
+                if (calendar.timeInMillis <= nowMillis) {
+                    val dayMs = 24L * 60 * 60 * 1000
+                    val gap = ((nowMillis - calendar.timeInMillis) / dayMs).coerceAtLeast(0L)
+                    calendar.add(Calendar.DAY_OF_YEAR, gap.toInt())
+                }
+                var guard = 0
+                while (calendar.timeInMillis <= nowMillis && guard < guardMax) {
+                    calendar.add(Calendar.DAY_OF_YEAR, 1); guard++
+                }
             }
             RepeatType.WEEKLY -> {
-                calendar.add(Calendar.WEEK_OF_YEAR, 1)
+                calendar.add(Calendar.WEEK_OF_YEAR, 1)  // 최소 1주기
+                if (calendar.timeInMillis <= nowMillis) {
+                    val weekMs = 7L * 24 * 60 * 60 * 1000
+                    val gap = ((nowMillis - calendar.timeInMillis) / weekMs).coerceAtLeast(0L)
+                    calendar.add(Calendar.WEEK_OF_YEAR, gap.toInt())
+                }
+                var guard = 0
+                while (calendar.timeInMillis <= nowMillis && guard < guardMax) {
+                    calendar.add(Calendar.WEEK_OF_YEAR, 1); guard++
+                }
             }
             RepeatType.MONTHLY -> {
-                calendar.add(Calendar.MONTH, 1)
-                // 매월 반복 시 날짜 유지 (repeatDay가 있으면 해당 날짜로)
-                repeatDay?.let { day ->
-                    val maxDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
-                    calendar.set(Calendar.DAY_OF_MONTH, minOf(day, maxDay))
+                val applyDayClamp = {
+                    repeatDay?.let { day ->
+                        val maxDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+                        calendar.set(Calendar.DAY_OF_MONTH, minOf(day, maxDay))
+                    }
+                    Unit
+                }
+                calendar.add(Calendar.MONTH, 1)  // 최소 1주기
+                applyDayClamp()
+                if (calendar.timeInMillis <= nowMillis) {
+                    val nowCal = Calendar.getInstance().apply { timeInMillis = nowMillis }
+                    val gapMonths = (nowCal.get(Calendar.YEAR) - calendar.get(Calendar.YEAR)) * 12 +
+                                    (nowCal.get(Calendar.MONTH) - calendar.get(Calendar.MONTH))
+                    if (gapMonths > 0) {
+                        calendar.add(Calendar.MONTH, gapMonths)
+                        applyDayClamp()
+                    }
+                }
+                var guard = 0
+                while (calendar.timeInMillis <= nowMillis && guard < guardMax) {
+                    calendar.add(Calendar.MONTH, 1)
+                    applyDayClamp()
+                    guard++
                 }
             }
             RepeatType.YEARLY -> {
-                calendar.add(Calendar.YEAR, 1)
+                calendar.add(Calendar.YEAR, 1)  // 최소 1주기
+                if (calendar.timeInMillis <= nowMillis) {
+                    val nowCal = Calendar.getInstance().apply { timeInMillis = nowMillis }
+                    val gapYears = nowCal.get(Calendar.YEAR) - calendar.get(Calendar.YEAR)
+                    if (gapYears > 0) calendar.add(Calendar.YEAR, gapYears)
+                }
+                var guard = 0
+                while (calendar.timeInMillis <= nowMillis && guard < guardMax) {
+                    calendar.add(Calendar.YEAR, 1); guard++
+                }
             }
             RepeatType.NONE -> return null
         }
 
+        // 미세 보정 후에도 과거이면(비정상) null 반환 → 호출자가 fallback 처리
+        if (calendar.timeInMillis <= nowMillis) return null
         return calendar.time
     }
 
-    // 다음 반복 발생일 계산 (D-Day + To-Do 통합)
-    fun getNextOccurrenceDate(): Date? {
+    // 다음 반복 발생일 계산 (D-Day + To-Do 통합, 현재 이후 회차 보장)
+    fun getNextOccurrenceDate(nowMillis: Long = System.currentTimeMillis()): Date? {
         if (!isRepeating()) return null
-        if (date != null) return getNextRepeatDate()
-        // To-Do: 오늘 기준 다음 발생일 계산
-        val cal = Calendar.getInstance()
+        if (date != null) return getNextRepeatDate(nowMillis)
+        // To-Do: 주어진 now 기준 다음 발생일 계산
+        val cal = Calendar.getInstance().apply { timeInMillis = nowMillis }
         when (repeatTypeEnum()) {
             RepeatType.DAILY -> cal.add(Calendar.DAY_OF_YEAR, 1)
             RepeatType.WEEKLY -> {

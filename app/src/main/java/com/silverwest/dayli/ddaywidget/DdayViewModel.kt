@@ -126,25 +126,23 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadHiddenDdays() {
         viewModelScope.launch {
+            val now = System.currentTimeMillis()
             // 표시 시간이 된 항목 활성화
-            dao.unhideReadyItems(System.currentTimeMillis())
+            dao.unhideReadyItems(now)
 
             val items = dao.getHiddenDdays()
             _hiddenDdays.postValue(items)  // 즉시 UI 갱신
 
-            // 저장된 nextShowDate가 item.date 기준과 다르면 재계산 (auto-unhide 타이밍 보정)
+            // 저장된 nextShowDate가 effective 식과 다르면 재계산
+            // (사용자가 advanceDisplayDays를 바꿨거나 date를 직접 수정한 케이스 보정)
+            // 핸들러와 동일한 식을 써야 토글 직후 즉시 unhide되는 회귀 방지
             var anyUpdated = false
             items.forEach { item ->
                 val date = item.date ?: return@forEach
-                val rType = item.repeatTypeEnum()
-                if (rType == RepeatType.NONE) return@forEach
-                val advanceDays = item.getAdvanceDays()
-                val correctShowDate = java.util.Calendar.getInstance().apply {
-                    time = date
-                    add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
-                }.timeInMillis
-                if (item.nextShowDate != correctShowDate) {
-                    dao.update(item.copy(nextShowDate = correctShowDate))
+                if (item.repeatTypeEnum() == RepeatType.NONE) return@forEach
+                val effectiveShowDate = DdayRepeatHandler.computeEffectiveShowDate(item, date, now)
+                if (item.nextShowDate != effectiveShowDate) {
+                    dao.update(item.copy(nextShowDate = effectiveShowDate))
                     anyUpdated = true
                 }
             }
@@ -194,57 +192,12 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleChecked(item: DdayItem) {
         viewModelScope.launch {
-            val newChecked = !item.isChecked
-
-            // 반복 일정이고 체크하는 경우
-            if (newChecked && item.isRepeating()) {
-                val rType = item.repeatTypeEnum()
-
-                if (item.isDday()) {
-                    val nextDate = item.getNextRepeatDate()
-                    if (nextDate != null) {
-                        val advanceDays = item.getAdvanceDays()
-                        val showDate = java.util.Calendar.getInstance().apply {
-                            time = nextDate
-                            add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
-                        }.timeInMillis
-                        // showDate가 현재 이전이면 unhideReadyItems에 의해 즉시 풀리므로, 다음 발생일로 설정
-                        val now = System.currentTimeMillis()
-                        val effectiveShowDate = if (showDate <= now) nextDate.time else showDate
-                        dao.update(item.copy(
-                            date = nextDate, isChecked = false, checkedAt = null,
-                            isHidden = true, nextShowDate = effectiveShowDate
-                        ))
-                        Log.d("DDAY_WIDGET", "🔁 반복 D-Day 숨김: ${item.title} → 표시일: $effectiveShowDate")
-                    }
-                } else if (item.isTodo()) {
-                    val nextDate = item.getNextOccurrenceDate()
-                    if (nextDate != null) {
-                        val advanceDays = item.getAdvanceDays()
-                        val showDate = java.util.Calendar.getInstance().apply {
-                            time = nextDate
-                            add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
-                        }.timeInMillis
-                        val now = System.currentTimeMillis()
-                        val effectiveShowDate = if (showDate <= now) nextDate.time else showDate
-                        val resetSubTasks = item.getSubTaskList().map { it.copy(isChecked = false) }
-                        dao.update(item.copy(
-                            isChecked = false, checkedAt = null,
-                            isHidden = true, nextShowDate = effectiveShowDate,
-                            subTasks = DdayItem.subTasksToJson(resetSubTasks)
-                        ))
-                        Log.d("DDAY_WIDGET", "🔁 반복 To-Do 숨김: ${item.title} → 표시일: $effectiveShowDate")
-                    }
-                }
-            } else {
-                // 일반 항목 또는 체크 해제: 기존 로직
-                val checkedAt = if (newChecked) System.currentTimeMillis() else null
-                dao.updateChecked(item.id, newChecked, checkedAt)
+            val result = DdayRepeatHandler.toggleChecked(dao, item, System.currentTimeMillis())
+            Log.d("DDAY_WIDGET", "✅ toggleChecked: ${item.title} → $result")
+            if (result !is ToggleCheckResult.NoOp) {
+                loadAll()
+                DdayWidgetProvider.refreshAllWidgets(getApplication())
             }
-
-            loadAll()
-            // 위젯 동기화
-            DdayWidgetProvider.refreshAllWidgets(getApplication())
         }
     }
 
@@ -344,25 +297,19 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateItem(item: DdayItem) {
         viewModelScope.launch {
+            val now = System.currentTimeMillis()
             // 숨겨진 항목 처리: 반복 해제 시 숨김 해제, 반복 유지 시 nextShowDate 재계산
+            // (핸들러와 동일한 effective 식을 써야 즉시 unhide 회귀 방지됨)
             val finalItem = if (item.isHidden) {
-                val rType = item.repeatTypeEnum()
-                if (rType != RepeatType.NONE) {
-                    // 반복 유지: nextShowDate 재계산
-                    val advanceDays = item.getAdvanceDays()
-                    if (item.isDday() && item.date != null) {
-                        item.copy(nextShowDate = java.util.Calendar.getInstance().apply {
-                            time = item.date!!
-                            add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
-                        }.timeInMillis)
-                    } else if (item.isTodo()) {
-                        val nextDate = item.getNextOccurrenceDate()
-                        if (nextDate != null) {
-                            item.copy(nextShowDate = java.util.Calendar.getInstance().apply {
-                                time = nextDate
-                                add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
-                            }.timeInMillis)
-                        } else item
+                if (item.repeatTypeEnum() != RepeatType.NONE) {
+                    val occurrenceDate = if (item.isDday()) item.date
+                                         else item.getNextOccurrenceDate(now)
+                    if (occurrenceDate != null) {
+                        item.copy(
+                            nextShowDate = DdayRepeatHandler.computeEffectiveShowDate(
+                                item, occurrenceDate, now
+                            )
+                        )
                     } else item
                 } else {
                     // 반복 해제 → 숨김 해제하여 일반 목록으로 복귀
@@ -384,53 +331,12 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     // 서브태스크 토글 (체크리스트 내 개별 항목)
     fun toggleSubTask(item: DdayItem, subTaskIndex: Int) {
         viewModelScope.launch {
-            val currentSubTasks = item.getSubTaskList().toMutableList()
-            if (subTaskIndex >= 0 && subTaskIndex < currentSubTasks.size) {
-                val subTask = currentSubTasks[subTaskIndex]
-                currentSubTasks[subTaskIndex] = subTask.copy(isChecked = !subTask.isChecked)
-
-                // 완료 항목을 하단으로 이동 (미완료 유지, 완료끼리는 기존 순서 유지)
-                val sorted = currentSubTasks.sortedBy { it.isChecked }
-                currentSubTasks.clear()
-                currentSubTasks.addAll(sorted)
-
-                // 하위 항목 전체 완료 여부에 따라 상위 아이템 자동 완료/복귀
-                val allChecked = currentSubTasks.all { it.isChecked }
-
-                if (allChecked && item.isRepeating()) {
-                    // 반복 항목: 모든 서브태스크 완료 → 반복 일정 섹션으로 이동
-                    val nextDate = item.getNextOccurrenceDate()
-                    if (nextDate != null) {
-                        val advanceDays = item.getAdvanceDays()
-                        val showDate = java.util.Calendar.getInstance().apply {
-                            time = nextDate
-                            add(java.util.Calendar.DAY_OF_YEAR, -advanceDays)
-                        }.timeInMillis
-                        val now = System.currentTimeMillis()
-                        val effectiveShowDate = if (showDate <= now) nextDate.time else showDate
-                        val resetSubTasks = currentSubTasks.map { it.copy(isChecked = false) }
-                        dao.update(item.copy(
-                            date = if (item.isDday()) nextDate else item.date,
-                            subTasks = DdayItem.subTasksToJson(resetSubTasks),
-                            isChecked = false, checkedAt = null,
-                            isHidden = true, nextShowDate = effectiveShowDate
-                        ))
-                    } else {
-                        dao.update(item.copy(
-                            subTasks = DdayItem.subTasksToJson(currentSubTasks),
-                            isChecked = true, checkedAt = System.currentTimeMillis()
-                        ))
-                    }
-                } else {
-                    val updatedItem = item.copy(
-                        subTasks = DdayItem.subTasksToJson(currentSubTasks),
-                        isChecked = allChecked,
-                        checkedAt = if (allChecked) System.currentTimeMillis() else null
-                    )
-                    dao.update(updatedItem)
-                }
+            val result = DdayRepeatHandler.toggleSubTask(
+                dao, item, subTaskIndex, System.currentTimeMillis()
+            )
+            Log.d("DDAY_WIDGET", "✅ toggleSubTask: ${item.title}[$subTaskIndex] → $result")
+            if (result !is ToggleCheckResult.NoOp) {
                 loadAll()
-                // 위젯 동기화
                 DdayWidgetProvider.refreshAllWidgets(getApplication())
             }
         }

@@ -63,6 +63,16 @@ interface DdayDao {
     @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' AND isHidden = 0 ORDER BY id DESC")
     suspend fun getAllDdays(): List<DdayItem>
 
+    // 알림 체크 대상 D-Day (미체크 + 숨김 제외 + 날짜 있음)
+    @Query("""
+        SELECT * FROM dday_items
+        WHERE itemType = 'DDAY'
+          AND isChecked = 0
+          AND isHidden = 0
+          AND date IS NOT NULL
+    """)
+    suspend fun getDdaysForNotification(): List<DdayItem>
+
     // D-Day 아이템만 (내 순서 - sortOrder 기준, 숨김 제외)
     @Query("SELECT * FROM dday_items WHERE itemType = 'DDAY' AND isHidden = 0 ORDER BY isChecked ASC, sortOrder ASC, id DESC")
     suspend fun getAllDdaysSorted(): List<DdayItem>

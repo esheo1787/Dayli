@@ -91,18 +91,14 @@
         android:fontFamily="sans-serif-medium"
         android:paddingHorizontal="4dp" />
 
-    <!-- 체크박스 - 터치 영역 확대 (48dp 최소 권장) -->
-    <CheckBox
+    <!-- 체크박스 (ImageView, RemoteViews 호환) - 터치 영역 확대 (48dp) -->
+    <ImageView
         android:id="@+id/item_checkbox"
         android:layout_width="48dp"
         android:layout_height="match_parent"
-        android:gravity="center"
-        android:layoutDirection="rtl"
+        android:scaleType="center"
         android:focusable="false"
         android:clickable="false"
-        android:minWidth="0dp"
-        android:minHeight="0dp"
-        android:scaleX="1.1"
-        android:scaleY="1.1"
-        android:buttonTint="@color/widget_checkbox_tint" />
+        android:src="@drawable/widget_checkbox_unchecked"
+        android:contentDescription="@string/cd_checkbox_unchecked" />
 </LinearLayout>
