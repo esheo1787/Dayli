@@ -35,7 +35,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.core.content.ContextCompat
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import java.text.SimpleDateFormat
@@ -841,7 +843,19 @@ fun SettingsScreen(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
                 .clickable {
-                    // TODO: 개인정보처리방침 URL 연결
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse(PRIVACY_POLICY_URL)
+                    )
+                    try {
+                        context.startActivity(intent)
+                    } catch (_: Exception) {
+                        Toast.makeText(
+                            context,
+                            "브라우저를 열 수 없습니다",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
                 .padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -864,7 +878,35 @@ fun SettingsScreen(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
                 .clickable {
-                    // TODO: 문의하기 이메일 연결
+                    // 디버깅에 도움이 되도록 앱/기기 정보 본문에 자동 포함
+                    val versionName = try {
+                        context.packageManager
+                            .getPackageInfo(context.packageName, 0).versionName ?: "?"
+                    } catch (_: Exception) { "?" }
+                    val body = buildString {
+                        append("\n\n---\n")
+                        append("아래는 자동으로 첨부된 환경 정보입니다 (수정 가능).\n")
+                        append("앱 버전: $versionName\n")
+                        append("기기: ${Build.MANUFACTURER} ${Build.MODEL}\n")
+                        append("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n")
+                    }
+                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                        // 수신자를 URI에 직접 박는 게 더 호환성 좋음
+                        // (일부 메일 앱이 EXTRA_EMAIL을 안 읽음).
+                        data = Uri.parse("mailto:$CONTACT_EMAIL")
+                        putExtra(Intent.EXTRA_EMAIL, arrayOf(CONTACT_EMAIL))
+                        putExtra(Intent.EXTRA_SUBJECT, "[Dayli 문의] ")
+                        putExtra(Intent.EXTRA_TEXT, body)
+                    }
+                    try {
+                        context.startActivity(intent)
+                    } catch (_: Exception) {
+                        Toast.makeText(
+                            context,
+                            "메일 앱을 열 수 없습니다. $CONTACT_EMAIL 으로 보내주세요",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 }
                 .padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1622,3 +1664,7 @@ private fun ImportPreviewDialog(
         }
     )
 }
+
+// ===== 외부 링크 상수 =====
+private const val PRIVACY_POLICY_URL = "https://esheo1787.github.io/Dayli/privacy-policy.html"
+private const val CONTACT_EMAIL = "heunseo1787@gmail.com"
