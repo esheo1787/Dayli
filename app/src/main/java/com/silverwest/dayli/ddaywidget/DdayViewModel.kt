@@ -463,6 +463,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 templateId = template.id
             )
             dao.insert(item)
+            maybeTriggerWidgetPrompt()
             loadAll()
             DdayWidgetProvider.refreshAllWidgets(getApplication())
         }
