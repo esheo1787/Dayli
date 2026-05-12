@@ -475,6 +475,55 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun getTemplateById(id: Int): TodoTemplate? {
         return templateDao.getById(id)
     }
+
+    // === 백업/복원 ===
+
+    private val database = DdayDatabase.getDatabase(application)
+
+    /** SAF로 선택된 [uri]에 현재 DB 상태를 JSON으로 내보냄. */
+    fun exportBackup(uri: android.net.Uri, onComplete: (BackupRepository.Result) -> Unit) {
+        viewModelScope.launch {
+            val result = BackupRepository.export(getApplication(), uri, dao, templateDao)
+            onComplete(result)
+        }
+    }
+
+    /** [uri] 백업 파일의 미리보기(항목 수 등). 파싱 실패면 null. */
+    fun previewBackup(uri: android.net.Uri, onResult: (BackupSerializer.BackupPreview?) -> Unit) {
+        viewModelScope.launch {
+            val preview = BackupRepository.preview(getApplication(), uri)
+            onResult(preview)
+        }
+    }
+
+    /** [uri] 백업 파일을 [mode]로 가져와 DB에 반영. 성공 시 화면/위젯 새로고침. */
+    fun importBackup(
+        uri: android.net.Uri,
+        mode: BackupSerializer.ImportMode,
+        onComplete: (BackupRepository.Result) -> Unit,
+    ) {
+        viewModelScope.launch {
+            val result = BackupRepository.import(getApplication(), uri, database, mode)
+            if (result is BackupRepository.Result.Success) {
+                // 정렬 옵션 LiveData도 SharedPrefs 새 값으로 갱신해야
+                // loadAllDdays/loadAllTodos가 백업 시점 정렬 그대로 표시함
+                _sortOption.value = try {
+                    SortOption.valueOf(DdaySettings.getDdaySort(getApplication()))
+                } catch (e: Exception) { SortOption.NEAREST }
+                _todoSortOption.value = try {
+                    TodoSortOption.valueOf(DdaySettings.getTodoSort(getApplication()))
+                } catch (e: Exception) { TodoSortOption.MY_ORDER }
+
+                loadAll()
+                loadGroups()
+                loadTemplates()
+                DdayWidgetProvider.refreshAllWidgets(getApplication())
+                NotificationScheduler.updateSchedule(getApplication())
+                NotificationScheduler.rescheduleAllItemNotifications(getApplication())
+            }
+            onComplete(result)
+        }
+    }
 }
 
 

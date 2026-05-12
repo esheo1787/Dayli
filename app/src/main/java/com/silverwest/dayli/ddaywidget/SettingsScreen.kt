@@ -30,12 +30,20 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.viewmodel.compose.viewModel
+import android.widget.Toast
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
     onSettingsChanged: () -> Unit = {},
-    onThemeChanged: (DdaySettings.ThemeMode) -> Unit = {}
+    onThemeChanged: (DdaySettings.ThemeMode) -> Unit = {},
+    viewModel: DdayViewModel = viewModel()
 ) {
     val context = LocalContext.current
 
@@ -612,6 +620,107 @@ fun SettingsScreen(
             widgetFontSize = widgetFontSize,
             isDark = isDark
         )
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+        // ===== 💾 백업/복원 섹션 =====
+        Text(
+            text = "💾 백업/복원",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        // 가져오기 미리보기 다이얼로그 상태 (preview + uri 보관)
+        var importPreviewState by remember {
+            mutableStateOf<Pair<BackupSerializer.BackupPreview, android.net.Uri>?>(null)
+        }
+
+        // 내보내기 launcher (SAF: CreateDocument)
+        val exportLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("application/json")
+        ) { uri ->
+            if (uri != null) {
+                viewModel.exportBackup(uri) { result ->
+                    val msg = when (result) {
+                        is BackupRepository.Result.Success ->
+                            "내보내기 완료: ${result.count}개 항목"
+                        is BackupRepository.Result.Failure ->
+                            "내보내기 실패: ${result.reason}"
+                    }
+                    Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        // 가져오기 launcher (SAF: OpenDocument)
+        val importLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            if (uri != null) {
+                viewModel.previewBackup(uri) { preview ->
+                    if (preview != null) {
+                        importPreviewState = preview to uri
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "올바른 백업 파일이 아닙니다.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+        }
+
+        Text(
+            text = "데이터를 파일로 저장하거나 복원합니다. 기기 변경 전이나 정기적으로 백업해두세요.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        // 내보내기 버튼
+        OutlinedButton(
+            onClick = {
+                val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.getDefault())
+                    .format(Date())
+                exportLauncher.launch("dayli-backup-$timestamp.json")
+            },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+        ) {
+            Text("내보내기 (파일로 저장)")
+        }
+
+        // 가져오기 버튼
+        OutlinedButton(
+            onClick = {
+                importLauncher.launch(arrayOf("application/json", "*/*"))
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("가져오기 (파일에서 복원)")
+        }
+
+        // 가져오기 미리보기 다이얼로그
+        importPreviewState?.let { (preview, uri) ->
+            ImportPreviewDialog(
+                preview = preview,
+                onCancel = { importPreviewState = null },
+                onConfirm = { mode ->
+                    importPreviewState = null
+                    viewModel.importBackup(uri, mode) { result ->
+                        val msg = when (result) {
+                            is BackupRepository.Result.Success ->
+                                "가져오기 완료: ${result.count}개 항목"
+                            is BackupRepository.Result.Failure ->
+                                "가져오기 실패: ${result.reason}"
+                        }
+                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        onSettingsChanged()
+                    }
+                }
+            )
+        }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
@@ -1354,4 +1463,102 @@ private fun formatTime(hour: Int, minute: Int): String {
     } else {
         "$amPm ${displayHour}시 ${minute}분"
     }
+}
+
+@Composable
+private fun ImportPreviewDialog(
+    preview: BackupSerializer.BackupPreview,
+    onCancel: () -> Unit,
+    onConfirm: (BackupSerializer.ImportMode) -> Unit
+) {
+    var mode by remember { mutableStateOf(BackupSerializer.ImportMode.MERGE) }
+    val exportedAtText = remember(preview.exportedAt) {
+        if (preview.exportedAt > 0L) {
+            SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                .format(Date(preview.exportedAt))
+        } else "알 수 없음"
+    }
+
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text("백업 파일 가져오기") },
+        text = {
+            Column {
+                Text(
+                    text = "파일 정보",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "• D-Day ${preview.ddayCount}개\n" +
+                            "• To-Do ${preview.todoCount}개\n" +
+                            "• 템플릿 ${preview.templateCount}개\n" +
+                            "• 내보낸 시각: $exportedAtText",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                Text(
+                    text = "처리 방법",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { mode = BackupSerializer.ImportMode.MERGE }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = mode == BackupSerializer.ImportMode.MERGE,
+                        onClick = { mode = BackupSerializer.ImportMode.MERGE }
+                    )
+                    Column(modifier = Modifier.padding(start = 4.dp)) {
+                        Text("병합 (추천)", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "기존 데이터에 백업 항목 추가",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { mode = BackupSerializer.ImportMode.OVERWRITE }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = mode == BackupSerializer.ImportMode.OVERWRITE,
+                        onClick = { mode = BackupSerializer.ImportMode.OVERWRITE }
+                    )
+                    Column(modifier = Modifier.padding(start = 4.dp)) {
+                        Text("덮어쓰기", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "기존 데이터 삭제 후 백업으로 복원",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(mode) }) {
+                Text("가져오기", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) {
+                Text("취소")
+            }
+        }
+    )
 }

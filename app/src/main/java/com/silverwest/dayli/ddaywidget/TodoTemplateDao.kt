@@ -21,7 +21,7 @@ interface TodoTemplateDao {
     suspend fun getById(id: Int): TodoTemplate?
 
     @Insert
-    suspend fun insert(template: TodoTemplate)
+    suspend fun insert(template: TodoTemplate): Long
 
     @Update
     suspend fun update(template: TodoTemplate)
