@@ -52,6 +52,12 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     private val _hiddenTodos = MutableLiveData<List<DdayItem>>(emptyList())
     val hiddenTodos: LiveData<List<DdayItem>> = _hiddenTodos
 
+    // 첫 항목 추가 직후 위젯 유도 다이얼로그 1회 표시 (소비형 이벤트: null로 리셋)
+    private val _widgetPromptEvent = MutableLiveData<Boolean?>(null)
+    val widgetPromptEvent: LiveData<Boolean?> = _widgetPromptEvent
+
+    fun consumeWidgetPromptEvent() { _widgetPromptEvent.value = null }
+
     // 기존 그룹 목록
     private val _existingGroups = MutableLiveData<List<String>>(emptyList())
     val existingGroups: LiveData<List<String>> = _existingGroups
@@ -249,6 +255,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 notifications = DdayItem.notificationRulesToJson(notificationRules)
             )
             val insertedId = dao.insert(item)
+            maybeTriggerWidgetPrompt()
             loadAll()
             loadGroups()  // 그룹 목록 갱신
             // 개별 알림 스케줄링
@@ -258,6 +265,19 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             }
             // 위젯 동기화
             DdayWidgetProvider.refreshAllWidgets(getApplication())
+        }
+    }
+
+    /**
+     * 첫 항목을 막 추가한 직후 1회만 위젯 추가 유도 이벤트를 발행.
+     * 조건: 전체 항목이 정확히 1개 + 위젯 유도 다이얼로그를 본 적 없음.
+     * UI측에서 [widgetPromptEvent] 관찰 → 위젯 미설치 여부 확인 후 다이얼로그 표시.
+     */
+    private suspend fun maybeTriggerWidgetPrompt() {
+        if (DdaySettings.isWidgetPromptShown(getApplication())) return
+        val totalCount = dao.getAll().size
+        if (totalCount == 1) {
+            _widgetPromptEvent.postValue(true)
         }
     }
 
@@ -289,6 +309,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 templateId = templateId
             )
             dao.insert(item)
+            maybeTriggerWidgetPrompt()
             loadAll()
             // 위젯 동기화
             DdayWidgetProvider.refreshAllWidgets(getApplication())

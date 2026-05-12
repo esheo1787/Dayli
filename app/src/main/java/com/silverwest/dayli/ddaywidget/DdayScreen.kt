@@ -2,6 +2,7 @@
 package com.silverwest.dayli.ddaywidget
 
 import android.util.Log
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -426,16 +427,26 @@ fun DdayScreen(
                         }
                     }
 
-                    // 진행중 섹션 헤더
-                    item(key = "header_pending") {
-                        SectionHeader(
-                            title = "진행중",
-                            count = todoPendingData.size,
-                            isExpandable = false,
-                            isExpanded = true,
-                            onToggle = {}
-                        )
+                    // 빈 상태 온보딩 (To-Do 탭) — 검색 아니고 데이터 0개일 때
+                    val todoFullyEmpty = searchQuery.isBlank() &&
+                        todos.isEmpty() && hiddenTodos.isEmpty()
+                    if (todoFullyEmpty) {
+                        item(key = "onboarding_todo") {
+                            OnboardingEmptyState(itemType = ItemType.TODO)
+                        }
                     }
+
+                    if (!todoFullyEmpty) {
+                        // 진행중 섹션 헤더
+                        item(key = "header_pending") {
+                            SectionHeader(
+                                title = "진행중",
+                                count = todoPendingData.size,
+                                isExpandable = false,
+                                isExpanded = true,
+                                onToggle = {}
+                            )
+                        }
 
                     // 진행중 To-Do 항목들 (드래그 가능)
                     items(
@@ -500,6 +511,7 @@ fun DdayScreen(
                                 }
                             }
                         }
+                    }
                     }
 
                     // 반복 일정 섹션 (숨겨진 매주/매월/매년 To-Do)
@@ -666,9 +678,19 @@ fun DdayScreen(
                         }
                     }
 
-                    item(key = "header_dday_groups") {
-                        Spacer(modifier = Modifier.height(1.dp))
+                    // 빈 상태 온보딩 (D-Day 탭) — 검색 아니고 데이터 0개일 때
+                    val ddayFullyEmpty = searchQuery.isBlank() &&
+                        ddays.isEmpty() && hiddenDdays.isEmpty()
+                    if (ddayFullyEmpty) {
+                        item(key = "onboarding_dday") {
+                            OnboardingEmptyState(itemType = ItemType.DDAY)
+                        }
                     }
+
+                    if (!ddayFullyEmpty) {
+                        item(key = "header_dday_groups") {
+                            Spacer(modifier = Modifier.height(1.dp))
+                        }
                     items(
                         items = orderedGroupList,
                         key = { "group_${it.first}" }
@@ -844,6 +866,7 @@ fun DdayScreen(
                                 }
                             }
                         }
+                    }
                     }
                 }
                 } // PullToRefreshBox
@@ -1751,5 +1774,104 @@ private fun TemplateManageItem(
                 }
             }
         }
+    }
+}
+
+/**
+ * 신규 사용자용 빈 상태 온보딩. 예시 카드 3개와 안내 문구를 보여준다.
+ * - 클릭 가능한 영역은 없음 (예시는 시각적 가이드용)
+ * - 사용자는 우측 하단 + FAB로 실제 항목을 추가
+ */
+@Composable
+private fun OnboardingEmptyState(itemType: ItemType) {
+    val examples = if (itemType == ItemType.DDAY) {
+        listOf(
+            Triple("📚", "수능", "D-100"),
+            Triple("🎂", "엄마 생신", "D-30"),
+            Triple("✈️", "제주도 여행", "D-14"),
+        )
+    } else {
+        listOf(
+            Triple("💪", "스쿼트 30회", null),
+            Triple("📖", "독서 30쪽", null),
+            Triple("💧", "물 1리터 마시기", null),
+        )
+    }
+    val title = if (itemType == ItemType.DDAY) "첫 D-Day를 추가해보세요"
+                else "첫 할 일을 추가해보세요"
+    val subtitle = if (itemType == ItemType.DDAY)
+        "중요한 날까지 며칠 남았는지 한눈에 확인할 수 있어요"
+    else
+        "오늘 할 일을 정리하고 위젯에서 바로 체크하세요"
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = "이런 식으로 만들 수 있어요",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        examples.forEach { (emoji, text, dday) ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                ),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = emoji, fontSize = 22.sp)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (dday != null) {
+                        Text(
+                            text = dday,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = "오른쪽 아래 + 버튼으로 추가하세요",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Medium,
+        )
     }
 }

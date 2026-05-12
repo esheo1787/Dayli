@@ -424,6 +424,17 @@ object DdaySettings {
     private const val KEY_AI_CONSENT_SHOWN = "ai_consent_shown"
     private const val KEY_AI_CALL_HISTORY = "ai_call_history"
 
+    // 첫 항목 추가 후 위젯 추가 유도 다이얼로그를 표시했는지
+    private const val KEY_WIDGET_PROMPT_SHOWN = "widget_prompt_shown"
+
+    fun isWidgetPromptShown(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_WIDGET_PROMPT_SHOWN, false)
+    }
+
+    fun setWidgetPromptShown(context: Context) {
+        getPrefs(context).edit().putBoolean(KEY_WIDGET_PROMPT_SHOWN, true).apply()
+    }
+
     fun isAiConsentShown(context: Context): Boolean {
         return getPrefs(context).getBoolean(KEY_AI_CONSENT_SHOWN, false)
     }

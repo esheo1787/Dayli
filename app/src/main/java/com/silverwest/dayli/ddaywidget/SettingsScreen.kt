@@ -33,6 +33,10 @@ import androidx.compose.ui.unit.sp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -116,6 +120,55 @@ fun SettingsScreen(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
+        // POST_NOTIFICATIONS 권한 보유 여부 (Android 12 이하는 항상 true)
+        // 신규 사용자가 권한 없는 상태에서 SharedPrefs 기본값이 ON이어도
+        // 표시상 OFF로 보이게 해서 "켜져있는데 알림 안 옴" 불일치 방지.
+        var hasNotificationPermission by remember {
+            mutableStateOf(
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+            )
+        }
+
+        // 알림 권한 요청 launcher — 토글 켤 때 권한 없으면 호출.
+        // 권한 허용 시 pendingNotificationAction 실행.
+        var pendingNotificationAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+        val notificationPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            hasNotificationPermission = granted
+            if (granted) {
+                pendingNotificationAction?.invoke()
+            } else {
+                Toast.makeText(
+                    context,
+                    "알림 권한이 거부되어 알림을 받을 수 없습니다",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            pendingNotificationAction = null
+        }
+
+        /**
+         * 알림 토글을 켤 때 권한이 필요하면 launcher 호출 후 [action] 수행, 아니면 즉시 수행.
+         * 끄는 경우(enabled=false)는 권한 무관하게 바로 [action] 수행.
+         */
+        fun guardWithNotificationPermission(enabled: Boolean, action: () -> Unit) {
+            if (!enabled) { action(); return }
+            val needPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            if (needPermission) {
+                pendingNotificationAction = action
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                action()
+            }
+        }
+
         // D-1 (하루 전) 알림
         Row(
             modifier = Modifier
@@ -136,11 +189,15 @@ fun SettingsScreen(
                 )
             }
             Switch(
-                checked = notifyDayBefore,
+                // 권한 없으면 저장된 값과 무관하게 표시상 OFF.
+                // 사용자가 ON으로 바꾸면 guardWithNotificationPermission이 권한 요청.
+                checked = notifyDayBefore && hasNotificationPermission,
                 onCheckedChange = { enabled ->
-                    notifyDayBefore = enabled
-                    DdaySettings.setNotifyDayBeforeEnabled(context, enabled)
-                    NotificationScheduler.updateSchedule(context)
+                    guardWithNotificationPermission(enabled) {
+                        notifyDayBefore = enabled
+                        DdaySettings.setNotifyDayBeforeEnabled(context, enabled)
+                        NotificationScheduler.updateSchedule(context)
+                    }
                 }
             )
         }
@@ -165,11 +222,14 @@ fun SettingsScreen(
                 )
             }
             Switch(
-                checked = notifySameDay,
+                // 권한 없으면 표시상 OFF — UI/실제 불일치 방지
+                checked = notifySameDay && hasNotificationPermission,
                 onCheckedChange = { enabled ->
-                    notifySameDay = enabled
-                    DdaySettings.setNotifySameDayEnabled(context, enabled)
-                    NotificationScheduler.updateSchedule(context)
+                    guardWithNotificationPermission(enabled) {
+                        notifySameDay = enabled
+                        DdaySettings.setNotifySameDayEnabled(context, enabled)
+                        NotificationScheduler.updateSchedule(context)
+                    }
                 }
             )
         }

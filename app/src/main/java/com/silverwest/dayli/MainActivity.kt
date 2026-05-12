@@ -1,7 +1,9 @@
 package com.silverwest.dayli
 
-import android.Manifest
-import android.content.pm.PackageManager
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -9,7 +11,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.compose.BackHandler
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -35,7 +36,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.ads.AdRequest
@@ -48,16 +48,6 @@ import kotlinx.coroutines.delay
 import java.util.Calendar
 
 class MainActivity : ComponentActivity() {
-
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            android.util.Log.d("DDAY_NOTIFICATION", "✅ 알림 권한 허용됨")
-        } else {
-            android.util.Log.d("DDAY_NOTIFICATION", "❌ 알림 권한 거부됨")
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -73,8 +63,8 @@ class MainActivity : ComponentActivity() {
         // AdMob 초기화
         MobileAds.initialize(this) {}
 
-        // Android 13+ 알림 권한 요청
-        requestNotificationPermission()
+        // 알림 권한 요청은 사용자가 알림 토글을 켤 때만 (Android best practice).
+        // 첫 실행 즉시 권한 요청을 띄우지 않는다.
 
         setContent {
             // 스플래시 화면 상태
@@ -103,23 +93,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when {
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    // 이미 권한 있음
-                    android.util.Log.d("DDAY_NOTIFICATION", "✅ 알림 권한 이미 있음")
-                }
-                else -> {
-                    // 권한 요청
-                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -161,6 +134,29 @@ fun MainDdayScreen(
 
     // 템플릿 목록
     val templates by viewModel.templates.observeAsState(emptyList())
+
+    // 첫 항목 추가 직후 위젯 추가 유도 다이얼로그
+    val widgetPromptEvent by viewModel.widgetPromptEvent.observeAsState()
+    var showWidgetPrompt by remember { mutableStateOf(false) }
+    LaunchedEffect(widgetPromptEvent) {
+        if (widgetPromptEvent == true) {
+            // 위젯이 이미 설치된 사용자에게는 보여줄 필요 없음
+            if (!isAnyWidgetInstalled(context)) {
+                showWidgetPrompt = true
+            }
+            viewModel.consumeWidgetPromptEvent()
+            DdaySettings.setWidgetPromptShown(context)
+        }
+    }
+    if (showWidgetPrompt) {
+        WidgetPinPromptDialog(
+            onAdd = {
+                showWidgetPrompt = false
+                requestPinAppWidget(context)
+            },
+            onDismiss = { showWidgetPrompt = false }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -362,6 +358,71 @@ fun BannerAd() {
                 adUnitId = "ca-app-pub-1913317477324858/1275802348"
                 loadAd(AdRequest.Builder().build())
             }
+        }
+    )
+}
+
+/** Dayli의 위젯(통합/D-Day/To-Do) 중 하나라도 홈 화면에 설치되어 있으면 true. */
+private fun isAnyWidgetInstalled(context: android.content.Context): Boolean {
+    val mgr = AppWidgetManager.getInstance(context)
+    val providers = listOf(
+        DdayWidgetProvider::class.java,
+        DdayOnlyWidgetProvider::class.java,
+        TodoOnlyWidgetProvider::class.java,
+    )
+    return providers.any { cls ->
+        mgr.getAppWidgetIds(ComponentName(context, cls)).isNotEmpty()
+    }
+}
+
+/**
+ * 사용자가 홈 화면에 통합 위젯을 한 번 클릭으로 추가하도록 시스템 다이얼로그를 호출.
+ * Android 8.0+(API 26)에서만 동작. Dayli minSdk 24이므로 24/25 기기는 fallback 토스트.
+ */
+private fun requestPinAppWidget(context: android.content.Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+        android.widget.Toast.makeText(
+            context,
+            "홈 화면을 길게 눌러 위젯 메뉴에서 Dayli를 추가해주세요",
+            android.widget.Toast.LENGTH_LONG
+        ).show()
+        return
+    }
+    val mgr = AppWidgetManager.getInstance(context)
+    if (!mgr.isRequestPinAppWidgetSupported) {
+        android.widget.Toast.makeText(
+            context,
+            "이 런처는 자동 추가를 지원하지 않아요. 홈 화면을 길게 눌러 위젯을 추가해주세요",
+            android.widget.Toast.LENGTH_LONG
+        ).show()
+        return
+    }
+    val component = ComponentName(context, DdayWidgetProvider::class.java)
+    val successCallback = PendingIntent.getBroadcast(
+        context, 0, Intent(),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    mgr.requestPinAppWidget(component, null, successCallback)
+}
+
+@Composable
+private fun WidgetPinPromptDialog(onAdd: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("홈 화면에 위젯 추가") },
+        text = {
+            Text(
+                "Dayli의 핵심은 위젯입니다. 홈 화면에 추가하면 앱을 열지 않고도 " +
+                "D-Day와 할 일을 바로 확인할 수 있어요."
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onAdd) {
+                Text("추가하기", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("나중에") }
         }
     )
 }
