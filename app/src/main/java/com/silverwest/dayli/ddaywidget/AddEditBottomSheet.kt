@@ -1,8 +1,11 @@
 package com.silverwest.dayli.ddaywidget
 
 import android.app.DatePickerDialog
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.speech.RecognizerIntent
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -19,6 +22,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -168,6 +172,20 @@ fun AddEditBottomSheet(
         }
     }
 
+    // 음성 입력 런처 (시스템 음성 인식)
+    val speechLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val spoken = result.data
+            ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            ?.firstOrNull()
+            ?.trim()
+        if (!spoken.isNullOrBlank()) {
+            // 기존 텍스트가 있으면 줄바꿈으로 이어붙임 (여러 번 말하기 지원)
+            autoInputText = if (autoInputText.isBlank()) spoken else autoInputText + "\n" + spoken
+        }
+    }
+
     // DatePicker
     val calendar = Calendar.getInstance().apply { time = selectedDate }
     val datePickerDialog = DatePickerDialog(
@@ -200,7 +218,7 @@ fun AddEditBottomSheet(
             onDismissRequest = { showAiConsentDialog = false },
             title = { Text("AI 자동 입력 안내") },
             text = {
-                Text("선택한 이미지 또는 텍스트가 Google Gemini AI 서버로 전송되어 일정을 자동으로 파싱합니다.\n\n전송된 데이터는 별도로 저장되지 않습니다.")
+                Text("선택한 이미지, 음성 인식 결과 또는 텍스트가 Google Gemini AI 서버로 전송되어 일정을 자동으로 파싱합니다.\n\n전송된 데이터는 별도로 저장되지 않습니다.")
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -232,19 +250,46 @@ fun AddEditBottomSheet(
             title = { Text("텍스트로 자동 입력") },
             text = {
                 Column {
-                    // 이미지에서 텍스트 추출 버튼
-                    OutlinedButton(
-                        onClick = {
-                            imagePickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isOcrProcessing && !isParsingText
-                    ) {
-                        Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+                    // 이미지 OCR + 음성 입력 버튼
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = {
+                                imagePickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isOcrProcessing && !isParsingText,
+                            contentPadding = PaddingValues(horizontal = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(if (isOcrProcessing) "인식 중..." else "이미지", maxLines = 1)
+                        }
                         Spacer(Modifier.width(8.dp))
-                        Text(if (isOcrProcessing) "텍스트 인식 중..." else "이미지에서 텍스트 추출")
+                        OutlinedButton(
+                            onClick = {
+                                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                    putExtra(
+                                        RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                                    )
+                                    putExtra(RecognizerIntent.EXTRA_PROMPT, "일정을 말해주세요")
+                                }
+                                try {
+                                    speechLauncher.launch(intent)
+                                } catch (e: ActivityNotFoundException) {
+                                    parseError = "이 기기에서 음성 인식을 사용할 수 없습니다"
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isOcrProcessing && !isParsingText,
+                            contentPadding = PaddingValues(horizontal = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("말로 입력", maxLines = 1)
+                        }
                     }
 
                     Spacer(Modifier.height(12.dp))
