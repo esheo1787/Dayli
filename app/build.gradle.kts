@@ -1,31 +1,26 @@
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("org.jetbrains.kotlin.kapt")
-}
-
-val localProperties = Properties().apply {
-    val file = rootProject.file("local.properties")
-    if (file.exists()) load(file.inputStream())
+    id("com.google.gms.google-services")
 }
 
 android {
     namespace = "com.silverwest.dayli"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.silverwest.dayli"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 15
-        versionName = "1.1.7"
+        targetSdk = 36
+        versionCode = 17
+        versionName = "1.1.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties.getProperty("GEMINI_API_KEY", "")}\"")
+        // GEMINI_API_KEY buildConfigField 제거됨 — Firebase AI Logic 이전으로 APK에 키 미포함
+        // (2026-08 프로젝트 정지 인시던트: APK 내장 키 유출·도용 재발 방지)
     }
 
     buildFeatures {
@@ -110,8 +105,12 @@ dependencies {
     // ML Kit Text Recognition (한국어 OCR)
     implementation("com.google.mlkit:text-recognition-korean:16.0.1")
 
-    // Google Generative AI (Gemini)
-    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+    // Firebase AI Logic (Gemini) — APK에 API 키를 내장하지 않는 구조
+    implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
+    implementation("com.google.firebase:firebase-ai")
+    // App Check — 정품 앱만 AI 호출 가능 (키 도용 원천 차단)
+    releaseImplementation("com.google.firebase:firebase-appcheck-playintegrity")
+    debugImplementation("com.google.firebase:firebase-appcheck-debug")
 
     // Java 8+ API 지원 (LocalDateTime 등)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")

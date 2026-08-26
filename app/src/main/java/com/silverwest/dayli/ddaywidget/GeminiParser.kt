@@ -1,8 +1,9 @@
 package com.silverwest.dayli.ddaywidget
 
 import android.content.Context
-import com.google.ai.client.generativeai.GenerativeModel
-import com.silverwest.dayli.BuildConfig
+import com.google.firebase.Firebase
+import com.google.firebase.ai.ai
+import com.google.firebase.ai.type.GenerativeBackend
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -10,10 +11,11 @@ import java.util.*
 
 object GeminiParser {
 
-    private val model = GenerativeModel(
-        modelName = "gemini-2.5-flash",
-        apiKey = BuildConfig.GEMINI_API_KEY
-    )
+    // Firebase AI Logic 경유 — API 키가 APK에 포함되지 않음 (google-services.json 기반)
+    private val model by lazy {
+        Firebase.ai(backend = GenerativeBackend.googleAI())
+            .generativeModel("gemini-3.6-flash")
+    }
 
     data class ParsedEvent(
         val title: String? = null,
@@ -78,7 +80,22 @@ $text
     {"title":"민법, 사회보험법, 경제학원론·경영학개론 중 1과목","date":"2026-05-25","timeHour":11,"timeMinute":20,"emoji":"📝","memo":"2교시 | 11:20~13:20 | 120분"}
   ]
 - emoji는 모든 시험 과목에 📝 사용
-- emoji는 내용에 가장 어울리는 이모지 1개를 추천 (예: 레시피→🍳, 쇼핑→🛍️, 운동→💪, 공부→📚, 면접→👔, 여행→✈️, 병원→🏥, 생일→🎂, 회의→💼, 시험→📝, 약속→🤝)
+이모지 선택 규칙:
+- emoji는 반드시 title 내용에 가장 구체적으로 어울리는 이모지 1개를 선택
+- 📌 같은 범용 이모지는 정말 어울리는 것이 하나도 없을 때만 최후의 수단으로 사용
+- 복수 일정 배열에서도 각 항목마다 개별적으로 어울리는 이모지 선택 (전부 같은 이모지로 통일 금지, 단 시험 시간표는 예외로 모두 📝)
+- 아래 예시를 참고하되, 목록에 없는 주제면 가장 잘 어울리는 이모지를 직접 선택:
+  시험/공부→📝/📚, 치과→🦷, 병원/진료→🏥, 예방접종/주사→💉, 약 복용→💊,
+  미용실/헤어→💇, 네일→💅, 생일→🎂, 기념일/데이트→💕, 결혼식→💍, 돌잔치→👶,
+  여행→✈️, 캠핑→🏕️, 등산→⛰️, 바다/수영→🏖️, 영화→🎬, 콘서트/공연→🎤, 전시→🖼️,
+  운동/헬스→💪, 러닝/마라톤→🏃, 축구→⚽, 야구→⚾, 요가→🧘,
+  회의→💼, 면접→👔, 출장→🧳, 마감/제출→⏰, 발표→📢,
+  월급/급여→💰, 카드결제/납부→💳, 공과금/청구서→🧾, 세금→🏛️, 적금/저축→🏦, 보험→🛡️,
+  이사→📦, 택배/배송→🚚, 청소→🧹, 빨래→🧺, 장보기/쇼핑→🛍️, 레시피/요리→🍳,
+  자동차/정비→🚗, 주유→⛽, 반려동물→🐶/🐱, 화분/식물→🪴,
+  약속/모임→🤝, 회식/술자리→🍻, 식사/맛집→🍽️, 카페→☕,
+  개강/개학→🏫, 졸업→🎓, 수강신청→🖥️, 자격증→📜, 독서→📖,
+  예매/티켓→🎫, 구독 결제→🔄, 휴가/연차→🌴, 명절→🌕, 크리스마스→🎄, 새해→🎆
 - 대화/채팅/문자 내용에서 약속이 감지되면: 제목은 "약속" 또는 약속 목적, 장소 정보는 memo에 입력
 - memo는 장소, 주소, 참고사항 등 부가 정보가 있을 때만 사용. 없으면 null
 """.trimIndent()
@@ -88,6 +105,7 @@ $text
             val responseText = response.text ?: throw Exception("응답이 비어있습니다")
             return parseResponse(responseText)
         } catch (e: Exception) {
+            android.util.Log.e("GeminiParser", "Gemini 호출 실패: ${e.javaClass.simpleName}", e)
             val msg = e.localizedMessage ?: e.message ?: "알 수 없는 오류"
             when {
                 "404" in msg || "NOT_FOUND" in msg -> throw Exception("네트워크 오류. 잠시 후 다시 시도해주세요.")
