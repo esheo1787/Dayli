@@ -14,7 +14,7 @@ android {
         applicationId = "com.silverwest.dayli"
         minSdk = 24
         targetSdk = 36
-        versionCode = 18
+        versionCode = 19
         versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
