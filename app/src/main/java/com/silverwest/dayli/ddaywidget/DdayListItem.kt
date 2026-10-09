@@ -70,20 +70,13 @@ fun DdayListItem(
 
     val surface = MaterialTheme.colorScheme.surface
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val cardBg = if (tinted) {
-        itemColor.copy(alpha = if (item.isChecked) bgOpacity * 0.5f else bgOpacity).compositeOver(surface)
-    } else surface
-    val tileBg = if (tinted) {
-        Color.White.copy(alpha = if (dark) 0.10f else 0.65f).compositeOver(cardBg)
-    } else {
-        itemColor.copy(alpha = if (item.isChecked) iconBgOpacity * 0.6f else iconBgOpacity).compositeOver(surface)
-    }
-    // 카드 배경과의 대비를 비교해 더 잘 읽히는 글자색 선택 (항목 색을 진하게 칠한 경우 포함)
-    val lightCard = DayliUi.prefersDarkText(cardBg)
-    val primaryTextColor = if (lightCard) DayliUi.DarkText else DayliUi.LightText
-    // 보조 글자도 대비 4.5:1 미만이면 본문 글자색으로 (진한 항목 색에서 날짜가 흐려지지 않게)
-    val secondaryTextColor = (if (lightCard) Color(0xFF5D5A58) else Color(0xFFCFCAC6))
-        .let { if (DayliUi.contrast(it, cardBg) >= 4.5f) it else primaryTextColor }
+    // 위젯·설정 미리보기와 같은 계산
+    val colors = DayliUi.cardColors(itemColor, surface, dark, tinted, bgOpacity, iconBgOpacity, item.isChecked)
+    val cardBg = colors.card
+    val tileBg = colors.tile
+    val lightCard = colors.lightCard
+    val primaryTextColor = colors.text
+    val secondaryTextColor = colors.subText
     val textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None
 
     val meta = buildList {

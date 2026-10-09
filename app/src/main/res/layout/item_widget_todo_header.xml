@@ -1,92 +1,111 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/todo_header_root"
+    android:id="@+id/todo_header_frame"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:paddingHorizontal="10dp"
-    android:paddingVertical="8dp"
-    android:gravity="center_vertical"
-    android:background="@drawable/widget_item_rounded_bg">
+    android:layout_height="wrap_content">
 
-    <!-- 이모지 아이콘 -->
-    <FrameLayout
-        android:id="@+id/todo_header_icon_card"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:background="@drawable/widget_icon_rounded_bg">
-
-        <TextView
-            android:id="@+id/todo_header_icon"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:text="📋"
-            android:textSize="18sp" />
-
-        <!-- 플랫 이모지 스타일일 때 사용 (기본은 숨김) -->
-        <ImageView
-            android:id="@+id/todo_header_icon_img"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:layout_gravity="center"
-            android:importantForAccessibility="no"
-            android:visibility="gone" />
-    </FrameLayout>
-
-    <!-- 제목 -->
-    <TextView
-        android:id="@+id/todo_header_title"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:layout_marginStart="10dp"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:textColor="#DD000000"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:fontFamily="sans-serif-medium" />
-
-    <!-- 접기/펼치기 영역 (넓은 터치 영역) -->
-    <LinearLayout
-        android:id="@+id/todo_header_toggle_area"
-        android:layout_width="wrap_content"
+    <ImageView
+        android:id="@+id/todo_header_bg"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_shape_r12"
+        android:importantForAccessibility="no" />
+
+    <LinearLayout
+        android:id="@+id/todo_header_root"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="24dp"
-        android:paddingEnd="4dp">
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="8dp"
+        android:gravity="center_vertical">
 
-        <!-- 진행현황 (2/5) -->
+        <!-- 이모지 아이콘 -->
+        <FrameLayout
+            android:id="@+id/todo_header_icon_card"
+            android:layout_width="34dp"
+            android:layout_height="34dp">
+
+            <ImageView
+        android:id="@+id/todo_header_icon_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_shape_r9"
+        android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/todo_header_icon"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="📋"
+                android:textSize="18sp" />
+
+            <!-- 플랫 이모지 스타일일 때 사용 (기본은 숨김) -->
+            <ImageView
+                android:id="@+id/todo_header_icon_img"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:importantForAccessibility="no"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- 제목 -->
         <TextView
-            android:id="@+id/todo_header_progress"
-            android:layout_width="wrap_content"
+            android:id="@+id/todo_header_title"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:textSize="13sp"
-            android:textColor="#88000000" />
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#DD000000"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:fontFamily="sans-serif-medium" />
 
-        <!-- 전체 완료 체크박스 (ImageView, RemoteViews 호환) -->
-        <ImageView
-            android:id="@+id/todo_header_checkbox"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:scaleType="center"
-            android:focusable="false"
-            android:clickable="false"
-            android:src="@drawable/widget_checkbox_unchecked"
-            android:contentDescription="@string/cd_checkbox_unchecked"
-            android:visibility="gone" />
-
-        <!-- 접기/펼치기 표시 -->
-        <TextView
-            android:id="@+id/todo_header_indicator"
+        <!-- 접기/펼치기 영역 (넓은 터치 영역) -->
+        <LinearLayout
+            android:id="@+id/todo_header_toggle_area"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:textColor="#88000000"
-            android:paddingStart="4dp" />
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="4dp">
+
+            <!-- 진행현황 (2/5) -->
+            <TextView
+                android:id="@+id/todo_header_progress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="#88000000" />
+
+            <!-- 전체 완료 체크박스 (ImageView, RemoteViews 호환) -->
+            <ImageView
+                android:id="@+id/todo_header_checkbox"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:scaleType="center"
+                android:focusable="false"
+                android:clickable="false"
+                android:src="@drawable/widget_checkbox_unchecked"
+                android:contentDescription="@string/cd_checkbox_unchecked"
+                android:visibility="gone" />
+
+            <!-- 접기/펼치기 표시 -->
+            <TextView
+                android:id="@+id/todo_header_indicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="#88000000"
+                android:paddingStart="4dp" />
+        </LinearLayout>
     </LinearLayout>
-
-</LinearLayout>
+</FrameLayout>

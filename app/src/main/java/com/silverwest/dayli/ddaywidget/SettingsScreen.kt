@@ -47,6 +47,7 @@ import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.launch
@@ -668,7 +669,9 @@ fun SettingsScreen(
             backgroundOpacity = backgroundOpacity,
             iconBgOpacity = iconBgOpacity,
             widgetFontSize = widgetFontSize,
-            isDark = isDark
+            isDark = isDark,
+            heroEnabled = heroEnabled,
+            heroColor = heroColor
         )
 
         }
@@ -974,6 +977,7 @@ fun SettingsScreen(
     }
 }
 
+/** 위젯 미리보기: 실제 위젯(RemoteViewsFactory)과 같은 WidgetStyle 색 계산 사용 */
 @Composable
 private fun WidgetPreviewItem(
     widgetBgOpacity: Int,
@@ -981,114 +985,127 @@ private fun WidgetPreviewItem(
     backgroundOpacity: Int,
     iconBgOpacity: Int,
     widgetFontSize: Int,
-    isDark: Boolean
+    isDark: Boolean,
+    heroEnabled: Boolean,
+    heroColor: String
 ) {
-    // 위젯 배경색 (DdayWidgetProvider와 동일한 로직)
-    val bgAlpha = (widgetBgOpacity / 100f).coerceIn(0f, 1f)
-    val widgetBgColor = if (isDark) Color(0xFF2A2A3E) else Color(0xFFFFFDF5)
-
     // 폰트 크기 (RemoteViewsFactory와 동일한 배율)
-    val fontMultiplier = when (widgetFontSize) {
+    val fm = when (widgetFontSize) {
         0 -> 0.85f  // 작게
         2 -> 1.15f  // 크게
         else -> 1f  // 보통
     }
-    val titleSize = (15f * fontMultiplier).sp
-    val dateSize = (12f * fontMultiplier).sp
-    val ddaySize = (16f * fontMultiplier).sp
+    val inTwoDays = remember { Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 2) }.time }
+    val ddaySample = Color(0xFF81D4FA)
+    val todoSample = Color(0xFFA5D6A7)
+    val headerColor = if (isDark) Color(0xDDF5F5F0) else Color(0xDD4A4A4A)
 
-    val itemBgAlpha = if (backgroundEnabled) backgroundOpacity / 100f else 0f
-    val iconAlpha = if (backgroundEnabled) iconBgOpacity / 100f else 0f
-
-    val textColor = if (isDark) Color.White.copy(alpha = 0.87f) else Color.Black.copy(alpha = 0.87f)
-    val subTextColor = if (isDark) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.53f)
-
-    // 위젯 컨테이너
-    Column(
+    // 배경화면 느낌의 바탕 (위젯 전체 배경 투명도가 보이도록)
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(widgetBgColor.copy(alpha = bgAlpha))
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                Brush.linearGradient(
+                    if (isDark) listOf(Color(0xFF2E3A46), Color(0xFF3B2F3A)) else listOf(Color(0xFFB9D3E6), Color(0xFFE9C9C0))
+                )
+            )
+            .padding(12.dp)
     ) {
-        // D-Day 예시 카드
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFFE53935).copy(alpha = itemBgAlpha))
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .clip(RoundedCornerShape(16.dp))
+                .background(WidgetStyle.containerBase(isDark).copy(alpha = WidgetStyle.containerAlpha(widgetBgOpacity) / 255f))
+                .padding(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFE53935).copy(alpha = iconAlpha)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("📚", fontSize = (18f * fontMultiplier).sp)
+            if (heroEnabled) {
+                val hc = WidgetStyle.heroColors(heroColor, ddaySample)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(hc.bg)
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier.size(40.dp).clip(RoundedCornerShape(9.dp)).background(hc.tile),
+                        contentAlignment = Alignment.Center
+                    ) { EmojiText("📚", fontSize = (20f * fm).sp) }
+                    Column(Modifier.weight(1f).padding(start = 12.dp, end = 8.dp)) {
+                        Text("가장 가까운 일정", fontSize = (11f * fm).sp, color = hc.sub, maxLines = 1)
+                        Text("시험 공부", fontSize = (15f * fm).sp, fontWeight = FontWeight.Bold, color = hc.text, maxLines = 1)
+                        Text(DayliUi.koreanDate(inTwoDays), fontSize = (11f * fm).sp, color = hc.sub, maxLines = 1)
+                    }
+                    Text("D-2", fontSize = (26f * fm).sp, fontWeight = FontWeight.Bold, color = hc.text, maxLines = 1)
+                }
             }
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 10.dp, end = 6.dp)
-            ) {
-                Text(
-                    text = "시험 공부",
-                    fontSize = titleSize,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor,
-                    maxLines = 1
-                )
-                Text(
-                    text = "2025.06.15",
-                    fontSize = dateSize,
-                    color = subTextColor
-                )
-            }
-            Text(
-                text = "D-7",
-                fontSize = ddaySize,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFE53935)
+
+            Text("▎D-Day", fontSize = (16f * fm).sp, fontWeight = FontWeight.Bold, color = headerColor, modifier = Modifier.padding(start = 10.dp, top = 6.dp, bottom = 2.dp))
+            WidgetPreviewCard(
+                emoji = "📚", title = "시험 공부", sub = DayliUi.koreanDate(inTwoDays), dday = "D-2", ddayDiff = 2,
+                itemColor = ddaySample, backgroundEnabled = backgroundEnabled, backgroundOpacity = backgroundOpacity,
+                iconBgOpacity = iconBgOpacity, isDark = isDark, fm = fm
+            )
+            Text("▎To-Do", fontSize = (16f * fm).sp, fontWeight = FontWeight.Bold, color = headerColor, modifier = Modifier.padding(start = 10.dp, top = 6.dp, bottom = 2.dp))
+            WidgetPreviewCard(
+                emoji = "🏃", title = "운동하기", sub = null, dday = null, ddayDiff = null,
+                itemColor = todoSample, backgroundEnabled = backgroundEnabled, backgroundOpacity = backgroundOpacity,
+                iconBgOpacity = iconBgOpacity, isDark = isDark, fm = fm
             )
         }
+    }
+}
 
-        // To-Do 예시 카드
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF43A047).copy(alpha = itemBgAlpha))
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+/** 위젯 항목 카드 한 줄 (item_dday_widget.xml과 같은 배치) */
+@Composable
+private fun WidgetPreviewCard(
+    emoji: String,
+    title: String,
+    sub: String?,
+    dday: String?,
+    ddayDiff: Int?,
+    itemColor: Color,
+    backgroundEnabled: Boolean,
+    backgroundOpacity: Int,
+    iconBgOpacity: Int,
+    isDark: Boolean,
+    fm: Float
+) {
+    val c = WidgetStyle.itemColors(itemColor, isDark, backgroundEnabled, backgroundOpacity, iconBgOpacity, checked = false, ddayDiff = ddayDiff)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(c.card)
+            .padding(start = 10.dp, end = 4.dp, top = 7.dp, bottom = 7.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)).background(c.tile),
+            contentAlignment = Alignment.Center
+        ) { EmojiText(emoji, fontSize = (20f * fm).sp) }
+        Column(Modifier.weight(1f).padding(start = 10.dp, end = 6.dp)) {
+            Text(title, fontSize = (15f * fm).sp, fontWeight = FontWeight.Bold, color = c.title, maxLines = 1)
+            if (sub != null) Text(sub, fontSize = (12f * fm).sp, color = c.sub, maxLines = 1)
+        }
+        if (dday != null) {
             Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF43A047).copy(alpha = iconAlpha)),
-                contentAlignment = Alignment.Center
+                Modifier.padding(end = 6.dp).clip(RoundedCornerShape(6.dp)).background(c.pillBg)
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
-                Text("✅", fontSize = (18f * fontMultiplier).sp)
+                Text(dday, fontSize = (13f * fm).sp, fontWeight = FontWeight.Bold, color = c.pillText, maxLines = 1)
             }
-            Text(
-                text = "운동하기",
-                fontSize = titleSize,
-                fontWeight = FontWeight.Bold,
-                color = textColor,
-                maxLines = 1,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 10.dp, end = 6.dp)
-            )
-            Checkbox(
-                checked = true,
-                onCheckedChange = null,
-                modifier = Modifier.size(24.dp)
-            )
+        } else {
+            // 위젯 체크박스 모양 (빈 칸)
+            Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.size(20.dp).clip(RoundedCornerShape(6.dp))
+                        .border(2.dp, c.sub.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                )
+            }
         }
     }
 }

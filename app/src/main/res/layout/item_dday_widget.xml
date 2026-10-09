@@ -1,113 +1,152 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/item_card"
+    android:id="@+id/item_root"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:paddingHorizontal="10dp"
-    android:paddingVertical="6dp"
-    android:gravity="center_vertical"
-    android:background="@drawable/widget_item_rounded_bg">
+    android:layout_height="wrap_content">
 
-    <!-- 카테고리 아이콘 (이모지) - 컴팩트 크기 -->
-    <FrameLayout
-        android:id="@+id/item_icon_card"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:background="@drawable/widget_icon_rounded_bg">
+    <!-- 카드 배경 (앱 목록 카드와 같은 색) -->
+    <ImageView
+        android:id="@+id/item_card_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_shape_r12"
+        android:importantForAccessibility="no" />
 
-        <TextView
-            android:id="@+id/item_category_icon"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:textSize="18sp" />
-
-        <!-- 플랫 이모지 스타일일 때 사용 (기본은 숨김) -->
-        <ImageView
-            android:id="@+id/item_category_icon_img"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_gravity="center"
-            android:importantForAccessibility="no"
-            android:visibility="gone" />
-    </FrameLayout>
-
-    <!-- 내용 영역 -->
     <LinearLayout
-        android:id="@+id/item_content_area"
-        android:layout_width="0dp"
+        android:id="@+id/item_card"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:orientation="vertical"
-        android:layout_marginStart="10dp"
-        android:layout_marginEnd="6dp">
+        android:orientation="horizontal"
+        android:paddingStart="10dp"
+        android:paddingEnd="4dp"
+        android:paddingVertical="7dp"
+        android:gravity="center_vertical">
 
-        <!-- 제목 -->
-        <TextView
-            android:id="@+id/item_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="제목"
-            android:textStyle="bold"
-            android:textSize="14sp"
-            android:textColor="#DD000000"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:fontFamily="sans-serif-medium" />
+        <!-- 이모지 칸 -->
+        <FrameLayout
+            android:id="@+id/item_icon_card"
+            android:layout_width="34dp"
+            android:layout_height="34dp">
 
-        <!-- 날짜 + 메모 -->
+            <ImageView
+        android:id="@+id/item_icon_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_shape_r9"
+        android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/item_category_icon"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:textSize="18sp" />
+
+            <!-- 플랫 이모지 스타일일 때 사용 (기본은 숨김) -->
+            <ImageView
+                android:id="@+id/item_category_icon_img"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="center"
+                android:importantForAccessibility="no"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- 내용 영역 -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:id="@+id/item_content_area"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="2dp">
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="6dp">
 
             <TextView
-                android:id="@+id/item_date"
-                android:layout_width="wrap_content"
+                android:id="@+id/item_title"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="2025.05.28"
-                android:textSize="11sp"
-                android:textColor="#88000000" />
-
-            <TextView
-                android:id="@+id/item_memo"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="메모"
-                android:textSize="11sp"
-                android:textColor="#77000000"
-                android:layout_marginStart="6dp"
+                android:text="제목"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:textColor="#DD000000"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:visibility="gone" />
+                android:fontFamily="sans-serif-medium" />
+
+            <!-- 날짜 + 메모 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="2dp">
+
+                <TextView
+                    android:id="@+id/item_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="2025.05.28"
+                    android:textSize="11sp"
+                    android:textColor="#88000000" />
+
+                <TextView
+                    android:id="@+id/item_memo"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="메모"
+                    android:textSize="11sp"
+                    android:textColor="#77000000"
+                    android:layout_marginStart="6dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:visibility="gone" />
+            </LinearLayout>
         </LinearLayout>
+
+        <!-- D-Day 배지 (앱과 같은 배지 색). To-Do 진행률일 때는 배지 배경 숨김 -->
+        <FrameLayout
+            android:id="@+id/item_dday_box"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp">
+
+            <ImageView
+        android:id="@+id/item_dday_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_shape_r6"
+        android:importantForAccessibility="no" />
+
+            <!-- match_parent: FrameLayout은 match_parent 자식이 2개 이상일 때만 배경 ImageView를 글자 크기에 맞춰 다시 잼 -->
+            <TextView
+                android:id="@+id/item_dday"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="D-3"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:textColor="#FF1A237E"
+                android:fontFamily="sans-serif-medium"
+                android:maxLines="1"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="3dp" />
+        </FrameLayout>
+
+        <!-- 체크박스 (ImageView, RemoteViews 호환) - 터치 영역 48dp -->
+        <ImageView
+            android:id="@+id/item_checkbox"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:scaleType="center"
+            android:focusable="false"
+            android:clickable="false"
+            android:src="@drawable/widget_checkbox_unchecked"
+            android:contentDescription="@string/cd_checkbox_unchecked" />
     </LinearLayout>
-
-    <!-- D-Day 텍스트 (터치 영역 확대) -->
-    <TextView
-        android:id="@+id/item_dday"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:gravity="center"
-        android:text="D-3"
-        android:textStyle="bold"
-        android:textSize="14sp"
-        android:textColor="#FF1A237E"
-        android:fontFamily="sans-serif-medium"
-        android:paddingHorizontal="4dp" />
-
-    <!-- 체크박스 (ImageView, RemoteViews 호환) - 터치 영역 확대 (48dp) -->
-    <ImageView
-        android:id="@+id/item_checkbox"
-        android:layout_width="48dp"
-        android:layout_height="match_parent"
-        android:scaleType="center"
-        android:focusable="false"
-        android:clickable="false"
-        android:src="@drawable/widget_checkbox_unchecked"
-        android:contentDescription="@string/cd_checkbox_unchecked" />
-</LinearLayout>
+</FrameLayout>

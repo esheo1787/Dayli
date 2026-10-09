@@ -3,19 +3,27 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_container"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:background="@drawable/widget_container_rounded_bg"
-    android:padding="6dp">
+    android:layout_height="wrap_content">
+
+    <!-- 위젯 전체 배경 (색·투명도는 코드에서) -->
+    <ImageView
+        android:id="@+id/widget_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_shape_r16"
+        android:importantForAccessibility="no" />
 
     <ListView
         android:id="@+id/widgetListView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_margin="6dp"
         android:divider="@android:color/transparent"
-        android:dividerHeight="8dp"
+        android:dividerHeight="6dp"
         android:background="@android:color/transparent"
         android:scrollbars="none"
-        android:paddingBottom="8dp"
+        android:paddingBottom="2dp"
         android:clipToPadding="false" />
 
     <TextView

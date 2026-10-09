@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -88,6 +89,24 @@ class ScreenshotCaptureTest {
         todoTab: Boolean = false,
         calendar: Boolean = false
     ) {
+        seedSampleData()
+        DdaySettings.setGroupEmoji(context, "학교", "🏫")
+        DdaySettings.setBackgroundEnabled(context, tinted)
+        DdaySettings.setLastTab(context, if (todoTab) 1 else 0)
+        DdaySettings.setCalendarView(context, calendar)
+        compose.setContent {
+            MyApplicationTheme(themeMode = if (dark) DdaySettings.ThemeMode.DARK else DdaySettings.ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalFlatEmoji provides flat) {
+                    com.silverwest.dayli.MainDdayScreen()
+                }
+            }
+        }
+        val anchor = if (todoTab) "장보기" else if (calendar) "이 날짜에 D-Day 추가" else "치과 예약"
+        compose.waitUntil(8_000) { compose.onAllNodesWithText(anchor).fetchSemanticsNodes().isNotEmpty() }
+        Thread.sleep(700)
+    }
+
+    private fun seedSampleData() {
         val db = DdayDatabase.getDatabase(context)
         db.clearAllTables()
         val day = 24L * 60 * 60 * 1000
@@ -114,21 +133,69 @@ class ScreenshotCaptureTest {
             db.ddayDao().insert(DdayItem(title = "중간고사 공부", iconName = "📚", customColor = 0xFFA8C5DAL, itemType = ItemType.TODO.name,
                 subTasks = DdayItem.subTasksToJson(listOf(SubTask("회계", true), SubTask("원가"), SubTask("법률")))))
         }
+    }
+
+    /**
+     * 위젯 캡처: 실제 위젯과 같은 RemoteViewsFactory가 만든 행(RemoteViews)을 그대로 펼쳐 그림으로 저장.
+     * 홈 화면 없이도 위젯 색·배치를 확인하기 위함 (바탕은 배경화면 느낌의 그라데이션)
+     */
+    private fun widget(name: String, mode: String, dark: Boolean = false, tinted: Boolean = false, bgOpacity: Int = 15, flat: Boolean = false) {
+        seedSampleData()
         DdaySettings.setGroupEmoji(context, "학교", "🏫")
         DdaySettings.setBackgroundEnabled(context, tinted)
-        DdaySettings.setLastTab(context, if (todoTab) 1 else 0)
-        DdaySettings.setCalendarView(context, calendar)
-        compose.setContent {
-            MyApplicationTheme(themeMode = if (dark) DdaySettings.ThemeMode.DARK else DdaySettings.ThemeMode.LIGHT) {
-                CompositionLocalProvider(LocalFlatEmoji provides flat) {
-                    com.silverwest.dayli.MainDdayScreen()
+        DdaySettings.setBackgroundOpacity(context, bgOpacity)
+        DdaySettings.setFlatEmojiEnabled(context, flat)
+        DdaySettings.setThemeMode(context, if (dark) 2 else 1)
+        val factory = RemoteViewsFactory(context, android.content.Intent().putExtra(DdayOnlyWidgetProvider.EXTRA_WIDGET_MODE, mode))
+        factory.onDataSetChanged()
+        val dp = context.resources.displayMetrics.density
+        var bitmap: Bitmap? = null
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val list = android.widget.LinearLayout(context).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                val pad = (6 * dp).toInt()
+                setPadding(pad, pad, pad, pad)
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    cornerRadius = 16 * dp
+                    setColor(WidgetStyle.containerBase(dark).copy(alpha = WidgetStyle.containerAlpha(DdaySettings.getWidgetBgOpacity(context)) / 255f).toArgb())
                 }
             }
+            for (i in 0 until factory.count) {
+                val row = factory.getViewAt(i).apply(context, list)
+                val lp = android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT)
+                if (i > 0) lp.topMargin = (6 * dp).toInt()
+                list.addView(row, lp)
+            }
+            val root = android.widget.FrameLayout(context).apply {
+                val pad = (16 * dp).toInt()
+                setPadding(pad, pad, pad, pad)
+                background = android.graphics.drawable.GradientDrawable(
+                    android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                    if (dark) intArrayOf(0xFF2E3A46.toInt(), 0xFF3B2F3A.toInt()) else intArrayOf(0xFFB9D3E6.toInt(), 0xFFE9C9C0.toInt())
+                )
+                addView(list)
+            }
+            val w = (360 * dp).toInt()
+            root.measure(
+                android.view.View.MeasureSpec.makeMeasureSpec(w, android.view.View.MeasureSpec.EXACTLY),
+                android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
+            )
+            root.layout(0, 0, root.measuredWidth, root.measuredHeight)
+            bitmap = Bitmap.createBitmap(root.measuredWidth, root.measuredHeight, Bitmap.Config.ARGB_8888).also {
+                root.draw(android.graphics.Canvas(it))
+            }
         }
-        val anchor = if (todoTab) "장보기" else if (calendar) "이 날짜에 D-Day 추가" else "치과 예약"
-        compose.waitUntil(8_000) { compose.onAllNodesWithText(anchor).fetchSemanticsNodes().isNotEmpty() }
-        Thread.sleep(700)
+        val dir = File(context.getExternalFilesDir(null), "screenshots").apply { mkdirs() }
+        File(dir, "$name.png").outputStream().use { bitmap!!.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
+
+    @Test fun widgetMixed() = widget("20_widget_mixed", DdayOnlyWidgetProvider.MODE_ALL)
+
+    @Test fun widgetMixedTinted() = widget("21_widget_mixed_tinted", DdayOnlyWidgetProvider.MODE_ALL, tinted = true, bgOpacity = 45)
+
+    @Test fun widgetDdayDark() = widget("22_widget_dday_dark", DdayOnlyWidgetProvider.MODE_DDAY, dark = true, tinted = true, bgOpacity = 30, flat = true)
+
+    @Test fun widgetTodo() = widget("23_widget_todo", DdayOnlyWidgetProvider.MODE_TODO, tinted = true, bgOpacity = 30)
 
     // 설정 페이지: 길어서 스크롤하며 여러 장 (직접 고른 카드 색 → 색상환 펼친 상태)
     @Test

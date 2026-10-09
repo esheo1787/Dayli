@@ -212,13 +212,9 @@ class DdayWidgetProvider : AppWidgetProvider() {
 
             // 위젯 배경 투명도 설정 읽기
             val widgetBgOpacity = DdaySettings.getWidgetBgOpacity(context)
-            val bgAlpha = (widgetBgOpacity * 2.55f).toInt().coerceIn(0, 255)  // 0~100 → 0~255
+            val bgAlpha = WidgetStyle.containerAlpha(widgetBgOpacity)  // 0~100 → 0~255
 
-            // Soft Pastel 테마 배경색
-            // 라이트: CreamWhite (#FFFDF5), 다크: DarkSurface (#2A2A3E)
             val isDark = isDarkMode(context)
-            val baseColor = if (isDark) 0x002A2A3E else 0x00FFFDF5
-            val widgetBgColor = (bgAlpha shl 24) or baseColor
 
             android.util.Log.d("DDAY_WIDGET", "🎨 위젯 배경 업데이트: opacity=$widgetBgOpacity, alpha=$bgAlpha, isDark=$isDark")
 
@@ -228,7 +224,8 @@ class DdayWidgetProvider : AppWidgetProvider() {
                 setTextViewText(R.id.emptyTextView, "항목을 추가해보세요")
 
                 // 위젯 컨테이너 배경색 적용
-                setInt(R.id.widget_container, "setBackgroundColor", widgetBgColor)
+                // 둥근 모양 ImageView에 색 입힘 (setBackgroundColor는 모서리를 각지게 만듦)
+                WidgetStyle.paint(this, R.id.widget_bg, WidgetStyle.containerBase(isDark), bgAlpha)
 
                 // 빈 텍스트 색상 (Soft Pastel 테마)
                 val emptyTextColor = if (isDark) 0x80B8B8B8.toInt() else 0x807A7A7A.toInt()

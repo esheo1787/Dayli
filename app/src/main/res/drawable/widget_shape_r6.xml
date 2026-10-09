@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 위젯 배경 모양 (흰색). 코드에서 setColorFilter로 색을 입힘 → 어떤 Android 버전에서도 둥근 모서리 유지 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="6dp" />
+    <solid android:color="#FFFFFFFF" />
+</shape>

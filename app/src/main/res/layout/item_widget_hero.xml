@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 위젯 맨 위 "가장 가까운 일정" 카드 (앱 목록의 HeroCard와 같은 색) -->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/hero_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <ImageView
+        android:id="@+id/hero_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_shape_r14"
+        android:importantForAccessibility="no" />
+
+    <LinearLayout
+        android:id="@+id/hero_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="12dp"
+        android:gravity="center_vertical">
+
+        <FrameLayout
+            android:layout_width="40dp"
+            android:layout_height="40dp">
+
+            <ImageView
+        android:id="@+id/hero_icon_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_shape_r9"
+        android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/hero_icon"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:textSize="20sp" />
+
+            <ImageView
+                android:id="@+id/hero_icon_img"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:importantForAccessibility="no"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="8dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/hero_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="가장 가까운 일정"
+                android:textSize="11sp"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/hero_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-medium"
+                android:ellipsize="end"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/hero_meta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:ellipsize="end"
+                android:maxLines="1" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/hero_dday"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="1" />
+    </LinearLayout>
+</FrameLayout>

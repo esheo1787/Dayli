@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -85,9 +86,63 @@ object DayliUi {
         if (contrastWithWhite(color) >= 4.5f) Color.White else Color(0xFF2F2D2B)
 
     /** 가장 가까운 일정 카드 배경색 */
-    fun heroColor(setting: String, item: DdayItem?): Color = when {
-        setting == DdaySettings.HERO_COLOR_AUTO && item != null -> deepen(item.getColorLong().toComposeColor())
+    fun heroColor(setting: String, item: DdayItem?): Color =
+        heroColorFor(setting, item?.getColorLong()?.toComposeColor())
+
+    /** 항목 색으로 계산 (설정 화면 위젯 미리보기처럼 실제 항목이 없을 때) */
+    fun heroColorFor(setting: String, itemColor: Color?): Color = when {
+        setting == DdaySettings.HERO_COLOR_AUTO && itemColor != null -> deepen(itemColor)
         else -> parseHex(setting) ?: DeepBlue
+    }
+
+    /** 항목 카드 색 (앱 목록·위젯·설정 미리보기 공통) */
+    data class CardColors(val card: Color, val tile: Color, val text: Color, val subText: Color, val lightCard: Boolean)
+
+    /**
+     * 항목 배경 방식: tinted(켜짐) = 카드 전체에 항목 색 / 꺼짐 = 흰 카드 + 이모지 칸에만 항목 색
+     * 투명도는 0~1. 결과 색은 모두 불투명 (surface 위에 합성)
+     */
+    fun cardColors(
+        itemColor: Color,
+        surface: Color,
+        dark: Boolean,
+        tinted: Boolean,
+        bgOpacity: Float,
+        iconBgOpacity: Float,
+        checked: Boolean
+    ): CardColors {
+        val card = if (tinted) {
+            itemColor.copy(alpha = if (checked) bgOpacity * 0.5f else bgOpacity).compositeOver(surface)
+        } else surface
+        val tile = if (tinted) {
+            Color.White.copy(alpha = if (dark) 0.10f else 0.65f).compositeOver(card)
+        } else {
+            itemColor.copy(alpha = if (checked) iconBgOpacity * 0.6f else iconBgOpacity).compositeOver(surface)
+        }
+        // 카드 배경과의 대비를 비교해 더 잘 읽히는 글자색 선택 (항목 색을 진하게 칠한 경우 포함)
+        val lightCard = prefersDarkText(card)
+        val text = if (lightCard) DarkText else LightText
+        // 보조 글자도 대비 4.5:1 미만이면 본문 글자색으로 (진한 항목 색에서 날짜가 흐려지지 않게)
+        val subText = (if (lightCard) Color(0xFF5D5A58) else Color(0xFFCFCAC6))
+            .let { if (contrast(it, card) >= 4.5f) it else text }
+        return CardColors(card, tile, text, subText, lightCard)
+    }
+
+    /** D-Day 배지 (배경, 글자). 배경은 반투명일 수 있음 → 위젯처럼 불투명이 필요하면 카드 색 위에 합성 */
+    fun pillColors(
+        diff: Int?,
+        checked: Boolean,
+        onTinted: Boolean,
+        dark: Boolean,
+        surfaceVariant: Color,
+        onSurface: Color,
+        onSurfaceVariant: Color
+    ): Pair<Color, Color> = when {
+        checked -> surfaceVariant to onSurfaceVariant
+        diff != null && diff <= 1 -> (if (dark) PillUrgentBgDark else PillUrgentBg) to (if (dark) PillUrgentTextDark else PillUrgentText)
+        diff == 2 || diff == 3 -> (if (dark) PillSoonBgDark else PillSoonBg) to (if (dark) PillSoonTextDark else PillSoonText)
+        onTinted -> Color.White.copy(alpha = if (dark) 0.12f else 0.75f) to onSurface
+        else -> surfaceVariant to onSurfaceVariant
     }
 }
 
@@ -103,13 +158,10 @@ fun DdayPill(
     fontScale: Float
 ) {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val (bg, fg) = when {
-        checked -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
-        diff != null && diff <= 1 -> (if (dark) PillUrgentBgDark else PillUrgentBg) to (if (dark) PillUrgentTextDark else PillUrgentText)
-        diff == 2 || diff == 3 -> (if (dark) PillSoonBgDark else PillSoonBg) to (if (dark) PillSoonTextDark else PillSoonText)
-        onTinted -> Color.White.copy(alpha = if (dark) 0.12f else 0.75f) to MaterialTheme.colorScheme.onSurface
-        else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val (bg, fg) = DayliUi.pillColors(
+        diff, checked, onTinted, dark,
+        MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.onSurfaceVariant
+    )
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))

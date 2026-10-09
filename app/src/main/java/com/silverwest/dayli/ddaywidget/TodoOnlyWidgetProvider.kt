@@ -45,12 +45,10 @@ class TodoOnlyWidgetProvider : AppWidgetProvider() {
 
             // Widget background opacity
             val widgetBgOpacity = DdaySettings.getWidgetBgOpacity(context)
-            val bgAlpha = (widgetBgOpacity * 2.55f).toInt().coerceIn(0, 255)
+            val bgAlpha = WidgetStyle.containerAlpha(widgetBgOpacity)
 
             // Soft Pastel theme background
             val isDark = isDarkMode(context)
-            val baseColor = if (isDark) 0x002A2A3E else 0x00FFFDF5
-            val widgetBgColor = (bgAlpha shl 24) or baseColor
 
             val views = RemoteViews(context.packageName, R.layout.widget_dday_scrollable).apply {
                 setRemoteAdapter(R.id.widgetListView, intent)
@@ -60,7 +58,8 @@ class TodoOnlyWidgetProvider : AppWidgetProvider() {
                 setTextViewText(R.id.emptyTextView, "할 일을 추가해보세요")
 
                 // Widget container background
-                setInt(R.id.widget_container, "setBackgroundColor", widgetBgColor)
+                // 둥근 모양 ImageView에 색 입힘 (setBackgroundColor는 모서리를 각지게 만듦)
+                WidgetStyle.paint(this, R.id.widget_bg, WidgetStyle.containerBase(isDark), bgAlpha)
 
                 // Empty text color
                 val emptyTextColor = if (isDark) 0x80B8B8B8.toInt() else 0x807A7A7A.toInt()
