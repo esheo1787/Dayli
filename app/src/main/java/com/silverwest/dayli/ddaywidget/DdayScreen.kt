@@ -54,9 +54,12 @@ fun DdayScreen(
     onEditItem: (DdayItem) -> Unit = {},
     searchQuery: String = "",
     isCalendarView: Boolean = false,
-    onAddForDate: (java.util.Date) -> Unit = {}
+    onAddForDate: (java.util.Date) -> Unit = {},
+    twoPane: Boolean = false  // 넓은 화면(폴드 펼침·태블릿): 왼쪽 목록 + 오른쪽 캘린더 항상 표시
 ) {
     val context = LocalContext.current
+    // 2단에서는 캘린더가 오른쪽에 항상 있으므로 왼쪽은 목록만
+    val showCalendarInList = isCalendarView && !twoPane
 
     // 위젯에서 변경된 데이터를 앱 복귀 시 자동 반영
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -253,6 +256,29 @@ fun DdayScreen(
     // Pull to Refresh 상태
     var isRefreshing by remember { mutableStateOf(false) }
 
+    // D-Day 캘린더 (1단: 목록 대신 / 2단: 오른쪽에 항상)
+    val calendarContent: @Composable () -> Unit = {
+        DdayCalendarView(
+            ddayItems = filteredDdays + filteredHiddenDdays,
+            onToggle = { viewModel.toggleChecked(it) },
+            onLongPress = {
+                selectedItem = it
+                showBottomSheet = true
+            },
+            onSubTaskToggle = { ddayItem, index ->
+                viewModel.toggleSubTask(ddayItem, index)
+            },
+            expandedSubTaskIds = expandedSubTaskIds,
+            onExpandSubTask = { id ->
+                expandedSubTaskIds = if (id in expandedSubTaskIds)
+                    expandedSubTaskIds - id
+                else expandedSubTaskIds + id
+            },
+            searchQuery = searchQuery,
+            onAddForDate = onAddForDate
+        )
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = {
@@ -262,11 +288,12 @@ fun DdayScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
             // D-Day / To-Do 전환 (개수 표시)
             SegmentedTabs(
                 labels = listOf("D-Day", "To-Do"),
@@ -285,7 +312,7 @@ fun DdayScreen(
             ) { page ->
             Column(modifier = Modifier.fillMaxSize()) {
             // D-Day 탭일 때만 정렬 옵션 표시 (리스트 모드만)
-            if (page == 0 && !isCalendarView) {
+            if (page == 0 && !showCalendarInList) {
                 ListToolbar(
                     summary = "전체 ${filteredDdays.count { !it.isChecked }}개",
                     sortLabel = if (currentSort == SortOption.FARTHEST) "여유순" else "임박순",
@@ -545,27 +572,9 @@ fun DdayScreen(
                     }
                 }
                 } // PullToRefreshBox
-            } else if (isCalendarView) {
+            } else if (showCalendarInList) {
                 // D-Day 캘린더 뷰 모드
-                DdayCalendarView(
-                    ddayItems = filteredDdays + filteredHiddenDdays,
-                    onToggle = { viewModel.toggleChecked(it) },
-                    onLongPress = {
-                        selectedItem = it
-                        showBottomSheet = true
-                    },
-                    onSubTaskToggle = { ddayItem, index ->
-                        viewModel.toggleSubTask(ddayItem, index)
-                    },
-                    expandedSubTaskIds = expandedSubTaskIds,
-                    onExpandSubTask = { id ->
-                        expandedSubTaskIds = if (id in expandedSubTaskIds)
-                            expandedSubTaskIds - id
-                        else expandedSubTaskIds + id
-                    },
-                    searchQuery = searchQuery,
-                    onAddForDate = onAddForDate
-                )
+                calendarContent()
             } else {
                 // D-Day 탭: 그룹 드래그 가능, 그룹 내 아이템은 정렬 옵션에 따라
                 PullToRefreshBox(
@@ -796,6 +805,13 @@ fun DdayScreen(
             } // Column (HorizontalPager page)
             } // HorizontalPager
         }
+        if (twoPane) {
+            VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                calendarContent()
+            }
+        }
+        } // Row (2단)
 
         // BottomSheet
         if (showBottomSheet && selectedItem != null) {

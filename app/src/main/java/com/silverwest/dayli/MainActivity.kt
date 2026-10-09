@@ -182,6 +182,8 @@ fun MainDdayScreen(
 
     // 캘린더 뷰 토글 상태
     var isCalendarView by remember { mutableStateOf(DdaySettings.isCalendarView(context)) }
+    // 넓은 화면(폴드 펼침·태블릿·가로 태블릿): 목록 + 캘린더 2단. 창 크기 기준이라 화면 분할에서도 맞게 바뀜
+    val twoPane = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= TWO_PANE_MIN_WIDTH_DP
     LaunchedEffect(isCalendarView) {
         DdaySettings.setCalendarView(context, isCalendarView)
     }
@@ -273,8 +275,8 @@ fun MainDdayScreen(
                             )
                         }
                     } else {
-                        // D-Day 탭일 때만 캘린더/리스트 토글 아이콘 표시
-                        if (selectedTab == 0) {
+                        // D-Day 탭일 때만 캘린더/리스트 토글 아이콘 표시 (2단에서는 캘린더가 늘 보여 불필요)
+                        if (selectedTab == 0 && !twoPane) {
                             IconButton(onClick = { isCalendarView = !isCalendarView }) {
                                 Icon(
                                     imageVector = if (isCalendarView)
@@ -338,7 +340,8 @@ fun MainDdayScreen(
                             editItem = null
                             addInitialDate = date
                             showAddSheet = true
-                        }
+                        },
+                        twoPane = twoPane
                     )
                 }
             }
@@ -350,7 +353,8 @@ fun MainDdayScreen(
     // 추가/수정 바텀시트
     AddEditBottomSheet(
         isVisible = showAddSheet,
-        itemType = if (selectedTab == 0) ItemType.DDAY else ItemType.TODO,
+        // 캘린더의 "이 날짜에 D-Day 추가"는 항상 D-Day (2단 화면에서는 To-Do 탭을 연 채로 누를 수 있음)
+        itemType = if (selectedTab == 0 || addInitialDate != null) ItemType.DDAY else ItemType.TODO,
         editItem = editItem,
         initialDate = addInitialDate,
         existingGroups = existingGroups,
@@ -429,8 +433,11 @@ fun MainDdayScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    // 넓은 화면에서 설정 줄이 끝까지 늘어나지 않게 최대 폭 제한
+                    Column(modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth()) {
                     SettingsScreen(
                         onSettingsChanged = {
                             // 위젯 전체 새로고침 (배경 등 설정 반영)
@@ -441,6 +448,7 @@ fun MainDdayScreen(
                         onThemeChanged = onThemeChanged,
                         onFlatEmojiChanged = onFlatEmojiChanged
                     )
+                    }
                 }
             }
         }
@@ -552,6 +560,9 @@ private fun SplashContent() {
 }
 
 /** 다음 자정까지 남은 시간(ms) */
+/** 이 폭(dp) 이상이면 목록 + 캘린더 2단 (Material 기준 Medium 창 크기 시작점) */
+const val TWO_PANE_MIN_WIDTH_DP = 600
+
 private fun millisUntilNextMidnight(): Long {
     val now = Calendar.getInstance()
     val midnight = (now.clone() as Calendar).apply {

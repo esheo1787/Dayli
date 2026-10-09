@@ -299,6 +299,58 @@ class NewFeaturesUiTest {
         }
     }
 
+    // ===== 넓은 화면 2단 (폴드 펼침·태블릿) =====
+
+    private fun mainScreenAtWidth(widthDp: Int) {
+        val db = DdayDatabase.getDatabase(context)
+        db.clearAllTables()
+        runBlocking {
+            db.ddayDao().insert(
+                DdayItem(title = "치과 예약", date = java.util.Date(System.currentTimeMillis() + 5L * 86_400_000L), iconName = "🦷", customColor = 0xFFC5E1A5L)
+            )
+        }
+        DdaySettings.setCalendarView(context, false)
+        compose.setContent {
+            // 창 폭만 바꿔서 확인 (실제 기기 폭과 무관하게 분기 로직 검증)
+            val conf = android.content.res.Configuration(androidx.compose.ui.platform.LocalConfiguration.current).apply { screenWidthDp = widthDp }
+            CompositionLocalProvider(androidx.compose.ui.platform.LocalConfiguration provides conf) {
+                com.silverwest.dayli.ui.theme.MyApplicationTheme {
+                    com.silverwest.dayli.MainDdayScreen()
+                }
+            }
+        }
+        compose.waitUntil(8_000) { compose.onAllNodesWithText("치과 예약").fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    fun mainScreen_wide_showsListAndCalendarTogether_noToggle() {
+        mainScreenAtWidth(840)
+        compose.onAllNodesWithText("이 날짜에 D-Day 추가").assertCountEquals(1)
+        compose.onAllNodesWithContentDescription("캘린더 보기").assertCountEquals(0)
+        compose.onAllNodesWithContentDescription("리스트 보기").assertCountEquals(0)
+    }
+
+    @Test
+    fun mainScreen_wide_onTodoTab_calendarAddStillOpensDdaySheet() {
+        mainScreenAtWidth(840)
+        compose.onAllNodesWithText("To-Do")[0].performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("이 날짜에 D-Day 추가").performScrollTo().performClick()
+        compose.waitForIdle()
+        // D-Day 시트에만 있는 날짜 칸 (오늘 날짜가 채워짐)
+        val today = java.text.SimpleDateFormat("yyyy.MM.dd (E)", java.util.Locale.getDefault()).format(java.util.Date())
+        compose.onNodeWithText(today).assertExists()
+    }
+
+    @Test
+    fun mainScreen_narrow_keepsSinglePaneWithToggle() {
+        mainScreenAtWidth(411)
+        compose.onAllNodesWithText("이 날짜에 D-Day 추가").assertCountEquals(0)
+        compose.onNodeWithContentDescription("캘린더 보기").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("이 날짜에 D-Day 추가").fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithContentDescription("리스트 보기").assertCountEquals(1)
+    }
+
     @Test
     fun settingsReset_resetsColorWheelToDefault() {
         DdaySettings.setHeroCardEnabled(context, true)
