@@ -455,8 +455,13 @@ fun MainDdayScreen(
     }
 }
 
+/** 스토어용 스크린샷을 찍을 때만 false (테스트에서 설정). 앱에서는 항상 true */
+@androidx.annotation.VisibleForTesting
+var bannerAdsEnabled = true
+
 @Composable
 fun BannerAd() {
+    if (!bannerAdsEnabled) return
     AndroidView(
         modifier = Modifier.fillMaxWidth(),
         factory = { context ->

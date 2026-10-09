@@ -42,6 +42,8 @@ class ScreenshotCaptureTest {
     @Before
     fun setUp() {
         context.getSharedPreferences("dday_widget_settings", Context.MODE_PRIVATE).edit().clear().commit()
+        // 스토어용 스크린샷: 광고 배너 숨김
+        com.silverwest.dayli.bannerAdsEnabled = false
         listOf("🎂", "📝", "✈️", "🦷", "☕").forEach { DdaySettings.addRecentEmoji(context, it) }
     }
 
@@ -92,6 +94,12 @@ class ScreenshotCaptureTest {
         seedSampleData()
         DdaySettings.setGroupEmoji(context, "학교", "🏫")
         DdaySettings.setBackgroundEnabled(context, tinted)
+        if (tinted) DdaySettings.setBackgroundOpacity(context, 30)
+        if (todoTab) {
+            // 체크리스트 펼친 상태로 (스토어 스크린샷)
+            val todos = kotlinx.coroutines.runBlocking { DdayDatabase.getDatabase(context).ddayDao().getAll() }
+            DdaySettings.setExpandedSubTaskIds(context, todos.filter { it.title == "중간고사 공부" || it.title == "장보기" }.map { it.id }.toSet())
+        }
         DdaySettings.setLastTab(context, if (todoTab) 1 else 0)
         DdaySettings.setCalendarView(context, calendar)
         compose.setContent {
@@ -113,7 +121,7 @@ class ScreenshotCaptureTest {
         val now = System.currentTimeMillis()
         kotlinx.coroutines.runBlocking {
             listOf(
-                Triple("회계정보시스템 5주차 퀴즈", "📝", 3), Triple("정보보호시스템 과제(레포트)", "📄", 44),
+                Triple("수학 쪽지시험", "📝", 3), Triple("과학 실험 보고서", "🔬", 9),
                 Triple("엄마 생일", "🎂", 12), Triple("치과 예약", "🦷", 5), Triple("오사카 여행", "✈️", 30)
             ).forEachIndexed { i, (title, emoji, d) ->
                 db.ddayDao().insert(
@@ -131,7 +139,7 @@ class ScreenshotCaptureTest {
                 subTasks = DdayItem.subTasksToJson(listOf(SubTask("우유", true), SubTask("계란", true), SubTask("양파"), SubTask("두부"), SubTask("김")))))
             db.ddayDao().insert(DdayItem(title = "운동하기", iconName = "💪", customColor = 0xFFF4C7C3L, itemType = ItemType.TODO.name, repeatType = RepeatType.DAILY.name))
             db.ddayDao().insert(DdayItem(title = "중간고사 공부", iconName = "📚", customColor = 0xFFA8C5DAL, itemType = ItemType.TODO.name,
-                subTasks = DdayItem.subTasksToJson(listOf(SubTask("회계", true), SubTask("원가"), SubTask("법률")))))
+                subTasks = DdayItem.subTasksToJson(listOf(SubTask("수학", true), SubTask("과학"), SubTask("영어")))))
         }
     }
 
