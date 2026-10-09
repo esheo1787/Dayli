@@ -237,18 +237,24 @@ object NotificationScheduler {
      * 모든 아이템 알림 재스케줄링 (부팅/앱 시작 시)
      */
     fun rescheduleAllItemNotifications(context: Context) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val db = DdayDatabase.getDatabase(context)
-                val items = db.ddayDao().getAll()
-                items.forEach { item ->
-                    if (item.hasTime() && item.getNotificationRules().isNotEmpty() && !item.isChecked) {
-                        scheduleItemNotifications(context, item)
-                    }
+        CoroutineScope(Dispatchers.IO).launch { rescheduleAllItemNotificationsNow(context) }
+    }
+
+    /**
+     * 모든 아이템 알림 재스케줄링 — 끝날 때까지 기다림.
+     * BroadcastReceiver에서는 goAsync()와 함께 써서, 앱 화면이 없을 때도 작업이 끝나기 전에 프로세스가 종료되지 않게 함
+     */
+    suspend fun rescheduleAllItemNotificationsNow(context: Context) {
+        try {
+            val db = DdayDatabase.getDatabase(context)
+            val items = db.ddayDao().getAll()
+            items.forEach { item ->
+                if (item.hasTime() && item.getNotificationRules().isNotEmpty() && !item.isChecked) {
+                    scheduleItemNotifications(context, item)
                 }
-            } catch (e: Exception) {
-                android.util.Log.e("DDAY_NOTIFICATION", "❌ 전체 개별 알림 재설정 실패", e)
             }
+        } catch (e: Exception) {
+            android.util.Log.e("DDAY_NOTIFICATION", "❌ 전체 개별 알림 재설정 실패", e)
         }
     }
 

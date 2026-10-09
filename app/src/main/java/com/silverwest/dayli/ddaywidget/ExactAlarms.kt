@@ -7,6 +7,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * 정확한 알람 권한 (Android 12+ SCHEDULE_EXACT_ALARM)
@@ -42,22 +45,36 @@ object ExactAlarms {
         }
     }
 
-    /** 권한이 켜진 뒤 기존 알람을 정확한 알람으로 다시 등록 */
+    /** 권한이 켜진 뒤 기존 알람을 정확한 알람으로 다시 등록 (앱 화면에서 호출: 기다리지 않음) */
     fun rescheduleAll(context: Context) {
         NotificationScheduler.updateSchedule(context)
         NotificationScheduler.rescheduleAllItemNotifications(context)
+    }
+
+    /** 같은 작업을 끝날 때까지 기다림 (BroadcastReceiver의 goAsync 안에서 사용) */
+    suspend fun rescheduleAllNow(context: Context) {
+        NotificationScheduler.updateSchedule(context)
+        NotificationScheduler.rescheduleAllItemNotificationsNow(context)
     }
 }
 
 /** 사용자가 시스템 설정에서 정확한 알람을 허용하면 시스템이 보내는 신호 → 알람 재등록 */
 class ExactAlarmPermissionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            intent.action == AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED &&
-            ExactAlarms.canSchedule(context)
-        ) {
-            android.util.Log.d("DDAY_NOTIFICATION", "⏰ 정확한 알람 허용됨 - 알람 재등록")
-            ExactAlarms.rescheduleAll(context)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            intent.action != AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED ||
+            !ExactAlarms.canSchedule(context)
+        ) return
+
+        android.util.Log.d("DDAY_NOTIFICATION", "⏰ 정확한 알람 허용됨 - 알람 재등록")
+        // 앱 화면이 없을 때도 DB 조회·재등록이 끝날 때까지 프로세스 유지
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                ExactAlarms.rescheduleAllNow(context)
+            } finally {
+                pendingResult.finish()
+            }
         }
     }
 }
