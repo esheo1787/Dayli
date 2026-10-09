@@ -128,10 +128,7 @@ fun DdayListItem(
                 .background(iconBgColor),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = itemEmoji,
-                fontSize = 18.sp
-            )
+            EmojiText(itemEmoji, fontSize = 18.sp)
         }
 
         Spacer(modifier = Modifier.width(8.dp))

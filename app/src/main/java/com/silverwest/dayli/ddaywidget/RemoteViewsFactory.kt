@@ -283,7 +283,7 @@ class RemoteViewsFactory(
         val itemEmoji = item.getEmoji()
 
         // 이모지 설정
-        views.setTextViewText(R.id.item_category_icon, itemEmoji)
+        bindEmoji(views, R.id.item_category_icon, R.id.item_category_icon_img, itemEmoji)
         views.setTextViewTextSize(R.id.item_category_icon, android.util.TypedValue.COMPLEX_UNIT_SP, 22f * fontSizeMultiplier)
 
         // 배경 틴트 적용 (앱과 동일한 투명도 공식)
@@ -460,6 +460,8 @@ class RemoteViewsFactory(
         val fontSizeMultiplier = when (DdaySettings.getWidgetFontSize(context)) {
             0 -> 0.85f; 2 -> 1.15f; else -> 1f
         }
+        // 같은 레이아웃을 그룹 헤더도 쓰므로, 재사용된 뷰에 그룹 이모지 이미지가 남지 않게 명시적으로 숨김
+        views.setViewVisibility(R.id.header_icon, View.GONE)
         // 바 프리픽스 스타일: ▎D-Day / ▎To-Do
         views.setTextViewText(R.id.header_title, "▎$title")
         views.setTextViewTextSize(R.id.header_title, android.util.TypedValue.COMPLEX_UNIT_SP, 16f * fontSizeMultiplier)
@@ -482,7 +484,7 @@ class RemoteViewsFactory(
             val views = RemoteViews(context.packageName, R.layout.item_widget_group_header)
             // 그룹 헤더: "이모지 그룹명" 형식
             val groupEmoji = DdaySettings.getGroupEmoji(context, groupName)
-            views.setTextViewText(R.id.group_header_title, "$groupEmoji $groupName")
+            bindGroupTitle(views, R.id.group_header_title, R.id.group_header_icon, groupEmoji, groupName)
             // 접기/펼치기 아이콘
             views.setTextViewText(R.id.group_header_indicator, if (isCollapsed) "▼" else "▲")
             // 다크모드 대응 색상
@@ -499,13 +501,14 @@ class RemoteViewsFactory(
                 putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)
             }
             views.setOnClickFillInIntent(R.id.group_header_title, itemIntent)
+            views.setOnClickFillInIntent(R.id.group_header_icon, itemIntent)
             return views
         }
 
         // 혼합 위젯에서는 기존 레이아웃 사용 (접기 없음, 클릭 시 앱 열기)
         val views = RemoteViews(context.packageName, R.layout.item_widget_section_header)
         val groupEmoji = DdaySettings.getGroupEmoji(context, groupName)
-        views.setTextViewText(R.id.header_title, "$groupEmoji $groupName")
+        bindGroupTitle(views, R.id.header_title, R.id.header_icon, groupEmoji, groupName)
         views.setTextViewTextSize(R.id.header_title, android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
         val groupHeaderColor = if (isDark) 0xCCD0D0D0.toInt() else 0xAA3A3A3A.toInt()
         views.setTextColor(R.id.header_title, groupHeaderColor)
@@ -514,6 +517,7 @@ class RemoteViewsFactory(
             putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)
         }
         views.setOnClickFillInIntent(R.id.header_title, itemIntent)
+        views.setOnClickFillInIntent(R.id.header_icon, itemIntent)
         return views
     }
 
@@ -533,7 +537,7 @@ class RemoteViewsFactory(
 
         // 이모지 설정 (📋 대신 아이템의 이모지 사용)
         val itemEmoji = item.getEmoji()
-        views.setTextViewText(R.id.todo_header_icon, itemEmoji)
+        bindEmoji(views, R.id.todo_header_icon, R.id.todo_header_icon_img, itemEmoji)
         views.setTextViewTextSize(R.id.todo_header_icon, android.util.TypedValue.COMPLEX_UNIT_SP, 18f * fontSizeMultiplier)
 
         // 제목 (반복 태그 포함)
@@ -695,4 +699,31 @@ class RemoteViewsFactory(
         }
     }
     override fun hasStableIds(): Boolean = true
+
+    /** 이모지 표시: 플랫 스타일이면 ImageView, 아니면(또는 플랫 이미지가 없으면) TextView */
+    private fun bindEmoji(views: RemoteViews, textId: Int, imageId: Int, emoji: String) {
+        val bitmap = FlatEmoji.bitmapIfEnabled(context, emoji)
+        if (bitmap != null) {
+            views.setImageViewBitmap(imageId, bitmap)
+            views.setViewVisibility(imageId, View.VISIBLE)
+            views.setViewVisibility(textId, View.GONE)
+        } else {
+            views.setTextViewText(textId, emoji)
+            views.setViewVisibility(textId, View.VISIBLE)
+            views.setViewVisibility(imageId, View.GONE)
+        }
+    }
+
+    /** 그룹 헤더: 플랫이면 [이미지] 그룹명, 아니면 "이모지 그룹명" 텍스트 */
+    private fun bindGroupTitle(views: RemoteViews, titleId: Int, iconId: Int, groupEmoji: String, groupName: String) {
+        val bitmap = FlatEmoji.bitmapIfEnabled(context, groupEmoji)
+        if (bitmap != null) {
+            views.setImageViewBitmap(iconId, bitmap)
+            views.setViewVisibility(iconId, View.VISIBLE)
+            views.setTextViewText(titleId, groupName)
+        } else {
+            views.setViewVisibility(iconId, View.GONE)
+            views.setTextViewText(titleId, "$groupEmoji $groupName")
+        }
+    }
 }

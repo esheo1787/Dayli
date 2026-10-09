@@ -1135,10 +1135,7 @@ private fun GroupHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = groupEmoji,
-                fontSize = (14 * fontScale).sp
-            )
+            EmojiText(groupEmoji, fontSize = (14 * fontScale).sp)
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = groupName,
@@ -1259,10 +1256,7 @@ private fun CategoryFilterChip(
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = emoji,
-            fontSize = 14.sp
-        )
+        EmojiText(emoji, fontSize = 14.sp)
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = label,
@@ -1463,7 +1457,7 @@ private fun GroupManageItem(
                     .clickable { onEmojiClick() },
                 contentAlignment = Alignment.Center
             ) {
-                Text(groupEmoji, fontSize = 18.sp)
+                EmojiText(groupEmoji, fontSize = 18.sp)
             }
             Spacer(modifier = Modifier.width(8.dp))
 
@@ -1700,7 +1694,7 @@ private fun TemplateManageItem(
                     .clickable { onEmojiClick() },
                 contentAlignment = Alignment.Center
             ) {
-                Text(template.iconName, fontSize = 18.sp)
+                EmojiText(template.iconName, fontSize = 18.sp)
             }
             Spacer(modifier = Modifier.width(8.dp))
 
@@ -1846,7 +1840,7 @@ private fun OnboardingEmptyState(itemType: ItemType) {
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = emoji, fontSize = 22.sp)
+                    EmojiText(emoji, fontSize = 22.sp)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = text,

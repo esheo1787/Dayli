@@ -49,9 +49,11 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     onSettingsChanged: () -> Unit = {},
     onThemeChanged: (DdaySettings.ThemeMode) -> Unit = {},
+    onFlatEmojiChanged: (Boolean) -> Unit = {},
     viewModel: DdayViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    var flatEmoji by remember { mutableStateOf(DdaySettings.isFlatEmojiEnabled(context)) }
 
     // 설정 상태
     var backgroundEnabled by remember {
@@ -387,6 +389,59 @@ fun SettingsScreen(
                     )
                 }
             }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        // 이모지 스타일 (기본 / 플랫)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Text(
+                text = "이모지 스타일",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = "앱과 위젯의 이모지 모양을 선택합니다",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(false to "기본", true to "플랫").forEach { (flat, label) ->
+                    FilterChip(
+                        selected = flatEmoji == flat,
+                        onClick = {
+                            if (flatEmoji == flat) return@FilterChip
+                            flatEmoji = flat
+                            DdaySettings.setFlatEmojiEnabled(context, flat)
+                            onFlatEmojiChanged(flat)
+                            onSettingsChanged()  // 위젯 새로고침
+                        },
+                        label = { Text(label) },
+                        leadingIcon = {
+                            // 각 스타일 미리보기 (현재 설정과 무관하게 해당 스타일로 표시)
+                            CompositionLocalProvider(LocalFlatEmoji provides flat) {
+                                Row {
+                                    listOf("😊", "🎂", "✈️").forEach { EmojiText(it, fontSize = 14.sp) }
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+            Text(
+                text = "플랫 이모지: Microsoft Fluent Emoji (MIT License). 국기 등 일부는 기본 이모지로 표시돼요",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -1128,7 +1183,7 @@ private fun PreviewItem(
                 .background(color.copy(alpha = iconAlpha)),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = emoji, fontSize = (22 * fontScale).sp)
+            EmojiText(emoji, fontSize = (22 * fontScale).sp)
         }
 
         Spacer(modifier = Modifier.width(12.dp))

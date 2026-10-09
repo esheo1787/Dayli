@@ -76,10 +76,7 @@ fun DdayInputScreen(viewModel: DdayViewModel) {
                     .clickable { showEmojiPicker = true },
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = selectedEmoji,
-                    fontSize = 28.sp
-                )
+                EmojiText(selectedEmoji, fontSize = 28.sp)
             }
 
             Spacer(modifier = Modifier.width(12.dp))

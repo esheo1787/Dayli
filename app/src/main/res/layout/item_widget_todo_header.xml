@@ -24,6 +24,15 @@
             android:gravity="center"
             android:text="📋"
             android:textSize="18sp" />
+
+        <!-- 플랫 이모지 스타일일 때 사용 (기본은 숨김) -->
+        <ImageView
+            android:id="@+id/todo_header_icon_img"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
     </FrameLayout>
 
     <!-- 제목 -->

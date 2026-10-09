@@ -10,6 +10,15 @@
     android:gravity="center_vertical"
     android:background="?android:attr/selectableItemBackground">
 
+    <!-- 플랫 이모지 스타일일 때 그룹 이모지 이미지 (기본은 숨김) -->
+    <ImageView
+        android:id="@+id/group_header_icon"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_marginEnd="6dp"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
     <!-- 왼쪽: 그룹명 → 앱 열기 -->
     <TextView
         android:id="@+id/group_header_title"

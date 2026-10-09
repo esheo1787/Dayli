@@ -13,6 +13,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,13 +29,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -127,6 +127,26 @@ fun AddEditBottomSheet(
     }
 
     var showEmojiPicker by remember { mutableStateOf(false) }
+
+    // 제목 기반 이모지 추천 (오프라인 키워드 매칭)
+    val defaultEmoji = if (actualItemType == ItemType.TODO) "✅" else "📌"
+    // 시트를 열 때마다 확인 (앱 시작 직후 EmojiCompat 로딩 중에 만든 임시 목록을 갱신)
+    val emojiCatalog by produceState<List<EmojiCatalog.Category>>(initialValue = emptyList(), isVisible) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { EmojiCatalog.load(context) }
+    }
+    val emojiSuggestions = remember(title, emojiCatalog) {
+        if (emojiCatalog.isEmpty()) emptyList() else EmojiCatalog.suggest(emojiCatalog, title)
+    }
+    // 마지막으로 자동 선택한 이모지. 사용자가 직접 고른 이모지는 덮어쓰지 않기 위해 기억
+    var lastAutoEmoji by remember(editItem) { mutableStateOf<String?>(null) }
+    LaunchedEffect(emojiSuggestions) {
+        if (isEditMode) return@LaunchedEffect
+        if (selectedEmoji == defaultEmoji || selectedEmoji == lastAutoEmoji) {
+            val top = emojiSuggestions.firstOrNull()
+            selectedEmoji = top ?: defaultEmoji
+            lastAutoEmoji = top
+        }
+    }
     var showRepeatPicker by remember { mutableStateOf(false) }
 
     // 템플릿 관련 상태 (To-Do 전용)
@@ -142,6 +162,10 @@ fun AddEditBottomSheet(
     var isParsingText by remember { mutableStateOf(false) }
     var isOcrProcessing by remember { mutableStateOf(false) }
     var parseError by remember { mutableStateOf<String?>(null) }
+    // 첨부 이미지: 기기 OCR 없이 Gemini가 원본 이미지를 직접 읽음 (OCR 오타 방지)
+    var attachedImages by remember { mutableStateOf<List<android.graphics.Bitmap>>(emptyList()) }
+    // AI가 제안한 새 그룹의 이모지 (그룹명 to 이모지). 저장 시 그 그룹이 선택돼 있을 때만 기록
+    var pendingNewGroupEmoji by remember(editItem) { mutableStateOf<Pair<String, String>?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     // 이미지 선택 런처 (갤러리)
@@ -151,22 +175,9 @@ fun AddEditBottomSheet(
         uri?.let {
             isOcrProcessing = true
             parseError = null
-            try {
-                val image = InputImage.fromFilePath(context, it)
-                val recognizer = TextRecognition.getClient(
-                    KoreanTextRecognizerOptions.Builder().build()
-                )
-                recognizer.process(image)
-                    .addOnSuccessListener { result ->
-                        autoInputText = result.text
-                        isOcrProcessing = false
-                    }
-                    .addOnFailureListener { e ->
-                        parseError = "텍스트 인식 실패: ${e.localizedMessage}"
-                        isOcrProcessing = false
-                    }
-            } catch (e: Exception) {
-                parseError = "이미지 로드 실패"
+            coroutineScope.launch {
+                val bitmaps = GeminiParser.loadImagesForAi(context, it)
+                if (bitmaps.isNotEmpty()) attachedImages = bitmaps else parseError = "이미지 로드 실패"
                 isOcrProcessing = false
             }
         }
@@ -225,6 +236,7 @@ fun AddEditBottomSheet(
                     DdaySettings.setAiConsentShown(context)
                     showAiConsentDialog = false
                     autoInputText = ""
+                    attachedImages = emptyList()
                     parseError = null
                     showAutoInputDialog = true
                 }) {
@@ -264,7 +276,7 @@ fun AddEditBottomSheet(
                         ) {
                             Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(if (isOcrProcessing) "인식 중..." else "이미지", maxLines = 1)
+                            Text(if (isOcrProcessing) "불러오는 중..." else "이미지", maxLines = 1)
                         }
                         Spacer(Modifier.width(8.dp))
                         OutlinedButton(
@@ -292,14 +304,53 @@ fun AddEditBottomSheet(
                         }
                     }
 
+                    // 첨부 이미지 미리보기
+                    attachedImages.firstOrNull()?.let { bitmap ->
+                        Spacer(Modifier.height(12.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .padding(8.dp)
+                        ) {
+                            androidx.compose.foundation.Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = "첨부한 이미지",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                if (attachedImages.size > 1) "긴 캡처 · ${attachedImages.size}장으로 나눠 분석" else "이미지 첨부됨",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                                onClick = { attachedImages = emptyList() },
+                                enabled = !isParsingText
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "이미지 제거")
+                            }
+                        }
+                    }
+
                     Spacer(Modifier.height(12.dp))
 
                     // 텍스트 입력 필드
                     OutlinedTextField(
                         value = autoInputText,
                         onValueChange = { autoInputText = it },
-                        label = { Text("텍스트 입력 또는 OCR 결과") },
-                        placeholder = { Text("일정 정보가 담긴 텍스트를 입력하세요") },
+                        label = { Text(if (attachedImages.isNotEmpty()) "추가 설명 (선택)" else "텍스트 입력") },
+                        placeholder = {
+                            Text(
+                                if (attachedImages.isNotEmpty()) "예: 퀴즈만 넣어줘"
+                                else "일정 정보가 담긴 텍스트를 입력하세요"
+                            )
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 120.dp),
@@ -335,17 +386,37 @@ fun AddEditBottomSheet(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        if (autoInputText.isBlank()) return@TextButton
+                        if (autoInputText.isBlank() && attachedImages.isEmpty()) return@TextButton
                         isParsingText = true
                         parseError = null
                         coroutineScope.launch {
                             try {
-                                val results = GeminiParser.parse(context, autoInputText)
+                                val results = GeminiParser.parse(context, autoInputText, attachedImages, existingGroups)
+                                    .map { parsed ->
+                                        // 기존 그룹 철자로 맞춤. 새 그룹 이모지는 실제 저장할 때만 기록 (취소 시 흔적 안 남김)
+                                        val (group, isNew) = GeminiParser.resolveGroupName(parsed.groupName, existingGroups)
+                                        parsed.copy(groupName = group, groupEmoji = if (isNew) parsed.groupEmoji ?: "📁" else null)
+                                    }
+                                attachedImages = emptyList()  // 분석 끝난 이미지는 메모리에서 해제
                                 if (results.size > 1) {
-                                    // 복수 일정 → 일괄 생성
+                                    // 복수 일정 → 일괄 생성 (날짜 없는 항목은 D-Day로 만들 수 없어 제외)
                                     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                                    results.forEach { parsed ->
-                                        val eventDate = parsed.date?.let { dateFormat.parse(it) }
+                                    val dated = results.mapNotNull { parsed ->
+                                        val eventDate = parsed.date?.let {
+                                            try { dateFormat.parse(it) } catch (_: Exception) { null }
+                                        }
+                                        eventDate?.let { parsed to it }
+                                    }
+                                    if (dated.isEmpty()) {
+                                        parseError = "날짜를 찾지 못했습니다"
+                                        return@launch
+                                    }
+                                    dated.forEach { (parsed, _) ->
+                                        if (parsed.groupName != null && parsed.groupEmoji != null) {
+                                            DdaySettings.setGroupEmojiIfAbsent(context, parsed.groupName, parsed.groupEmoji)
+                                        }
+                                    }
+                                    dated.forEach { (parsed, eventDate) ->
                                         onSave(
                                             parsed.title ?: "",
                                             parsed.memo,
@@ -357,14 +428,16 @@ fun AddEditBottomSheet(
                                             } ?: RepeatType.NONE,
                                             ItemType.DDAY,
                                             emptyList(),
-                                            null, null, null, null,
+                                            parsed.groupName, null, null, null,
                                             parsed.timeHour,
                                             parsed.timeMinute,
                                             emptyList()
                                         )
                                     }
+                                    val groupNames = dated.mapNotNull { it.first.groupName }.distinct()
+                                    val groupSuffix = if (groupNames.size == 1) " (${groupNames[0]} 그룹)" else ""
                                     android.widget.Toast.makeText(
-                                        context, "${results.size}개 D-Day가 추가되었습니다", android.widget.Toast.LENGTH_SHORT
+                                        context, "${dated.size}개 D-Day가 추가되었습니다$groupSuffix", android.widget.Toast.LENGTH_SHORT
                                     ).show()
                                     showAutoInputDialog = false
                                 } else {
@@ -386,8 +459,15 @@ fun AddEditBottomSheet(
                                     if (parsed.subTasks.isNotEmpty()) {
                                         subTasks = parsed.subTasks.map { SubTask(title = it) }
                                     }
-                                    parsed.emoji?.let { selectedEmoji = it }
+                                    parsed.emoji?.let {
+                                        selectedEmoji = it
+                                        lastAutoEmoji = null
+                                    }
                                     parsed.memo?.let { memo = it }
+                                    if (actualItemType == ItemType.DDAY) {
+                                        parsed.groupName?.let { selectedGroupName = it }
+                                        pendingNewGroupEmoji = parsed.groupName?.let { g -> parsed.groupEmoji?.let { g to it } }
+                                    }
                                     showAutoInputDialog = false
                                 }
                             } catch (e: Exception) {
@@ -397,12 +477,15 @@ fun AddEditBottomSheet(
                             }
                         }
                     },
-                    enabled = autoInputText.isNotBlank() && !isParsingText && !isOcrProcessing
+                    enabled = (autoInputText.isNotBlank() || attachedImages.isNotEmpty()) && !isParsingText && !isOcrProcessing
                 ) { Text("분석") }
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showAutoInputDialog = false },
+                    onClick = {
+                        showAutoInputDialog = false
+                        attachedImages = emptyList()
+                    },
                     enabled = !isParsingText && !isOcrProcessing
                 ) { Text("취소") }
             }
@@ -416,6 +499,7 @@ fun AddEditBottomSheet(
             categoryColor = selectedColor.toComposeColor(),
             onEmojiSelected = { emoji ->
                 selectedEmoji = emoji
+                lastAutoEmoji = null
             },
             onDismiss = { showEmojiPicker = false }
         )
@@ -596,6 +680,7 @@ fun AddEditBottomSheet(
                                     .clickable {
                                         // 템플릿에서 값 불러오기
                                         selectedEmoji = template.iconName
+                                        lastAutoEmoji = null
                                         selectedColor = template.customColor
                                         subTasks = template.getSubTaskList()
                                         selectedTemplateId = template.id
@@ -611,10 +696,7 @@ fun AddEditBottomSheet(
                                         .padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = template.iconName,
-                                        fontSize = 24.sp
-                                    )
+                                    EmojiText(template.iconName, fontSize = 24.sp)
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
@@ -689,10 +771,7 @@ fun AddEditBottomSheet(
                             .clickable { showEmojiPicker = true },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = selectedEmoji,
-                            fontSize = 28.sp
-                        )
+                        EmojiText(selectedEmoji, fontSize = 28.sp)
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
@@ -729,6 +808,7 @@ fun AddEditBottomSheet(
                                 showAiConsentDialog = true
                             } else {
                                 autoInputText = ""
+                                attachedImages = emptyList()
                                 parseError = null
                                 showAutoInputDialog = true
                             }
@@ -755,6 +835,43 @@ fun AddEditBottomSheet(
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 2
                 )
+
+                // 제목에 어울리는 이모지 추천 칩
+                if (emojiSuggestions.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            "추천",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        emojiSuggestions.forEach { emoji ->
+                            val isSel = emoji == selectedEmoji
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(
+                                        if (isSel) selectedColor.toComposeColor().copy(alpha = 0.35f)
+                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                    .clickable {
+                                        selectedEmoji = emoji
+                                        lastAutoEmoji = null  // 직접 고른 것으로 취급
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                EmojiText(emoji, fontSize = 22.sp)
+                            }
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -1249,6 +1366,14 @@ fun AddEditBottomSheet(
                                     if (actualItemType == ItemType.DDAY && hasTime) selectedMinute else null,
                                     if (actualItemType == ItemType.DDAY) notificationRules else emptyList()
                                 )
+                                pendingNewGroupEmoji?.let { (group, emoji) ->
+                                    if (actualItemType == ItemType.DDAY && selectedGroupName == group) {
+                                        DdaySettings.setGroupEmojiIfAbsent(context, group, emoji)
+                                    }
+                                }
+                                pendingNewGroupEmoji = null
+                                // 추천 칩·자동 선택으로 정한 이모지도 최근 사용에 반영 (기본 이모지는 제외)
+                                if (selectedEmoji != defaultEmoji) DdaySettings.addRecentEmoji(context, selectedEmoji)
                                 title = ""
                                 memo = ""
                                 selectedDate = Date()

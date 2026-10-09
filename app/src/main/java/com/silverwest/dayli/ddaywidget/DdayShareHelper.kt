@@ -79,7 +79,7 @@ object DdayShareHelper {
      * 이미지 공유: 앱 컬러 배경에 D-Day 정보 표시된 카드 이미지 생성
      */
     fun shareImage(context: Context, item: DdayItem) {
-        val bitmap = if (item.isTodo()) createTodoShareImage(item) else createDdayShareImage(item)
+        val bitmap = if (item.isTodo()) createTodoShareImage(context, item) else createDdayShareImage(context, item)
         val file = saveBitmapToCache(context, bitmap)
         val uri = FileProvider.getUriForFile(
             context,
@@ -95,7 +95,7 @@ object DdayShareHelper {
         context.startActivity(Intent.createChooser(intent, "D-Day 이미지 공유"))
     }
 
-    private fun createDdayShareImage(item: DdayItem): Bitmap {
+    private fun createDdayShareImage(context: Context, item: DdayItem): Bitmap {
         val width = 1080
         val height = 720
 
@@ -121,7 +121,7 @@ object DdayShareHelper {
             textSize = 96f
             textAlign = Paint.Align.CENTER
         }
-        canvas.drawText(item.getEmoji(), width / 2f, 160f, emojiPaint)
+        drawEmoji(context, canvas, item.getEmoji(), width / 2f, 160f, emojiPaint)
 
         // D-Day 텍스트 (큰 글씨)
         val ddayText = item.date?.let { calculateDday(it) } ?: ""
@@ -177,7 +177,7 @@ object DdayShareHelper {
      * 날짜별 D-Day 묶음 이미지 공유 (캘린더 뷰용)
      */
     fun shareDateItems(context: Context, year: Int, month: Int, day: Int, items: List<DdayItem>) {
-        val bitmap = createDateShareImage(year, month, day, items)
+        val bitmap = createDateShareImage(context, year, month, day, items)
         val file = saveBitmapToCache(context, bitmap)
         val uri = FileProvider.getUriForFile(
             context,
@@ -193,7 +193,7 @@ object DdayShareHelper {
         context.startActivity(Intent.createChooser(intent, "D-Day 이미지 공유"))
     }
 
-    private fun createDateShareImage(year: Int, month: Int, day: Int, items: List<DdayItem>): Bitmap {
+    private fun createDateShareImage(context: Context, year: Int, month: Int, day: Int, items: List<DdayItem>): Bitmap {
         val width = 1080
         val maxDisplay = 10
         val displayItems = items.take(maxDisplay)
@@ -262,7 +262,7 @@ object DdayShareHelper {
             checkPaint.color = if (isChecked) subTextColor else textColor
             canvas.drawText(if (isChecked) "☑" else "☐", 80f, y, checkPaint)
             // 이모지
-            canvas.drawText(item.getEmoji(), 140f, y, emojiPaint)
+            drawEmoji(context, canvas, item.getEmoji(), 140f, y, emojiPaint)
             // 제목 (완료 시 취소선 + 흐린 색)
             titlePaint.color = if (isChecked) subTextColor else textColor
             titlePaint.flags = if (isChecked) {
@@ -300,7 +300,7 @@ object DdayShareHelper {
         return bitmap
     }
 
-    private fun createTodoShareImage(item: DdayItem): Bitmap {
+    private fun createTodoShareImage(context: Context, item: DdayItem): Bitmap {
         val width = 1080
         val subTasks = item.getSubTaskList()
         val maxDisplay = 10
@@ -340,7 +340,7 @@ object DdayShareHelper {
             typeface = Typeface.DEFAULT_BOLD
         }
         val titleText = if (item.title.length > 18) item.title.take(18) + "..." else item.title
-        canvas.drawText(item.getEmoji(), 80f, 110f, emojiPaint)
+        drawEmoji(context, canvas, item.getEmoji(), 80f, 110f, emojiPaint)
         canvas.drawText(titleText, 170f, 110f, titlePaint)
 
         // 구분선
@@ -417,6 +417,20 @@ object DdayShareHelper {
         canvas.drawText("Dayli", width / 2f, height - 40f, appPaint)
 
         return bitmap
+    }
+
+    /** 공유 이미지의 이모지: 플랫 스타일이면 이미지로, 아니면 텍스트로 (x/baselineY는 drawText 기준) */
+    private fun drawEmoji(context: Context, canvas: Canvas, emoji: String, x: Float, baselineY: Float, paint: Paint) {
+        val flat = FlatEmoji.bitmapIfEnabled(context, emoji)
+        if (flat == null) {
+            canvas.drawText(emoji, x, baselineY, paint)
+            return
+        }
+        // 플랫 원본(72px)보다 크게 늘리면 흐려지므로 원본 크기를 상한으로 (축소는 선명함 유지)
+        val size = minOf(paint.textSize * 1.15f, flat.width.toFloat())
+        val left = if (paint.textAlign == Paint.Align.CENTER) x - size / 2f else x
+        val top = baselineY - size * 0.85f
+        canvas.drawBitmap(flat, null, RectF(left, top, left + size, top + size), Paint(Paint.FILTER_BITMAP_FLAG))
     }
 
     private fun saveBitmapToCache(context: Context, bitmap: Bitmap): File {

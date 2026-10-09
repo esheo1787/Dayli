@@ -1,13 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<TextView
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/header_title"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
     android:paddingHorizontal="14dp"
     android:paddingTop="10dp"
     android:paddingBottom="4dp"
-    android:textSize="12sp"
-    android:textStyle="bold"
-    android:textColor="#88000000"
-    android:background="@android:color/transparent" />
+    android:background="@android:color/transparent">
+
+    <!-- 플랫 이모지 스타일일 때 그룹 이모지 이미지 (기본은 숨김) -->
+    <ImageView
+        android:id="@+id/header_icon"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_marginEnd="6dp"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/header_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="#88000000"
+        android:background="@android:color/transparent" />
+
+</LinearLayout>

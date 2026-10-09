@@ -49,10 +49,17 @@ import java.util.Calendar
 
 class MainActivity : ComponentActivity() {
 
+    // 앱 내 업데이트: 다운로드 완료 시 재시작 안내 다이얼로그 표시
+    private var updateReadyToInstall by mutableStateOf(false)
+    private lateinit var inAppUpdater: InAppUpdater
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        inAppUpdater = InAppUpdater(this) { updateReadyToInstall = true }
+        inAppUpdater.checkForUpdate()
 
         // 알림 채널 생성
         NotificationHelper.createNotificationChannel(this)
@@ -79,18 +86,53 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(DdaySettings.getThemeModeEnum(this))
             }
 
+            // 이모지 스타일 (기본/플랫) — 설정 변경 즉시 앱 전체 반영
+            var flatEmoji by remember {
+                mutableStateOf(DdaySettings.isFlatEmojiEnabled(this))
+            }
+
             if (showSplash) {
                 SplashContent()
             } else {
                 MyApplicationTheme(themeMode = currentThemeMode) {
-                    MainDdayScreen(
-                        onThemeChanged = { newMode ->
-                            currentThemeMode = newMode
-                        }
-                    )
+                    CompositionLocalProvider(LocalFlatEmoji provides flatEmoji) {
+                        MainDdayScreen(
+                            onThemeChanged = { newMode ->
+                                currentThemeMode = newMode
+                            },
+                            onFlatEmojiChanged = { flatEmoji = it }
+                        )
+                    }
+
+                    if (updateReadyToInstall) {
+                        AlertDialog(
+                            onDismissRequest = { updateReadyToInstall = false },
+                            title = { Text("업데이트 준비 완료") },
+                            text = { Text("새 버전을 다운로드했어요. 지금 재시작해서 설치할까요?") },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    updateReadyToInstall = false
+                                    inAppUpdater.completeUpdate()
+                                }) { Text("재시작") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { updateReadyToInstall = false }) { Text("나중에") }
+                            }
+                        )
+                    }
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        inAppUpdater.onResume()
+    }
+
+    override fun onDestroy() {
+        inAppUpdater.release()
+        super.onDestroy()
     }
 
 }
@@ -99,7 +141,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainDdayScreen(
     viewModel: DdayViewModel = viewModel(),
-    onThemeChanged: (DdaySettings.ThemeMode) -> Unit = {}
+    onThemeChanged: (DdaySettings.ThemeMode) -> Unit = {},
+    onFlatEmojiChanged: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
@@ -335,7 +378,8 @@ fun MainDdayScreen(
                             // 앱 리스트 새로고침
                             settingsKey++
                         },
-                        onThemeChanged = onThemeChanged
+                        onThemeChanged = onThemeChanged,
+                        onFlatEmojiChanged = onFlatEmojiChanged
                     )
                 }
             },

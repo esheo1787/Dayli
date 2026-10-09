@@ -23,6 +23,15 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:textSize="18sp" />
+
+        <!-- 플랫 이모지 스타일일 때 사용 (기본은 숨김) -->
+        <ImageView
+            android:id="@+id/item_category_icon_img"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_gravity="center"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
     </FrameLayout>
 
     <!-- 내용 영역 -->

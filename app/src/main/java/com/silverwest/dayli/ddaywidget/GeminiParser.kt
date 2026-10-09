@@ -1,9 +1,15 @@
 package com.silverwest.dayli.ddaywidget
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import com.google.firebase.Firebase
 import com.google.firebase.ai.ai
 import com.google.firebase.ai.type.GenerativeBackend
+import com.google.firebase.ai.type.content
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -25,30 +31,159 @@ object GeminiParser {
         val repeatType: String? = null,
         val subTasks: List<String> = emptyList(),
         val emoji: String? = null,
-        val memo: String? = null
+        val memo: String? = null,
+        val groupName: String? = null,
+        val groupEmoji: String? = null,
+        val deadline: Boolean = false
     )
 
-    suspend fun parse(context: Context, text: String): List<ParsedEvent> {
+    // 이미지 1장당 전송 픽셀 상한 (글자가 뭉개지지 않으면서 토큰 비용 제한)
+    private const val MAX_IMAGE_PIXELS = 4_000_000
+    // 세로가 가로의 이 배수보다 길면 스크롤 캡처로 보고 여러 장으로 나눔 (통째로 줄이면 글자가 안 읽힘)
+    private const val TALL_RATIO = 2.5f
+    private const val MAX_SLICES = 6
+
+    /**
+     * 갤러리 이미지를 AI 전송용 Bitmap 목록으로 로드
+     * - 사진: EXIF 회전 반영, 큰 이미지는 2의 배수로 축소 → 1장
+     * - 긴 스크롤 캡처: 가로 해상도를 유지한 채 위에서부터 겹치게 잘라 최대 6장
+     */
+    suspend fun loadImagesForAi(context: Context, uri: Uri): List<Bitmap> = withContext(Dispatchers.IO) {
+        try {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+            val w = bounds.outWidth
+            val h = bounds.outHeight
+            if (w <= 0 || h <= 0) return@withContext emptyList()
+            val rotation = readExifRotation(context, uri)
+
+            if (rotation == 0 && h > w * TALL_RATIO) {
+                decodeSlices(context, uri, w, h)
+            } else {
+                val opts = BitmapFactory.Options().apply { inSampleSize = sampleSizeFor(w.toLong() * h) }
+                val bitmap = context.contentResolver.openInputStream(uri)?.use {
+                    BitmapFactory.decodeStream(it, null, opts)
+                } ?: return@withContext emptyList()
+                listOf(if (rotation != 0) rotate(bitmap, rotation) else bitmap)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("GeminiParser", "이미지 로드 실패", e)
+            emptyList()
+        }
+    }
+
+    private fun sampleSizeFor(pixels: Long): Int {
+        var sample = 1
+        while (pixels / (sample.toLong() * sample) > MAX_IMAGE_PIXELS) sample *= 2
+        return sample
+    }
+
+    @Suppress("DEPRECATION")  // newInstance(InputStream, Boolean)는 API 31에서 deprecated지만 minSdk 24 지원 위해 사용
+    private fun decodeSlices(context: Context, uri: Uri, w: Int, h: Int): List<Bitmap> {
+        val overlap = w / 10  // 경계에 걸친 항목이 잘리지 않도록 겹침
+        val sliceH = maxOf(w * 2, (h + overlap * (MAX_SLICES - 1)) / MAX_SLICES + 1)
+        val opts = BitmapFactory.Options().apply { inSampleSize = sampleSizeFor(w.toLong() * sliceH) }
+        val decoder = context.contentResolver.openInputStream(uri)?.use {
+            android.graphics.BitmapRegionDecoder.newInstance(it, false)
+        } ?: return emptyList()
+        try {
+            val slices = mutableListOf<Bitmap>()
+            var top = 0
+            while (top < h && slices.size < MAX_SLICES) {
+                val bottom = minOf(h, top + sliceH)
+                decoder.decodeRegion(android.graphics.Rect(0, top, w, bottom), opts)?.let { slices.add(it) }
+                if (bottom == h) break
+                top = bottom - overlap
+            }
+            return slices
+        } finally {
+            decoder.recycle()
+        }
+    }
+
+    private fun readExifRotation(context: Context, uri: Uri): Int = try {
+        context.contentResolver.openInputStream(uri)?.use { stream ->
+            when (android.media.ExifInterface(stream).getAttributeInt(
+                android.media.ExifInterface.TAG_ORIENTATION, android.media.ExifInterface.ORIENTATION_NORMAL
+            )) {
+                android.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                android.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                android.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                else -> 0
+            }
+        } ?: 0
+    } catch (_: Exception) { 0 }  // PNG 등 EXIF 없는 형식
+
+    private fun rotate(bitmap: Bitmap, degrees: Int): Bitmap {
+        val matrix = android.graphics.Matrix().apply { postRotate(degrees.toFloat()) }
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            .also { if (it !== bitmap) bitmap.recycle() }
+    }
+
+    suspend fun parse(
+        context: Context,
+        text: String,
+        images: List<Bitmap> = emptyList(),
+        existingGroups: List<String> = emptyList()
+    ): List<ParsedEvent> {
         DdaySettings.recordAiCall(context)
 
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-        val prompt = """
+        val sourceSection = if (images.isNotEmpty()) {
+            val extra = if (text.isNotBlank()) "\n사용자 추가 설명 (이미지보다 우선 적용):\n$text\n" else ""
+            val multi = if (images.size > 1) {
+                "\n첨부 이미지 ${images.size}장은 긴 캡처 한 장을 위에서부터 순서대로 나눈 것입니다. 경계에서 겹쳐 두 장에 모두 보이는 항목은 한 번만 추출하세요.\n"
+            } else ""
+            """
+첨부한 이미지(캡처)에서 일정/이벤트 정보를 추출하세요.$multi
+이미지에 보이는 과목명, 교수명, 활동명 등 글자는 이미지에 적힌 그대로 옮겨 적으세요 (임의 교정, 띄어쓰기 변경, 축약 금지).
+오늘 날짜: $today
+$extra"""
+        } else {
+            """
 다음 텍스트에서 일정/이벤트 정보를 추출하세요.
 오늘 날짜: $today
 
 텍스트:
 $text
+"""
+        }
+        val groupList = if (existingGroups.isEmpty()) "(없음)" else existingGroups.joinToString(", ") { "\"$it\"" }
+        val prompt = """
+$sourceSection
 
 반드시 아래 JSON 형식으로만 응답하세요. 설명 없이 JSON만 출력하세요.
 
 여러 개의 개별 일정(각각 다른 날짜/시간을 가진 항목)이면 배열로 반환:
 [
-  {"title": "제목1", "date": "yyyy-MM-dd", "timeHour": null, "timeMinute": null, "repeatType": "NONE", "subTasks": [], "emoji": "📌", "memo": null},
-  {"title": "제목2", "date": "yyyy-MM-dd", "timeHour": null, "timeMinute": null, "repeatType": "NONE", "subTasks": [], "emoji": "📌", "memo": null}
+  {"title": "제목1", "date": "yyyy-MM-dd", "timeHour": null, "timeMinute": null, "repeatType": "NONE", "subTasks": [], "emoji": "📌", "memo": null, "groupName": null, "groupEmoji": null, "deadline": false},
+  {"title": "제목2", "date": "yyyy-MM-dd", "timeHour": null, "timeMinute": null, "repeatType": "NONE", "subTasks": [], "emoji": "📌", "memo": null, "groupName": null, "groupEmoji": null, "deadline": false}
 ]
 
 단일 일정이면 객체 1개로 반환:
-{"title": "제목", "date": "yyyy-MM-dd", "timeHour": null, "timeMinute": null, "repeatType": "NONE", "subTasks": [], "emoji": "📌", "memo": null}
+{"title": "제목", "date": "yyyy-MM-dd", "timeHour": null, "timeMinute": null, "repeatType": "NONE", "subTasks": [], "emoji": "📌", "memo": null, "groupName": null, "groupEmoji": null, "deadline": false}
+
+그룹 규칙 (groupName):
+- 사용자의 기존 그룹 목록: $groupList
+- 일정이 기존 그룹 중 하나에 명확히 어울리면 groupName에 그 그룹 이름을 목록에 적힌 글자 그대로 넣기
+- 학교 수업 관련 일정(퀴즈, 과제, 레포트, 중간·기말고사, 수업, 강의, 휴강, 보강, 수강신청, LMS 학습활동 등)은 반드시 그룹에 넣기:
+  기존 그룹 중 학교/학업/공부/수업/대학/과목 성격의 그룹이 있으면 그 이름을 그대로 사용, 없으면 groupName "학교", groupEmoji "🏫"
+- 학교 수업 판단 기준: 과목명·교수명·학기·주차·중간/기말고사·LMS 화면 등 학교 맥락이 있을 때만
+- 자격증·국가고시·어학시험(노무사, 공무원, 토익, 한국사 등)이나 학교 맥락이 없는 시험은 학교 일정이 아님 → 기존 그룹 중 어울리는 것(예: 시험, 자격증)이 있을 때만 사용, 없으면 groupName null
+- 기존 그룹을 사용할 때 groupEmoji는 null
+- 어울리는 그룹이 없는 일반 일정은 groupName null (학교 일정 외에는 새 그룹을 만들지 말 것)
+- 한 번에 추출한 학교 일정들은 모두 같은 groupName 사용
+
+마감 규칙 (deadline):
+- "제출마감", "마감", "기한", "까지" 등 마감 시각을 나타내는 일정이면 deadline true, 아니면 false
+- 마감 날짜/시각은 원문에 적힌 값 그대로 date/timeHour/timeMinute에 넣기 (자정 보정은 앱에서 처리)
+
+LMS 학습활동 목록 규칙 (과목명·교수명·활동명·제출마감이 반복되는 목록 캡처):
+- 각 활동을 별도 일정으로 추출 (아래 교시 묶음 규칙은 적용하지 않음)
+- title: 활동명에 과목명이 이미 들어 있으면 활동명 그대로, 없으면 "과목명 활동명" 형식. 예: "회계정보시스템 5주차 퀴즈", "생활법률 5주차 퀴즈"
+- 활동 유형(퀴즈/과제/시험)과 교수명은 memo에 "유형 | 교수명" 형식으로. 예: "퀴즈 | 이원주 교수"
+- D-3, D-10 같은 남은 일수 표시와 탭 이름(진행중/종료된/예정된 학습활동)은 무시
+- emoji: 퀴즈·시험→📝, 과제·레포트→📄
 
 규칙:
 - 날짜가 "다음 주 월요일" 같은 상대 표현이면 오늘 기준으로 계산
@@ -101,9 +236,16 @@ $text
 """.trimIndent()
 
         try {
-            val response = model.generateContent(prompt)
+            val response = if (images.isNotEmpty()) {
+                model.generateContent(content {
+                    images.forEach { image(it) }
+                    text(prompt)
+                })
+            } else {
+                model.generateContent(prompt)
+            }
             val responseText = response.text ?: throw Exception("응답이 비어있습니다")
-            return parseResponse(responseText)
+            return parseResponse(responseText).map { normalizeDeadline(it) }
         } catch (e: Exception) {
             android.util.Log.e("GeminiParser", "Gemini 호출 실패: ${e.javaClass.simpleName}", e)
             val msg = e.localizedMessage ?: e.message ?: "알 수 없는 오류"
@@ -116,7 +258,34 @@ $text
         }
     }
 
-    private fun parseResponse(text: String): List<ParsedEvent> {
+    /**
+     * "10-13 00:00 마감"은 사실상 12일 자정까지라는 뜻 → 전날 23:59로 보정해 D-Day가 하루 밀리지 않게 함
+     */
+    internal fun normalizeDeadline(event: ParsedEvent): ParsedEvent {
+        if (!event.deadline || event.timeHour != 0 || (event.timeMinute ?: 0) != 0) return event
+        val dateStr = event.date ?: return event
+        val format = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { isLenient = false }
+        val parsed = try { format.parse(dateStr) } catch (_: Exception) { null } ?: return event
+        val cal = Calendar.getInstance().apply {
+            time = parsed
+            add(Calendar.DAY_OF_MONTH, -1)
+        }
+        return event.copy(date = format.format(cal.time), timeHour = 23, timeMinute = 59)
+    }
+
+    /**
+     * AI가 제안한 그룹 이름을 기존 그룹과 대조. 공백/대소문자만 다르면 기존 그룹 철자를 그대로 사용
+     * @return (최종 그룹 이름, 새로 만드는 그룹인지)
+     */
+    internal fun resolveGroupName(suggested: String?, existingGroups: List<String>): Pair<String?, Boolean> {
+        val name = suggested?.trim()?.takeIf { it.isNotEmpty() } ?: return null to false
+        existingGroups.firstOrNull { it == name }?.let { return it to false }
+        val key = name.replace(" ", "").lowercase()
+        existingGroups.firstOrNull { it.replace(" ", "").lowercase() == key }?.let { return it to false }
+        return name to true
+    }
+
+    internal fun parseResponse(text: String): List<ParsedEvent> {
         val trimmed = text.trim()
             .removePrefix("```json").removePrefix("```")
             .removeSuffix("```").trim()
@@ -166,7 +335,10 @@ $text
             },
             subTasks = subTaskList,
             emoji = json.optString("emoji").takeIf { it.isNotBlank() && it != "null" },
-            memo = json.optString("memo").takeIf { it.isNotBlank() && it != "null" }
+            memo = json.optString("memo").takeIf { it.isNotBlank() && it != "null" },
+            groupName = json.optString("groupName").takeIf { it.isNotBlank() && it != "null" },
+            groupEmoji = json.optString("groupEmoji").takeIf { it.isNotBlank() && it != "null" },
+            deadline = json.optBoolean("deadline", false)
         )
     }
 }

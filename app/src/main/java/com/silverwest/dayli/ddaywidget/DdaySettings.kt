@@ -365,6 +365,15 @@ object DdaySettings {
         } catch (e: Exception) { "📁" }
     }
 
+    /** 사용자가 이미 정한 그룹 이모지는 덮어쓰지 않음 (AI 자동 그룹용) */
+    fun setGroupEmojiIfAbsent(context: Context, groupName: String, emoji: String) {
+        val json = getPrefs(context).getString(KEY_GROUP_EMOJIS, null)
+        val exists = try {
+            json != null && org.json.JSONObject(json).has(groupName)
+        } catch (e: Exception) { false }
+        if (!exists) setGroupEmoji(context, groupName, emoji)
+    }
+
     fun setGroupEmoji(context: Context, groupName: String, emoji: String) {
         val obj = try {
             val json = getPrefs(context).getString(KEY_GROUP_EMOJIS, null)
@@ -372,6 +381,66 @@ object DdaySettings {
         } catch (e: Exception) { org.json.JSONObject() }
         obj.put(groupName, emoji)
         getPrefs(context).edit().putString(KEY_GROUP_EMOJIS, obj.toString()).apply()
+    }
+
+    // ===== 앱 내 업데이트: "나중에" 누른 버전은 일정 기간 다시 묻지 않음 =====
+
+    private const val KEY_UPDATE_DECLINED_VERSION = "update_declined_version"
+    private const val KEY_UPDATE_DECLINED_AT = "update_declined_at"
+    private const val UPDATE_REPROMPT_MS = 3L * 24 * 60 * 60 * 1000  // 3일
+
+    private const val KEY_UPDATE_PENDING_VERSION = "update_pending_version"
+
+    /** 업데이트 창을 띄운 버전 (결과 콜백이 Activity 재생성 후 와도 버전을 알 수 있게 보관) */
+    fun setPendingUpdateVersion(context: Context, versionCode: Int) {
+        getPrefs(context).edit().putInt(KEY_UPDATE_PENDING_VERSION, versionCode).apply()
+    }
+
+    fun getPendingUpdateVersion(context: Context): Int =
+        getPrefs(context).getInt(KEY_UPDATE_PENDING_VERSION, 0)
+
+    fun recordUpdateDeclined(context: Context, versionCode: Int, nowMillis: Long) {
+        getPrefs(context).edit()
+            .putInt(KEY_UPDATE_DECLINED_VERSION, versionCode)
+            .putLong(KEY_UPDATE_DECLINED_AT, nowMillis)
+            .apply()
+    }
+
+    fun isUpdateDeclinedRecently(context: Context, versionCode: Int, nowMillis: Long): Boolean {
+        val prefs = getPrefs(context)
+        // 더 새 버전이 나오면 기간과 무관하게 다시 물어봄
+        if (prefs.getInt(KEY_UPDATE_DECLINED_VERSION, -1) < versionCode) return false
+        return nowMillis - prefs.getLong(KEY_UPDATE_DECLINED_AT, 0L) < UPDATE_REPROMPT_MS
+    }
+
+    // ===== 이모지 스타일 (false=기기 기본, true=플랫) =====
+
+    private const val KEY_FLAT_EMOJI = "flat_emoji"
+
+    fun isFlatEmojiEnabled(context: Context): Boolean =
+        getPrefs(context).getBoolean(KEY_FLAT_EMOJI, false)
+
+    fun setFlatEmojiEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_FLAT_EMOJI, enabled).apply()
+    }
+
+    // ===== 최근 사용 이모지 (이모지 피커) =====
+
+    private const val KEY_RECENT_EMOJIS = "recent_emojis"
+    private const val MAX_RECENT_EMOJIS = 32
+
+    fun getRecentEmojis(context: Context): List<String> {
+        val json = getPrefs(context).getString(KEY_RECENT_EMOJIS, null) ?: return emptyList()
+        return try {
+            val arr = org.json.JSONArray(json)
+            (0 until arr.length()).map { arr.getString(it) }
+        } catch (e: Exception) { emptyList() }
+    }
+
+    fun addRecentEmoji(context: Context, emoji: String) {
+        val updated = (listOf(emoji) + getRecentEmojis(context).filter { it != emoji })
+            .take(MAX_RECENT_EMOJIS)
+        getPrefs(context).edit().putString(KEY_RECENT_EMOJIS, org.json.JSONArray(updated).toString()).apply()
     }
 
     // ===== D-Day 위젯 그룹 접기/펼치기 =====

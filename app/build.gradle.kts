@@ -99,11 +99,14 @@ dependencies {
     // Kotlin Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
+    // EmojiCompat: 이모지 피커에서 기기 렌더링 가능 여부 확인 (Compose가 이미 런타임에 포함하는 라이브러리)
+    implementation("androidx.emoji2:emoji2:1.4.0")
+
+    // Google Play 앱 내 업데이트 (새 버전 안내 창)
+    implementation("com.google.android.play:app-update:2.1.0")
+
     // Google AdMob
     implementation("com.google.android.gms:play-services-ads:23.6.0")
-
-    // ML Kit Text Recognition (한국어 OCR)
-    implementation("com.google.mlkit:text-recognition-korean:16.0.1")
 
     // Firebase AI Logic (Gemini) — APK에 API 키를 내장하지 않는 구조
     implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
