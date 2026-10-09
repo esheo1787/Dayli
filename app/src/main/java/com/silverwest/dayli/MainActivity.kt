@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalDensity
@@ -392,12 +393,33 @@ fun MainDdayScreen(
 
     // 설정 다이얼로그
     if (showSettings) {
-        AlertDialog(
+        // 전체 화면 설정 페이지 (뒤로가기 / ← 버튼으로 닫기)
+        androidx.compose.ui.window.Dialog(
             onDismissRequest = { showSettings = false },
-            title = { Text("설정") },
-            text = {
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false
+            )
+        ) {
+            Scaffold(
+                containerColor = MaterialTheme.colorScheme.background,
+                topBar = {
+                    TopAppBar(
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                        navigationIcon = {
+                            IconButton(onClick = { showSettings = false }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로")
+                            }
+                        },
+                        title = { Text("설정", fontWeight = FontWeight.Bold) }
+                    )
+                }
+            ) { padding ->
                 Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState())
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState())
                 ) {
                     SettingsScreen(
                         onSettingsChanged = {
@@ -410,13 +432,8 @@ fun MainDdayScreen(
                         onFlatEmojiChanged = onFlatEmojiChanged
                     )
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { showSettings = false }) {
-                    Text("닫기")
-                }
             }
-        )
+        }
     }
 }
 

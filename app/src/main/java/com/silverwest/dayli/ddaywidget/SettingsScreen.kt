@@ -1,5 +1,6 @@
 package com.silverwest.dayli.ddaywidget
 
+import kotlin.math.roundToInt
 import androidx.compose.foundation.border
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -107,6 +108,7 @@ fun SettingsScreen(
         mutableStateOf(DdaySettings.isNotifyVibrateEnabled(context))
     }
     var showTimePicker by remember { mutableStateOf(false) }
+    var showLicenses by remember { mutableStateOf(false) }
     val aiCallsThisMonth = remember {
         DdaySettings.getAiCallsThisMonth(context)
     }
@@ -121,15 +123,11 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 24.dp)
     ) {
-        // ===== 🔔 알림 섹션 =====
-        Text(
-            text = "🔔 알림",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        SettingsSectionLabel("알림")
+        SettingsCard {
 
         // POST_NOTIFICATIONS 권한 보유 여부 (Android 12 이하는 항상 true)
         // 신규 사용자가 권한 없는 상태에서 SharedPrefs 기본값이 ON이어도
@@ -245,7 +243,7 @@ fun SettingsScreen(
             )
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
         // 알림 시간 설정
         Row(
@@ -276,7 +274,7 @@ fun SettingsScreen(
             )
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
         // 소리 설정
         Row(
@@ -334,15 +332,10 @@ fun SettingsScreen(
             )
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+        }
 
-        // ===== 🎨 테마 & 배경 섹션 =====
-        Text(
-            text = "🎨 테마 & 배경",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        SettingsSectionLabel("화면")
+        SettingsCard {
 
         // 테마 모드 선택
         Column(
@@ -365,7 +358,7 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 DdaySettings.ThemeMode.entries.forEach { mode ->
-                    FilterChip(
+                    SegmentChip(
                         selected = themeMode == mode,
                         onClick = {
                             themeMode = mode
@@ -398,7 +391,7 @@ fun SettingsScreen(
             }
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
         // 이모지 스타일 (기본 / 플랫)
         Column(
@@ -421,10 +414,10 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 listOf(false to "기본", true to "플랫").forEach { (flat, label) ->
-                    FilterChip(
+                    SegmentChip(
                         selected = flatEmoji == flat,
                         onClick = {
-                            if (flatEmoji == flat) return@FilterChip
+                            if (flatEmoji == flat) return@SegmentChip
                             flatEmoji = flat
                             DdaySettings.setFlatEmojiEnabled(context, flat)
                             onFlatEmojiChanged(flat)
@@ -451,188 +444,48 @@ fun SettingsScreen(
             )
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-        // 가장 가까운 일정 카드
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = "가장 가까운 일정 카드", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    text = "D-Day 목록 맨 위에 제일 급한 일정을 크게 보여줘요",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-            }
-            Switch(
-                checked = heroEnabled,
-                onCheckedChange = { enabled ->
-                    heroEnabled = enabled
-                    DdaySettings.setHeroCardEnabled(context, enabled)
-                    onSettingsChanged()
+        // 가장 가까운 일정 카드 (켜기/끄기 + 카드 색: 프리셋 · 색상환 + 미리보기)
+        HeroCardSettings(
+            enabled = heroEnabled,
+            onEnabledChange = { enabled ->
+                heroEnabled = enabled
+                DdaySettings.setHeroCardEnabled(context, enabled)
+                onSettingsChanged()
+            },
+            color = heroColor,
+            onColorCommit = { value ->
+                heroColor = value
+                DdaySettings.setHeroCardColor(context, value)
+                onSettingsChanged()
+            },
+            fontScale = DdaySettings.getAppFontScale(context)
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+        // 항목 배경: 흰 카드 / 항목 색 + 진하기 (항목 색 = backgroundOpacity, 흰 카드 = iconBgOpacity)
+        ItemBackgroundSettings(
+            tinted = backgroundEnabled,
+            onTintedChange = { tinted ->
+                backgroundEnabled = tinted
+                DdaySettings.setBackgroundEnabled(context, tinted)
+                onSettingsChanged()
+            },
+            strength = if (backgroundEnabled) backgroundOpacity else iconBgOpacity,
+            onStrengthChange = { value ->
+                // 미리보기가 바로 바뀌도록 드래그 중에도 저장 (위젯 갱신은 손을 뗄 때)
+                if (backgroundEnabled) {
+                    backgroundOpacity = value
+                    DdaySettings.setBackgroundOpacity(context, value)
+                } else {
+                    iconBgOpacity = value
+                    DdaySettings.setIconBgOpacity(context, value)
                 }
-            )
-        }
-        if (heroEnabled) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                HERO_PRESETS.forEach { (value, label) ->
-                    val selected = heroColor.equals(value, ignoreCase = true)
-                    val swatch = DayliUi.heroColor(value, null)
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (value == DdaySettings.HERO_COLOR_AUTO)
-                                    Brush.sweepGradient(listOf(Color(0xFF3E6E8E), Color(0xFF4E7A5E), Color(0xFFA9533F), Color(0xFF3E6E8E)))
-                                else Brush.linearGradient(listOf(swatch, swatch))
-                            )
-                            .then(
-                                if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                                else Modifier
-                            )
-                            .clickable {
-                                heroColor = value
-                                DdaySettings.setHeroCardColor(context, value)
-                                onSettingsChanged()
-                            }
-                            .semantics { contentDescription = label },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (value == DdaySettings.HERO_COLOR_AUTO) {
-                            Text("자동", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
-
-        // 배경 색상 ON/OFF
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = "항목 배경: 항목 색",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    text = "끄면 흰 카드에 이모지 칸만 색이 들어가요",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-            }
-            Switch(
-                checked = backgroundEnabled,
-                onCheckedChange = { enabled ->
-                    backgroundEnabled = enabled
-                    DdaySettings.setBackgroundEnabled(context, enabled)
-                    onSettingsChanged()
-                }
-            )
-        }
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-        // 아이템 배경 투명도 슬라이더
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "아이템 배경 투명도",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    text = "${backgroundOpacity}%",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Text(
-                text = "리스트와 위젯의 아이템 배경 색상 강도",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Slider(
-                value = backgroundOpacity.toFloat(),
-                onValueChange = { value ->
-                    backgroundOpacity = value.toInt()
-                },
-                onValueChangeFinished = {
-                    DdaySettings.setBackgroundOpacity(context, backgroundOpacity)
-                    onSettingsChanged()
-                },
-                valueRange = 0f..100f,
-                steps = 19,  // 5% 단위
-                enabled = backgroundEnabled
-            )
-        }
-
-        // 아이콘 배경 투명도 슬라이더
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "아이콘 배경 투명도",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    text = "${iconBgOpacity}%",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Text(
-                text = "이모지 아이콘 배경 색상 강도",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Slider(
-                value = iconBgOpacity.toFloat(),
-                onValueChange = { value ->
-                    iconBgOpacity = value.toInt()
-                },
-                onValueChangeFinished = {
-                    DdaySettings.setIconBgOpacity(context, iconBgOpacity)
-                    onSettingsChanged()
-                },
-                valueRange = 0f..100f,
-                steps = 19,  // 5% 단위
-                enabled = backgroundEnabled
-            )
-        }
+            },
+            onStrengthCommit = { onSettingsChanged() }
+        )
 
         // 앱 글씨 크기
         Column(
@@ -655,7 +508,7 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 listOf("작게" to 0, "보통" to 1, "크게" to 2).forEach { (label, value) ->
-                    FilterChip(
+                    SegmentChip(
                         selected = appFontSize == value,
                         onClick = {
                             appFontSize = value
@@ -669,49 +522,14 @@ fun SettingsScreen(
             }
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-        // 앱 미리보기
-        Text(
-            text = "미리보기",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
+        // 미리보기: 실제 목록 카드와 똑같이
+        SettingsListPreview(refreshKey = listOf(backgroundEnabled, backgroundOpacity, iconBgOpacity, appFontSize))
+        }
 
-        PreviewItem(
-            emoji = "📚",
-            title = "시험 공부",
-            dday = "D-7",
-            color = Color(0xFFE53935),
-            backgroundEnabled = backgroundEnabled,
-            backgroundOpacity = backgroundOpacity,
-            iconBgOpacity = iconBgOpacity,
-            appFontSize = appFontSize
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        PreviewItem(
-            emoji = "✈️",
-            title = "여행 출발",
-            dday = "D-14",
-            color = Color(0xFF1E88E5),
-            backgroundEnabled = backgroundEnabled,
-            backgroundOpacity = backgroundOpacity,
-            iconBgOpacity = iconBgOpacity,
-            appFontSize = appFontSize
-        )
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-        // ===== 🧩 위젯 섹션 =====
-        Text(
-            text = "🧩 위젯",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        SettingsSectionLabel("위젯")
+        SettingsCard {
 
         // 위젯 배경 투명도 슬라이더
         Column(
@@ -744,18 +562,18 @@ fun SettingsScreen(
             Slider(
                 value = widgetBgOpacity.toFloat(),
                 onValueChange = { value ->
-                    widgetBgOpacity = value.toInt()
+                    widgetBgOpacity = (value / 5f).roundToInt() * 5  // 5% 단위
                 },
                 onValueChangeFinished = {
                     DdaySettings.setWidgetBgOpacity(context, widgetBgOpacity)
                     onSettingsChanged()
                 },
                 valueRange = 0f..100f,
-                steps = 19  // 5% 단위
+                steps = 0  // 점 없이 매끄럽게 (값은 5% 단위로 반올림)
             )
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
         // 위젯 글씨 크기
         Column(
@@ -778,7 +596,7 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 listOf("작게" to 0, "보통" to 1, "크게" to 2).forEach { (label, value) ->
-                    FilterChip(
+                    SegmentChip(
                         selected = widgetFontSize == value,
                         onClick = {
                             widgetFontSize = value
@@ -809,15 +627,10 @@ fun SettingsScreen(
             isDark = isDark
         )
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+        }
 
-        // ===== 💾 백업/복원 섹션 =====
-        Text(
-            text = "💾 백업/복원",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        SettingsSectionLabel("데이터")
+        SettingsCard {
 
         // 가져오기 미리보기 다이얼로그 상태 (preview + uri 보관)
         var importPreviewState by remember {
@@ -910,15 +723,10 @@ fun SettingsScreen(
             )
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+        }
 
-        // ===== ℹ️ 정보 섹션 =====
-        Text(
-            text = "ℹ️ 정보",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        SettingsSectionLabel("정보")
+        SettingsCard {
 
         // 앱 버전
         Row(
@@ -998,6 +806,20 @@ fun SettingsScreen(
             )
         }
 
+        // 오픈소스 라이선스
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { showLicenses = true }
+                .padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "오픈소스 라이선스", style = MaterialTheme.typography.bodyLarge)
+            Text(text = "›", style = MaterialTheme.typography.titleMedium, color = Color.Gray)
+        }
+
         // 문의하기
         Row(
             modifier = Modifier
@@ -1049,7 +871,9 @@ fun SettingsScreen(
             )
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // 기본값으로 복원 버튼
         OutlinedButton(
@@ -1066,6 +890,10 @@ fun SettingsScreen(
                 DdaySettings.setWidgetBgOpacity(context, 20)
                 DdaySettings.setWidgetFontSize(context, 1)
                 DdaySettings.setAppFontSize(context, 1)
+                heroEnabled = true
+                heroColor = DdaySettings.DEFAULT_HERO_COLOR
+                DdaySettings.setHeroCardEnabled(context, true)
+                DdaySettings.setHeroCardColor(context, DdaySettings.DEFAULT_HERO_COLOR)
                 onSettingsChanged()
             },
             modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -1078,6 +906,10 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.width(8.dp))
             Text("기본값으로 복원")
         }
+    }
+
+    if (showLicenses) {
+        OpenSourceLicensesDialog(onDismiss = { showLicenses = false })
     }
 
     // 시간 선택 다이얼로그
@@ -1214,65 +1046,6 @@ private fun WidgetPreviewItem(
                 modifier = Modifier.size(24.dp)
             )
         }
-    }
-}
-
-@Composable
-private fun PreviewItem(
-    emoji: String,
-    title: String,
-    dday: String,
-    color: Color,
-    backgroundEnabled: Boolean,
-    backgroundOpacity: Int,
-    iconBgOpacity: Int,
-    appFontSize: Int = 1
-) {
-    val bgAlpha = if (backgroundEnabled) backgroundOpacity / 100f else 0f
-    val iconAlpha = if (backgroundEnabled) iconBgOpacity / 100f else 0f
-
-    // 앱 글씨 크기 배율 (DdaySettings.getAppFontScale과 동일)
-    val fontScale = when (appFontSize) {
-        0 -> 0.85f  // 작게
-        2 -> 1.2f   // 크게
-        else -> 1f  // 보통
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(color.copy(alpha = bgAlpha))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // 이모지 아이콘
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(color.copy(alpha = iconAlpha)),
-            contentAlignment = Alignment.Center
-        ) {
-            EmojiText(emoji, fontSize = (22 * fontScale).sp)
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            fontSize = (16 * fontScale).sp,
-            modifier = Modifier.weight(1f)
-        )
-
-        Text(
-            text = dday,
-            style = MaterialTheme.typography.titleMedium,
-            fontSize = (16 * fontScale).sp,
-            color = color,
-            fontWeight = FontWeight.Bold
-        )
     }
 }
 
@@ -1726,7 +1499,7 @@ private fun ImportPreviewDialog(
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                 Text(
                     text = "처리 방법",
@@ -1794,13 +1567,3 @@ private fun ImportPreviewDialog(
 // ===== 외부 링크 상수 =====
 private const val PRIVACY_POLICY_URL = "https://esheo1787.github.io/Dayli/privacy-policy.html"
 private const val CONTACT_EMAIL = "heunseo1787@gmail.com"
-
-/** 가장 가까운 일정 카드 색 프리셋 (흰 글자 대비 4.5:1 이상) */
-private val HERO_PRESETS = listOf(
-    DdaySettings.HERO_COLOR_AUTO to "항목 색 따라가기",
-    "#4A7390" to "딥블루",
-    "#45423F" to "차콜",
-    "#4E7A5E" to "세이지",
-    "#A9533F" to "코랄",
-    "#6B5891" to "플럼"
-)

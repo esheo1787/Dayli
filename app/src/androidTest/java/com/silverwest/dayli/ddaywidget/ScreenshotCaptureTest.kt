@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -125,6 +126,33 @@ class ScreenshotCaptureTest {
         val anchor = if (todoTab) "장보기" else "치과 예약"
         compose.waitUntil(8_000) { compose.onAllNodesWithText(anchor).fetchSemanticsNodes().isNotEmpty() }
         Thread.sleep(700)
+    }
+
+    // 설정 페이지: 길어서 스크롤하며 여러 장 (직접 고른 카드 색 → 색상환 펼친 상태)
+    @Test
+    fun settingsPages() {
+        DdaySettings.setHeroCardEnabled(context, true)
+        DdaySettings.setHeroCardColor(context, "#C2185B")
+        DdaySettings.setBackgroundEnabled(context, true)
+        DdaySettings.setBackgroundOpacity(context, 35)
+        var scroll: androidx.compose.foundation.ScrollState? = null
+        compose.setContent {
+            MyApplicationTheme(themeMode = DdaySettings.ThemeMode.LIGHT) {
+                val st = androidx.compose.foundation.rememberScrollState()
+                scroll = st
+                Box(Modifier.fillMaxSize().background(androidx.compose.material3.MaterialTheme.colorScheme.background)) {
+                    androidx.compose.foundation.layout.Column(Modifier.verticalScroll(st)) { SettingsScreen() }
+                }
+            }
+        }
+        compose.waitForIdle()
+        val page = context.resources.displayMetrics.heightPixels * 0.8f
+        for (i in 0 until 6) {
+            compose.runOnIdle { kotlinx.coroutines.runBlocking { scroll!!.scrollTo((i * page).toInt()) } }
+            compose.waitForIdle()
+            Thread.sleep(300)
+            save("11_settings_p$i")
+        }
     }
 
     @Test fun listDefault() { mainList(false); save("06_list_default") }
