@@ -15,6 +15,8 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,7 +42,9 @@ fun DdayCalendarView(
     expandedSubTaskIds: Set<Int> = emptySet(),
     onExpandSubTask: (Int) -> Unit = {},
     searchQuery: String = "",
-    onAddForDate: (Date) -> Unit = {}
+    onAddForDate: (Date) -> Unit = {},
+    // 보고 있는 월·선택 날짜. 1단↔2단 전환(폴드 접기/펼치기)에도 유지되도록 상위에서 넘겨받음
+    state: CalendarState = rememberCalendarState()
 ) {
     val context = LocalContext.current
     val fontScale = DdaySettings.getAppFontScale(context)
@@ -51,12 +55,10 @@ fun DdayCalendarView(
     val todayMonth = today.get(Calendar.MONTH)
     val todayDay = today.get(Calendar.DAY_OF_MONTH)
 
-    // 현재 표시 중인 년/월
-    var currentYear by remember { mutableIntStateOf(todayYear) }
-    var currentMonth by remember { mutableIntStateOf(todayMonth) }
-
-    // 선택된 날짜 (year, month, day) — 처음엔 오늘
-    var selectedDate by remember { mutableStateOf<Triple<Int, Int, Int>?>(Triple(todayYear, todayMonth, todayDay)) }
+    // 현재 표시 중인 년/월, 선택된 날짜 (year, month, day) — 처음엔 오늘
+    var currentYear by state::year
+    var currentMonth by state::month
+    var selectedDate by state::selected
     var showShareDialog by remember { mutableStateOf(false) }
 
     // 이번 달에 해당하는 D-Day 아이템을 일자별 그룹핑
@@ -417,3 +419,30 @@ private fun CalendarDayCell(
         }
     }
 }
+
+/**
+ * 캘린더가 보고 있는 월과 선택한 날짜.
+ * 화면 회전·폴드 접기/펼치기로 Activity가 다시 만들어져도 유지 (rememberSaveable)
+ */
+@Stable
+class CalendarState(year: Int, month: Int, selected: Triple<Int, Int, Int>?) {
+    var year by mutableIntStateOf(year)
+    var month by mutableIntStateOf(month)
+    var selected by mutableStateOf(selected)
+
+    companion object {
+        fun today(): CalendarState {
+            val c = Calendar.getInstance()
+            val y = c.get(Calendar.YEAR); val m = c.get(Calendar.MONTH)
+            return CalendarState(y, m, Triple(y, m, c.get(Calendar.DAY_OF_MONTH)))
+        }
+
+        val Saver = listSaver<CalendarState, Int>(
+            save = { listOf(it.year, it.month, it.selected?.first ?: -1, it.selected?.second ?: -1, it.selected?.third ?: -1) },
+            restore = { CalendarState(it[0], it[1], if (it[2] < 0) null else Triple(it[2], it[3], it[4])) }
+        )
+    }
+}
+
+@Composable
+fun rememberCalendarState(): CalendarState = rememberSaveable(saver = CalendarState.Saver) { CalendarState.today() }

@@ -257,6 +257,8 @@ fun DdayScreen(
     var isRefreshing by remember { mutableStateOf(false) }
 
     // D-Day 캘린더 (1단: 목록 대신 / 2단: 오른쪽에 항상)
+    // 월·선택 날짜는 여기서 보관 → 두 배치가 같은 상태를 써서 1단↔2단 전환에도 유지
+    val calendarState = rememberCalendarState()
     val calendarContent: @Composable () -> Unit = {
         DdayCalendarView(
             ddayItems = filteredDdays + filteredHiddenDdays,
@@ -275,7 +277,8 @@ fun DdayScreen(
                 else expandedSubTaskIds + id
             },
             searchQuery = searchQuery,
-            onAddForDate = onAddForDate
+            onAddForDate = onAddForDate,
+            state = calendarState
         )
     }
 

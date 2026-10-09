@@ -301,7 +301,9 @@ class NewFeaturesUiTest {
 
     // ===== 넓은 화면 2단 (폴드 펼침·태블릿) =====
 
-    private fun mainScreenAtWidth(widthDp: Int) {
+    private fun mainScreenAtWidth(widthDp: Int) = mainScreenAtWidth(mutableStateOf(widthDp))
+
+    private fun mainScreenAtWidth(widthDp: androidx.compose.runtime.MutableState<Int>) {
         val db = DdayDatabase.getDatabase(context)
         db.clearAllTables()
         runBlocking {
@@ -312,7 +314,7 @@ class NewFeaturesUiTest {
         DdaySettings.setCalendarView(context, false)
         compose.setContent {
             // 창 폭만 바꿔서 확인 (실제 기기 폭과 무관하게 분기 로직 검증)
-            val conf = android.content.res.Configuration(androidx.compose.ui.platform.LocalConfiguration.current).apply { screenWidthDp = widthDp }
+            val conf = android.content.res.Configuration(androidx.compose.ui.platform.LocalConfiguration.current).apply { screenWidthDp = widthDp.value }
             CompositionLocalProvider(androidx.compose.ui.platform.LocalConfiguration provides conf) {
                 com.silverwest.dayli.ui.theme.MyApplicationTheme {
                     com.silverwest.dayli.MainDdayScreen()
@@ -349,6 +351,58 @@ class NewFeaturesUiTest {
         compose.onNodeWithContentDescription("캘린더 보기").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("이 날짜에 D-Day 추가").fetchSemanticsNodes().isNotEmpty() }
         compose.onAllNodesWithContentDescription("리스트 보기").assertCountEquals(1)
+    }
+
+    /** 다음 달 20일을 고른 상태에서 기대하는 머리글·선택 날짜 글자 */
+    private fun nextMonthDay20Labels(): Pair<String, String> {
+        val c = java.util.Calendar.getInstance().apply { set(java.util.Calendar.DAY_OF_MONTH, 1); add(java.util.Calendar.MONTH, 1); set(java.util.Calendar.DAY_OF_MONTH, 20) }
+        val header = "${c.get(java.util.Calendar.YEAR)}년 ${c.get(java.util.Calendar.MONTH) + 1}월"
+        val selected = DayliUi.koreanDate(c.time).replace(Regex("\\((.)\\)$"), "$1요일")
+        return header to selected
+    }
+
+    @Test
+    fun calendar_monthAndSelectedDate_surviveSingleToTwoPaneSwitch() {
+        val width = mutableStateOf(411)
+        mainScreenAtWidth(width)
+        // 1단: 캘린더 열고 다음 달 20일 선택
+        compose.onNodeWithContentDescription("캘린더 보기").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("다음 달").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithContentDescription("다음 달").performClick()
+        compose.onNodeWithContentDescription("20일").performClick()
+        compose.waitForIdle()
+        val (header, selected) = nextMonthDay20Labels()
+        compose.onNodeWithText(header).assertExists()
+        compose.onNodeWithText(selected).assertExists()
+
+        // 폴드 펼침: 600dp 이상 → 2단. 오른쪽 캘린더가 같은 월·날짜 유지
+        width.value = 840
+        compose.waitForIdle()
+        compose.onAllNodesWithContentDescription("캘린더 보기").assertCountEquals(0)
+        compose.onNodeWithText(header).assertExists()
+        compose.onNodeWithText(selected).assertExists()
+
+        // 다시 접기: 1단 캘린더로 돌아와도 유지
+        width.value = 411
+        compose.waitForIdle()
+        compose.onNodeWithText(header).assertExists()
+        compose.onNodeWithText(selected).assertExists()
+    }
+
+    @Test
+    fun calendarState_survivesActivityRecreation() {
+        // 폴드 접기/펼치기는 Activity를 다시 만듦 → 저장·복원 후에도 월·선택 날짜 유지
+        val restoration = androidx.compose.ui.test.junit4.StateRestorationTester(compose)
+        restoration.setContent {
+            DdayCalendarView(ddayItems = emptyList(), onToggle = {}, state = rememberCalendarState())
+        }
+        compose.onNodeWithContentDescription("다음 달").performClick()
+        compose.onNodeWithContentDescription("20일").performClick()
+        compose.waitForIdle()
+        val (header, selected) = nextMonthDay20Labels()
+        restoration.emulateSavedInstanceStateRestore()
+        compose.onNodeWithText(header).assertExists()
+        compose.onNodeWithText(selected).assertExists()
     }
 
     @Test
