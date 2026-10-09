@@ -15,7 +15,7 @@ import com.silverwest.dayli.ddaywidget.DdaySettings
 
 // Soft Pastel - Light Color Scheme
 private val LightColorScheme = lightColorScheme(
-    primary = PastelBlueDark,
+    primary = DeepBlue,
     onPrimary = Color.White,
     primaryContainer = PastelBlue,
     onPrimaryContainer = WarmGray,

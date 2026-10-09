@@ -8,6 +8,13 @@ import android.net.Uri
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -238,6 +245,22 @@ class NewFeaturesUiTest {
         } finally {
             GeminiParser.parseOverrideForTest = null
         }
+    }
+
+    // ===== 1라운드 Codex 지적: 그룹 이동 · 체크박스 접근성 =====
+
+    // 그룹 손잡이 끌기는 Compose 테스트의 가상 터치·테스트 시계로는 재현되지 않아(라이브러리 특성)
+    // 실제 앱 + adb input swipe로 확인함. 순서 계산은 단위 테스트(groupNameFromKey)로 검증.
+
+    @Test
+    fun checkbox_exposesCheckedStateToAccessibility() {
+        var checked by mutableStateOf(false)
+        compose.setContent {
+            DayliCheckbox(checked = checked, color = ComposeColor(0xFFA5D6A7), onClick = { checked = !checked })
+        }
+        compose.onNodeWithContentDescription("완료").assertIsOff()
+        compose.onNodeWithContentDescription("완료").performClick()
+        compose.onNodeWithContentDescription("완료").assertIsOn()
     }
 
     // ===== AI 입력용 이미지 로드 =====

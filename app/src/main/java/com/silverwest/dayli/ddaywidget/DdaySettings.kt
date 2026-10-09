@@ -413,6 +413,28 @@ object DdaySettings {
         return nowMillis - prefs.getLong(KEY_UPDATE_DECLINED_AT, 0L) < UPDATE_REPROMPT_MS
     }
 
+    // ===== 가장 가까운 일정 카드 (D-Day 목록 맨 위) =====
+
+    private const val KEY_HERO_CARD_ENABLED = "hero_card_enabled"
+    private const val KEY_HERO_CARD_COLOR = "hero_card_color"
+    const val HERO_COLOR_AUTO = "auto"  // 항목 색 따라가기
+    const val DEFAULT_HERO_COLOR = "#4A7390"
+
+    fun isHeroCardEnabled(context: Context): Boolean =
+        getPrefs(context).getBoolean(KEY_HERO_CARD_ENABLED, true)
+
+    fun setHeroCardEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_HERO_CARD_ENABLED, enabled).apply()
+    }
+
+    /** "auto" 또는 "#RRGGBB" */
+    fun getHeroCardColor(context: Context): String =
+        getPrefs(context).getString(KEY_HERO_CARD_COLOR, DEFAULT_HERO_COLOR) ?: DEFAULT_HERO_COLOR
+
+    fun setHeroCardColor(context: Context, color: String) {
+        getPrefs(context).edit().putString(KEY_HERO_CARD_COLOR, color).apply()
+    }
+
     // ===== 이모지 스타일 (false=기기 기본, true=플랫) =====
 
     private const val KEY_FLAT_EMOJI = "flat_emoji"

@@ -80,7 +80,12 @@ class ScreenshotCaptureTest {
     }
 
     // 메인 목록 (테스트 에뮬레이터 전용: 앱 DB를 비우고 샘플 D-Day 삽입)
-    private fun mainList(flat: Boolean) {
+    private fun mainList(
+        flat: Boolean,
+        dark: Boolean = false,
+        tinted: Boolean = false,
+        todoTab: Boolean = false
+    ) {
         val db = DdayDatabase.getDatabase(context)
         db.clearAllTables()
         val day = 24L * 60 * 60 * 1000
@@ -94,24 +99,41 @@ class ScreenshotCaptureTest {
                     DdayItem(
                         title = title, date = java.util.Date(now + d * day), iconName = emoji,
                         customColor = listOf(0xFFA8C5DAL, 0xFFF4C7C3L, 0xFFF9E79FL, 0xFFC5E1A5L, 0xFFD7BDE2L)[i],
-                        groupName = if (i < 2) "학교" else null
+                        groupName = if (i < 2) "학교" else null,
+                        timeHour = if (i == 0) 12 else if (i == 3) 14 else null,
+                        timeMinute = if (i == 0 || i == 3) 0 else null
                     )
                 )
             }
+            // To-Do 샘플
+            db.ddayDao().insert(DdayItem(title = "장보기", iconName = "🛒", customColor = 0xFFC5E1A5L, itemType = ItemType.TODO.name,
+                subTasks = DdayItem.subTasksToJson(listOf(SubTask("우유", true), SubTask("계란", true), SubTask("양파"), SubTask("두부"), SubTask("김")))))
+            db.ddayDao().insert(DdayItem(title = "운동하기", iconName = "💪", customColor = 0xFFF4C7C3L, itemType = ItemType.TODO.name, repeatType = RepeatType.DAILY.name))
+            db.ddayDao().insert(DdayItem(title = "중간고사 공부", iconName = "📚", customColor = 0xFFA8C5DAL, itemType = ItemType.TODO.name,
+                subTasks = DdayItem.subTasksToJson(listOf(SubTask("회계", true), SubTask("원가"), SubTask("법률")))))
         }
         DdaySettings.setGroupEmoji(context, "학교", "🏫")
+        DdaySettings.setBackgroundEnabled(context, tinted)
+        DdaySettings.setLastTab(context, if (todoTab) 1 else 0)
         compose.setContent {
-            MyApplicationTheme {
+            MyApplicationTheme(themeMode = if (dark) DdaySettings.ThemeMode.DARK else DdaySettings.ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalFlatEmoji provides flat) {
                     com.silverwest.dayli.MainDdayScreen()
                 }
             }
         }
-        compose.waitUntil(8_000) { compose.onAllNodesWithText("치과 예약").fetchSemanticsNodes().isNotEmpty() }
-        Thread.sleep(500)
+        val anchor = if (todoTab) "장보기" else "치과 예약"
+        compose.waitUntil(8_000) { compose.onAllNodesWithText(anchor).fetchSemanticsNodes().isNotEmpty() }
+        Thread.sleep(700)
     }
 
     @Test fun listDefault() { mainList(false); save("06_list_default") }
 
     @Test fun listFlat() { mainList(true); save("07_list_flat") }
+
+    @Test fun listTinted() { mainList(false, tinted = true); save("08_list_tinted") }
+
+    @Test fun listDark() { mainList(false, dark = true); save("09_list_dark") }
+
+    @Test fun listTodo() { mainList(false, todoTab = true); save("10_list_todo") }
 }

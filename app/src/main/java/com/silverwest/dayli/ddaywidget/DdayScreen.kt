@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.style.TextOverflow
 import org.burnoutcrew.reorderable.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -33,7 +35,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
@@ -169,14 +170,16 @@ fun DdayScreen(
     // Reorderable 상태 (D-Day 그룹 드래그)
     val groupReorderableState = rememberReorderableLazyListState(
         onMove = { from, to ->
-            val fromIndex = from.index - 1
-            val toIndex = to.index - 1
-            if (fromIndex >= 0 && toIndex >= 0 && fromIndex < groupOrder.size && toIndex < groupOrder.size) {
+            val fromIndex = groupOrder.indexOf(groupNameFromKey(from.key))
+            val toIndex = groupOrder.indexOf(groupNameFromKey(to.key))
+            if (fromIndex >= 0 && toIndex >= 0) {
                 groupOrder = groupOrder.toMutableList().apply {
                     add(toIndex, removeAt(fromIndex))
                 }
             }
         },
+        // 그룹끼리만 자리 바꿈 (가장 가까운 일정 카드·섹션 위로는 이동 불가)
+        canDragOver = { draggedOver, _ -> groupNameFromKey(draggedOver.key) != null },
         onDragEnd = { _, _ ->
             DdaySettings.setGroupOrder(context, groupOrder)
             // 위젯 동기화
@@ -237,6 +240,10 @@ fun DdayScreen(
     val bottomSheetState = rememberModalBottomSheetState()
     var showShareDialog by remember { mutableStateOf(false) }
 
+    // 가장 가까운 일정 카드 설정 (설정 변경 시 상위에서 key로 재구성됨)
+    val heroEnabled = remember { DdaySettings.isHeroCardEnabled(context) }
+    val heroColorSetting = remember { DdaySettings.getHeroCardColor(context) }
+
     // Snackbar 상태
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -246,6 +253,7 @@ fun DdayScreen(
     var isRefreshing by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
@@ -258,38 +266,16 @@ fun DdayScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // 탭 바
-            TabRow(
-                selectedTabIndex = pagerState.currentPage,
-                containerColor = MaterialTheme.colorScheme.surface
-            ) {
-                Tab(
-                    selected = pagerState.currentPage == 0,
-                    onClick = {
-                        scope.launch { pagerState.animateScrollToPage(0) }
-                    },
-                    text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("📅", fontSize = 16.sp)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("D-Day")
-                        }
-                    }
-                )
-                Tab(
-                    selected = pagerState.currentPage == 1,
-                    onClick = {
-                        scope.launch { pagerState.animateScrollToPage(1) }
-                    },
-                    text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("✅", fontSize = 16.sp)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("To-Do")
-                        }
-                    }
-                )
-            }
+            // D-Day / To-Do 전환 (개수 표시)
+            SegmentedTabs(
+                labels = listOf("D-Day", "To-Do"),
+                counts = listOf(ddays.count { !it.isChecked }, todos.count { !it.isChecked }),
+                selected = pagerState.currentPage,
+                onSelect = { index -> scope.launch { pagerState.animateScrollToPage(index) } },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+            )
 
             // 탭 콘텐츠 (스와이프로 전환 가능)
             HorizontalPager(
@@ -299,93 +285,32 @@ fun DdayScreen(
             Column(modifier = Modifier.fillMaxSize()) {
             // D-Day 탭일 때만 정렬 옵션 표시 (리스트 모드만)
             if (page == 0 && !isCalendarView) {
-                // 정렬 옵션 버튼 + 그룹 관리 버튼
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .padding(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // 그룹 관리 버튼
-                    AssistChip(
-                        onClick = { showGroupManageDialog = true },
-                        label = { Text("그룹 관리", style = MaterialTheme.typography.bodySmall) },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.Folder,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    )
-
-                    // 정렬 옵션
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "정렬: ",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        FilterChip(
-                            selected = currentSort == SortOption.NEAREST,
-                            onClick = { viewModel.setSortOption(SortOption.NEAREST) },
-                            label = { Text("임박순", style = MaterialTheme.typography.bodySmall) },
-                            modifier = Modifier.padding(end = 4.dp)
-                        )
-                        FilterChip(
-                            selected = currentSort == SortOption.FARTHEST,
-                            onClick = { viewModel.setSortOption(SortOption.FARTHEST) },
-                            label = { Text("여유순", style = MaterialTheme.typography.bodySmall) }
-                        )
-                    }
-                }
+                ListToolbar(
+                    summary = "전체 ${filteredDdays.count { !it.isChecked }}개",
+                    sortLabel = if (currentSort == SortOption.FARTHEST) "여유순" else "임박순",
+                    sortOptions = listOf("임박순" to { viewModel.setSortOption(SortOption.NEAREST) }, "여유순" to { viewModel.setSortOption(SortOption.FARTHEST) }),
+                    actionLabel = "그룹",
+                    onAction = { showGroupManageDialog = true }
+                )
             }
 
             // To-Do 탭일 때 정렬 옵션 + 템플릿 관리 표시
             if (page == 1) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .padding(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // 템플릿 관리 버튼
-                    AssistChip(
-                        onClick = { showTemplateManageDialog = true },
-                        label = { Text("템플릿 관리", style = MaterialTheme.typography.bodySmall) },
-                        leadingIcon = {
-                            Text("📋", fontSize = 14.sp)
-                        }
-                    )
-
-                    // 정렬 옵션
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "정렬: ",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        FilterChip(
-                            selected = currentTodoSort == TodoSortOption.MY_ORDER,
-                            onClick = { viewModel.setTodoSortOption(TodoSortOption.MY_ORDER) },
-                            label = { Text("내 순서", style = MaterialTheme.typography.bodySmall) },
-                            modifier = Modifier.padding(end = 4.dp)
-                        )
-                        FilterChip(
-                            selected = currentTodoSort == TodoSortOption.INCOMPLETE_FIRST,
-                            onClick = { viewModel.setTodoSortOption(TodoSortOption.INCOMPLETE_FIRST) },
-                            label = { Text("미완료순", style = MaterialTheme.typography.bodySmall) },
-                            modifier = Modifier.padding(end = 4.dp)
-                        )
-                        FilterChip(
-                            selected = currentTodoSort == TodoSortOption.LATEST,
-                            onClick = { viewModel.setTodoSortOption(TodoSortOption.LATEST) },
-                            label = { Text("최근 추가", style = MaterialTheme.typography.bodySmall) }
-                        )
-                    }
-                }
+                ListToolbar(
+                    summary = "남은 할 일 ${filteredTodos.count { !it.isChecked }}개",
+                    sortLabel = when (currentTodoSort) {
+                        TodoSortOption.INCOMPLETE_FIRST -> "미완료순"
+                        TodoSortOption.LATEST -> "최근 추가"
+                        else -> "내 순서"
+                    },
+                    sortOptions = listOf(
+                        "내 순서" to { viewModel.setTodoSortOption(TodoSortOption.MY_ORDER) },
+                        "미완료순" to { viewModel.setTodoSortOption(TodoSortOption.INCOMPLETE_FIRST) },
+                        "최근 추가" to { viewModel.setTodoSortOption(TodoSortOption.LATEST) }
+                    ),
+                    actionLabel = "템플릿",
+                    onAction = { showTemplateManageDialog = true }
+                )
             }
 
             // 리스트 (To-Do 탭: 드래그 가능, D-Day 탭: 일반)
@@ -408,8 +333,8 @@ fun DdayScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .reorderable(reorderableState),
-                    verticalArrangement = Arrangement.spacedBy(1.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)  // FAB 겹침 방지
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp)  // FAB 겹침 방지
                 ) {
                     // 검색 결과 없음 표시 (To-Do 탭)
                     if (searchQuery.isNotBlank() && filteredTodos.isEmpty() && filteredHiddenTodos.isEmpty()) {
@@ -457,10 +382,10 @@ fun DdayScreen(
                             val elevation = if (isDragging) 8.dp else 0.dp
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RectangleShape,
+                                shape = RoundedCornerShape(12.dp),
                                 elevation = CardDefaults.cardElevation(defaultElevation = elevation),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                    containerColor = Color.Transparent
                                 )
                             ) {
                                 Row(
@@ -533,9 +458,9 @@ fun DdayScreen(
                             ) { item ->
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
-                                    shape = RectangleShape,
+                                    shape = RoundedCornerShape(12.dp),
                                     colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surface
+                                        containerColor = Color.Transparent
                                     )
                                 ) {
                                     val showDateText = item.nextShowDate?.let { showDate ->
@@ -590,9 +515,9 @@ fun DdayScreen(
                             ) { item ->
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
-                                    shape = RectangleShape,
+                                    shape = RoundedCornerShape(12.dp),
                                     colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surface
+                                        containerColor = Color.Transparent
                                     )
                                 ) {
                                     DdayListItem(
@@ -659,8 +584,8 @@ fun DdayScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .reorderable(groupReorderableState),
-                    verticalArrangement = Arrangement.spacedBy(1.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp)
                 ) {
                     // 검색 결과 없음 표시 (D-Day 탭)
                     if (searchQuery.isNotBlank() && filteredDdays.isEmpty() && filteredHiddenDdays.isEmpty()) {
@@ -688,8 +613,19 @@ fun DdayScreen(
                     }
 
                     if (!ddayFullyEmpty) {
-                        item(key = "header_dday_groups") {
-                            Spacer(modifier = Modifier.height(1.dp))
+                        val heroItem = if (heroEnabled && searchQuery.isBlank()) DayliUi.nearestUpcoming(ddays) else null
+                        if (heroItem != null) {
+                            item(key = "hero_card") {
+                                HeroCard(
+                                    item = heroItem,
+                                    colorSetting = heroColorSetting,
+                                    fontScale = DdaySettings.getAppFontScale(context),
+                                    onClick = {
+                                        selectedItem = heroItem
+                                        showBottomSheet = true
+                                    }
+                                )
+                            }
                         }
                     items(
                         items = orderedGroupList,
@@ -700,54 +636,38 @@ fun DdayScreen(
                             val elevation = if (isDragging) 8.dp else 0.dp
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RectangleShape,
+                                shape = RoundedCornerShape(12.dp),
                                 elevation = CardDefaults.cardElevation(defaultElevation = elevation),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                    containerColor = if (isDragging) MaterialTheme.colorScheme.background else Color.Transparent
                                 )
                             ) {
                                 Column {
-                                    // 드래그 핸들 + 그룹 헤더
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Menu,
-                                            contentDescription = "드래그",
-                                            modifier = Modifier
-                                                .detectReorder(groupReorderableState)
-                                                .padding(start = 8.dp, end = 4.dp)
-                                                .padding(vertical = 12.dp)
-                                                .size(24.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                        )
-                                        Box(modifier = Modifier.weight(1f)) {
-                                            GroupHeader(
-                                                groupName = groupName,
-                                                count = groupItems.size,
-                                                isExpanded = isGroupExpanded,
-                                                emojiVersion = groupEmojiVersion,
-                                                onToggle = {
-                                                    expandedGroups = if (isGroupExpanded) {
-                                                        expandedGroups - groupName
-                                                    } else {
-                                                        expandedGroups + groupName
-                                                    }
-                                                    DdaySettings.toggleGroupCollapsed(context, groupName)
-                                                }
-                                            )
+                                    // 그룹 헤더 (오른쪽 손잡이를 끌어 그룹 순서 이동)
+                                    GroupHeader(
+                                        groupName = groupName,
+                                        count = groupItems.size,
+                                        isExpanded = isGroupExpanded,
+                                        emojiVersion = groupEmojiVersion,
+                                        dragHandleModifier = Modifier.detectReorder(groupReorderableState),
+                                        onToggle = {
+                                            expandedGroups = if (isGroupExpanded) {
+                                                expandedGroups - groupName
+                                            } else {
+                                                expandedGroups + groupName
+                                            }
+                                            DdaySettings.toggleGroupCollapsed(context, groupName)
                                         }
-                                    }
+                                    )
                                     // 그룹 내 항목들
                                     if (isGroupExpanded) {
-                                      Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                                      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         groupItems.forEach { item ->
                                             Card(
                                                 modifier = Modifier.fillMaxWidth(),
-                                                shape = RectangleShape,
+                                                shape = RoundedCornerShape(12.dp),
                                                 colors = CardDefaults.cardColors(
-                                                    containerColor = MaterialTheme.colorScheme.surface
+                                                    containerColor = Color.Transparent
                                                 )
                                             ) {
                                                 val nextDateInfo = if (item.isRepeating()) {
@@ -797,9 +717,9 @@ fun DdayScreen(
                             ) { item ->
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
-                                    shape = RectangleShape,
+                                    shape = RoundedCornerShape(12.dp),
                                     colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surface
+                                        containerColor = Color.Transparent
                                     )
                                 ) {
                                     val showDateText = item.nextShowDate?.let { showDate ->
@@ -846,9 +766,9 @@ fun DdayScreen(
                             ) { item ->
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
-                                    shape = RectangleShape,
+                                    shape = RoundedCornerShape(12.dp),
                                     colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surface
+                                        containerColor = Color.Transparent
                                     )
                                 ) {
                                     DdayListItem(
@@ -1077,30 +997,21 @@ private fun SectionHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(
-                if (isExpandable) Modifier.clickable { onToggle() }
-                else Modifier
-            )
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .clip(RoundedCornerShape(8.dp))
+            .then(if (isExpandable) Modifier.clickable { onToggle() } else Modifier)
+            .heightIn(min = 40.dp)
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontSize = (14 * fontScale).sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "($count)",
-                style = MaterialTheme.typography.bodySmall,
-                fontSize = (12 * fontScale).sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Text(
+            text = title,
+            fontSize = (14 * fontScale).sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        CountBadge(count, fontScale)
+        Spacer(modifier = Modifier.weight(1f))
         if (isExpandable) {
             Icon(
                 imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
@@ -1117,7 +1028,8 @@ private fun GroupHeader(
     count: Int,
     isExpanded: Boolean,
     onToggle: () -> Unit,
-    emojiVersion: Int = 0
+    emojiVersion: Int = 0,
+    dragHandleModifier: Modifier? = null
 ) {
     val context = LocalContext.current
     val groupEmoji = remember(groupName, emojiVersion) {
@@ -1128,27 +1040,37 @@ private fun GroupHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
             .clickable { onToggle() }
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .heightIn(min = 40.dp)
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            EmojiText(groupEmoji, fontSize = (14 * fontScale).sp)
-            Spacer(modifier = Modifier.width(8.dp))
+        // 이름 + 개수는 왼쪽 묶음(긴 이름은 말줄임), 화살표는 오른쪽 끝 고정
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            EmojiText(groupEmoji, fontSize = (15 * fontScale).sp)
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = groupName,
-                style = MaterialTheme.typography.titleSmall,
-                fontSize = (14 * fontScale).sp,
-                fontWeight = FontWeight.Medium
+                fontSize = (14.5f * fontScale).sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "($count)",
-                style = MaterialTheme.typography.bodySmall,
-                fontSize = (12 * fontScale).sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            Spacer(modifier = Modifier.width(6.dp))
+            CountBadge(count, fontScale)
+        }
+        // 그룹 순서 손잡이: 작고 흐리게 (끌기 전용, 누르면 접기/펼치기와 겹치지 않음)
+        dragHandleModifier?.let { handle ->
+            Icon(
+                imageVector = Icons.Default.DragIndicator,
+                contentDescription = "그룹 순서 바꾸기",
+                modifier = handle
+                    .size(40.dp)
+                    .padding(10.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
             )
         }
         Icon(
@@ -1156,6 +1078,67 @@ private fun GroupHeader(
             contentDescription = if (isExpanded) "접기" else "펼치기",
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+/** LazyColumn 그룹 항목 키("group_이름") → 그룹 이름. 그룹 항목이 아니면 null */
+internal fun groupNameFromKey(key: Any?): String? =
+    (key as? String)?.takeIf { it.startsWith(GROUP_KEY_PREFIX) }?.removePrefix(GROUP_KEY_PREFIX)
+
+private const val GROUP_KEY_PREFIX = "group_"
+
+/** 목록 위 한 줄: 개수 요약 + 정렬 메뉴 + 관리 버튼 */
+@Composable
+private fun ListToolbar(
+    summary: String,
+    sortLabel: String,
+    sortOptions: List<Pair<String, () -> Unit>>,
+    actionLabel: String,
+    onAction: () -> Unit
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(summary, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Box {
+            ToolbarChip(text = sortLabel, trailingArrow = true, onClick = { menuOpen = true })
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                sortOptions.forEach { (label, action) ->
+                    DropdownMenuItem(
+                        text = { Text(label, fontWeight = if (label == sortLabel) FontWeight.Bold else FontWeight.Normal) },
+                        onClick = {
+                            menuOpen = false
+                            action()
+                        }
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.width(6.dp))
+        ToolbarChip(text = actionLabel, trailingArrow = false, onClick = onAction)
+    }
+}
+
+@Composable
+private fun ToolbarChip(text: String, trailingArrow: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .heightIn(min = 36.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+        if (trailingArrow) {
+            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -1211,9 +1194,9 @@ private fun SwipeableDdayItem(
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RectangleShape,
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = Color.Transparent
             )
         ) {
             DdayListItem(

@@ -1,5 +1,10 @@
 package com.silverwest.dayli.ddaywidget
 
+import androidx.compose.foundation.border
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
@@ -56,6 +61,8 @@ fun SettingsScreen(
     var flatEmoji by remember { mutableStateOf(DdaySettings.isFlatEmojiEnabled(context)) }
 
     // 설정 상태
+    var heroEnabled by remember { mutableStateOf(DdaySettings.isHeroCardEnabled(context)) }
+    var heroColor by remember { mutableStateOf(DdaySettings.getHeroCardColor(context)) }
     var backgroundEnabled by remember {
         mutableStateOf(DdaySettings.isBackgroundEnabled(context))
     }
@@ -446,6 +453,70 @@ fun SettingsScreen(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
+        // 가장 가까운 일정 카드
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "가장 가까운 일정 카드", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = "D-Day 목록 맨 위에 제일 급한 일정을 크게 보여줘요",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+            Switch(
+                checked = heroEnabled,
+                onCheckedChange = { enabled ->
+                    heroEnabled = enabled
+                    DdaySettings.setHeroCardEnabled(context, enabled)
+                    onSettingsChanged()
+                }
+            )
+        }
+        if (heroEnabled) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                HERO_PRESETS.forEach { (value, label) ->
+                    val selected = heroColor.equals(value, ignoreCase = true)
+                    val swatch = DayliUi.heroColor(value, null)
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (value == DdaySettings.HERO_COLOR_AUTO)
+                                    Brush.sweepGradient(listOf(Color(0xFF3E6E8E), Color(0xFF4E7A5E), Color(0xFFA9533F), Color(0xFF3E6E8E)))
+                                else Brush.linearGradient(listOf(swatch, swatch))
+                            )
+                            .then(
+                                if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                else Modifier
+                            )
+                            .clickable {
+                                heroColor = value
+                                DdaySettings.setHeroCardColor(context, value)
+                                onSettingsChanged()
+                            }
+                            .semantics { contentDescription = label },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (value == DdaySettings.HERO_COLOR_AUTO) {
+                            Text("자동", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
         // 배경 색상 ON/OFF
         Row(
             modifier = Modifier
@@ -456,11 +527,11 @@ fun SettingsScreen(
         ) {
             Column {
                 Text(
-                    text = "배경 색상 표시",
+                    text = "항목 배경: 항목 색",
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "아이템별 색상을 배경에 적용",
+                    text = "끄면 흰 카드에 이모지 칸만 색이 들어가요",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
@@ -1723,3 +1794,13 @@ private fun ImportPreviewDialog(
 // ===== 외부 링크 상수 =====
 private const val PRIVACY_POLICY_URL = "https://esheo1787.github.io/Dayli/privacy-policy.html"
 private const val CONTACT_EMAIL = "heunseo1787@gmail.com"
+
+/** 가장 가까운 일정 카드 색 프리셋 (흰 글자 대비 4.5:1 이상) */
+private val HERO_PRESETS = listOf(
+    DdaySettings.HERO_COLOR_AUTO to "항목 색 따라가기",
+    "#4A7390" to "딥블루",
+    "#45423F" to "차콜",
+    "#4E7A5E" to "세이지",
+    "#A9533F" to "코랄",
+    "#6B5891" to "플럼"
+)

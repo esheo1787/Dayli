@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -157,6 +159,21 @@ fun MainDdayScreen(
         isSearchActive = false
     }
 
+    // 상단 날짜: 앱으로 돌아올 때와 자정에 갱신 (켜둔 채 날짜가 바뀌어도 어제 날짜로 남지 않게)
+    var todayText by remember { mutableStateOf(todayLabel()) }
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) todayText = todayLabel()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(todayText) {
+        delay(millisUntilNextMidnight() + 1_000L)
+        todayText = todayLabel()
+    }
+
     // 설정 변경 시 리스트 새로고침을 위한 키
     var settingsKey by remember { mutableStateOf(0) }
     // 현재 탭 (0: D-Day, 1: To-Do)
@@ -204,6 +221,9 @@ fun MainDdayScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                // 날짜 + 제목 두 줄: 시스템 글자 크기가 커지면 상단바도 같이 높아지게 (200%에서 제목 잘림 방지)
+                expandedHeight = maxOf(64f, 12f + 51f * LocalDensity.current.fontScale).dp,
                 title = {
                     if (isSearchActive) {
                         LaunchedEffect(Unit) {
@@ -225,10 +245,18 @@ fun MainDdayScreen(
                                 .focusRequester(searchFocusRequester)
                         )
                     } else {
-                        Text(
-                            text = if (selectedTab == 0) "D-Day" else "To-Do",
-                            style = MaterialTheme.typography.headlineMedium
-                        )
+                        Column {
+                            Text(
+                                text = todayText,
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = if (selectedTab == 0) "D-Day" else "To-Do",
+                                fontSize = 26.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 },
                 actions = {
@@ -272,19 +300,19 @@ fun MainDdayScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
+            ExtendedFloatingActionButton(
                 onClick = {
                     editItem = null
                     showAddSheet = true
                 },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "추가"
-                )
-            }
-        }
+                shape = RoundedCornerShape(14.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null) },
+                text = { Text("추가", fontWeight = FontWeight.Bold) }
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -494,4 +522,21 @@ private fun SplashContent() {
             )
         }
     }
+}
+
+/** 다음 자정까지 남은 시간(ms) */
+private fun millisUntilNextMidnight(): Long {
+    val now = Calendar.getInstance()
+    val midnight = (now.clone() as Calendar).apply {
+        add(Calendar.DAY_OF_MONTH, 1)
+        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+    }
+    return midnight.timeInMillis - now.timeInMillis
+}
+
+/** 상단 날짜 표시: "10월 9일 금요일" */
+private fun todayLabel(): String {
+    val cal = Calendar.getInstance()
+    val days = arrayOf("일", "월", "화", "수", "목", "금", "토")
+    return "${cal.get(Calendar.MONTH) + 1}월 ${cal.get(Calendar.DAY_OF_MONTH)}일 ${days[cal.get(Calendar.DAY_OF_WEEK) - 1]}요일"
 }

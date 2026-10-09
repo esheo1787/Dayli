@@ -39,3 +39,17 @@ val AccentMint = Color(0xFF9FCEC4)
 val AccentLemon = Color(0xFFF2E2A0)
 val AccentLilac = Color(0xFFC4B5D4)
 val AccentRose = Color(0xFFDBA8B8)
+
+// ===== UI 다듬기 (2026-10) =====
+// 강조색: 흰 글자 대비 4.5:1 이상 (기존 PastelBlueDark는 흰 글자 대비 부족)
+val DeepBlue = Color(0xFF4A7390)
+
+// D-Day 배지: D-1·D-Day·지남(빨강 계열) / D-3~D-2(파랑 계열) — 기존 글자색 규칙 유지
+val PillUrgentBg = Color(0xFFFCE8E6)
+val PillUrgentText = Color(0xFFB3261E)
+val PillSoonBg = Color(0xFFE3EEF7)
+val PillSoonText = Color(0xFF2B5F8A)
+val PillUrgentBgDark = Color(0xFF4A2522)
+val PillUrgentTextDark = Color(0xFFF2B8B5)
+val PillSoonBgDark = Color(0xFF22394A)
+val PillSoonTextDark = Color(0xFFA8CBE6)
