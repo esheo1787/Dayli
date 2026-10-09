@@ -254,41 +254,49 @@ class NewFeaturesUiTest {
     // 실제 앱 + adb input swipe로 확인함. 순서 계산은 단위 테스트(groupNameFromKey)로 검증.
 
     @Test
-    fun calendar_addForSelectedDate_prefillsSheetDate_andSavesIt() {
+    fun calendar_addForSelectedDate_twiceInARow_bothSaveSelectedDate() {
         val today = java.util.Calendar.getInstance()
         val day = if (today.get(java.util.Calendar.DAY_OF_MONTH) == 20) 21 else 20
         val expected = (today.clone() as java.util.Calendar).apply { set(java.util.Calendar.DAY_OF_MONTH, day) }
+        val label = java.text.SimpleDateFormat("yyyy.MM.dd (E)", java.util.Locale.getDefault()).format(expected.time)
+        // 저장 후 시트만 닫고 날짜 값은 그대로 둠 → 같은 날짜로 다시 열어도 시트가 날짜를 다시 채워야 함
+        var sheetVisible by mutableStateOf(false)
         var sheetDate by mutableStateOf<java.util.Date?>(null)
-        var savedDate: java.util.Date? = null
+        val savedDates = mutableListOf<java.util.Date?>()
         compose.setContent {
             DdayCalendarView(
                 ddayItems = emptyList(),
                 onToggle = {},
-                onAddForDate = { sheetDate = it }
+                onAddForDate = { sheetDate = it; sheetVisible = true }
             )
             AddEditBottomSheet(
-                isVisible = sheetDate != null,
+                isVisible = sheetVisible,
                 itemType = ItemType.DDAY,
                 initialDate = sheetDate,
-                onDismiss = { sheetDate = null },
-                onSave = { _, _, date, _, _, _, _, _, _, _, _, _, _, _, _ -> savedDate = date }
+                onDismiss = { sheetVisible = false },
+                onSave = { _, _, date, _, _, _, _, _, _, _, _, _, _, _, _ ->
+                    savedDates += date
+                    sheetVisible = false
+                }
             )
         }
         compose.onNodeWithContentDescription("${day}일").performClick()
-        compose.onNodeWithText("이 날짜에 D-Day 추가").performScrollTo().performClick()
-        compose.waitForIdle()
+        repeat(2) { n ->
+            compose.onNodeWithText("이 날짜에 D-Day 추가").performScrollTo().performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText(label).assertExists()
+            compose.onNode(hasSetTextAction() and hasText("제목")).performTextInput("캘린더 일정 ${n + 1}")
+            compose.onNodeWithText("추가").performScrollTo().performClick()
+            compose.waitForIdle()
+        }
 
-        // 시트의 날짜 칸이 캘린더에서 고른 날짜로 채워짐
-        val label = java.text.SimpleDateFormat("yyyy.MM.dd (E)", java.util.Locale.getDefault()).format(expected.time)
-        compose.onNodeWithText(label).assertExists()
-        compose.onNode(hasSetTextAction() and hasText("제목")).performTextInput("캘린더에서 추가")
-        compose.onNodeWithText("추가").performScrollTo().performClick()
-        compose.waitForIdle()
-
-        val saved = java.util.Calendar.getInstance().apply { time = savedDate!! }
-        assertEquals(expected.get(java.util.Calendar.YEAR), saved.get(java.util.Calendar.YEAR))
-        assertEquals(expected.get(java.util.Calendar.MONTH), saved.get(java.util.Calendar.MONTH))
-        assertEquals(day, saved.get(java.util.Calendar.DAY_OF_MONTH))
+        assertEquals(2, savedDates.size)
+        savedDates.forEach { date ->
+            val saved = java.util.Calendar.getInstance().apply { time = date!! }
+            assertEquals(expected.get(java.util.Calendar.YEAR), saved.get(java.util.Calendar.YEAR))
+            assertEquals(expected.get(java.util.Calendar.MONTH), saved.get(java.util.Calendar.MONTH))
+            assertEquals(day, saved.get(java.util.Calendar.DAY_OF_MONTH))
+        }
     }
 
     @Test

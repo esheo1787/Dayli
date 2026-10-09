@@ -358,6 +358,7 @@ fun MainDdayScreen(
         onDismiss = {
             showAddSheet = false
             editItem = null
+            addInitialDate = null
         },
         onSave = { title, memo, date, emoji, color, repeatType, itemType, subTasks, groupName, repeatDay, advanceDisplayDays, templateId, timeHour, timeMinute, notificationRules ->
             if (editItem != null) {
@@ -393,6 +394,7 @@ fun MainDdayScreen(
             }
             showAddSheet = false
             editItem = null
+            addInitialDate = null
         },
         onSaveAsTemplate = { name, iconName, customColor, subTasks ->
             viewModel.saveAsTemplate(name, iconName, customColor, subTasks)

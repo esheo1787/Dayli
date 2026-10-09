@@ -75,6 +75,10 @@ fun AddEditBottomSheet(
     var title by remember(editItem) { mutableStateOf(editItem?.title ?: "") }
     var memo by remember(editItem) { mutableStateOf(editItem?.memo ?: "") }
     var selectedDate by remember(editItem, initialDate) { mutableStateOf(editItem?.date ?: initialDate ?: Date()) }
+    // 추가 모드: 시트가 열릴 때마다 날짜를 다시 채움 (저장 후 Date()로 되돌린 뒤 같은 날짜로 다시 열어도 반영)
+    LaunchedEffect(isVisible) {
+        if (isVisible && editItem == null) selectedDate = initialDate ?: Date()
+    }
     var selectedEmoji by remember(editItem) {
         mutableStateOf(editItem?.getEmoji() ?: if (actualItemType == ItemType.TODO) "✅" else "📌")
     }
