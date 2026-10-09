@@ -68,12 +68,12 @@
 - Global D-1 and D-Day push notifications (configurable time, sound, vibration)
 
 ### AI Auto-Input
-- Auto-extract events from text input or gallery images
-- Natural language parsing powered by Google Gemini 2.5 Flash
-- Korean OCR via ML Kit text recognition
-- Supports exam schedules, recipes, shopping lists, appointments, and more
-- Batch creation of multiple events at once
-- Context-aware emoji recommendations
+- Auto-extract events from screenshots, text, or voice (Gemini via Firebase AI Logic)
+- AI reads course names, professor names, and deadlines from the screenshot to help you enter events (the image is analyzed directly, without on-device OCR)
+- School schedules: one D-Day per activity for LMS lists and per exam period for timetables, filed into your existing school group (or a new "학교" group)
+- Midnight (00:00) deadlines become 23:59 the day before; long scrolling captures are split and read in parts
+- Also handles recipes, shopping lists, appointment chats, and more
+- Batch creation of multiple events, context-aware emoji recommendations
 
 ### To-Do Checklist
 - Sub-checklist items for detailed task breakdown
@@ -99,7 +99,9 @@
 - Customizable text size and background opacity
 
 ### Customization
-- Full system emoji picker for icons
+- About 1,900 Unicode emoji (the number shown may vary by device) with Korean search, recents, a curated schedule set, and skin tones
+- Emoji auto-suggested from the title (치과 예약 → 🦷)
+- Emoji style: Default or Flat (Microsoft Fluent Emoji) across app, widgets, and share images
 - 14 distinct pastel color palette
 - Theme modes: System default / Light / Dark
 - App & widget text size adjustment (Small / Default / Large)
@@ -119,8 +121,7 @@
 | **Local Database** | Room |
 | **Widgets** | RemoteViews + AppWidgetProvider |
 | **Async** | Kotlin Coroutines + LiveData |
-| **AI** | Google Gemini 2.5 Flash |
-| **OCR** | ML Kit (Korean Text Recognition) |
+| **AI** | Google Gemini (Firebase AI Logic + App Check) |
 | **Ads** | Google AdMob |
 | **Min SDK** | 24 (Android 7.0) |
 | **Target SDK** | 35 (Android 15) |
@@ -170,14 +171,14 @@ Implemented bidirectional sync between the app and home screen widgets. Changes 
 ### Collapsible Group Sections in Widgets
 Built custom collapsible/expandable group headers within `RemoteViews`, which has limited layout capabilities compared to Compose. Managed expand/collapse state persistence across widget updates.
 
-### Full Emoji Picker Integration
-Integrated `androidx.emoji2:emoji2-emojipicker` to provide access to all system emojis including gender and skin tone variants, replacing a limited custom emoji grid.
+### Emoji Catalog & Flat Style
+Built a custom catalog from Unicode 15.1 emoji and CLDR Korean keywords to power offline Korean search and title-based emoji suggestions, filtering out glyphs the device can't render. The flat style (Fluent Emoji) keeps data as standard emoji text and only swaps the rendering to images in Compose and in widgets (RemoteViews ImageView).
 
 ### Template System
 Designed a template save/load system for To-Do items, allowing users to store frequently used checklist structures and quickly recreate them with a single tap.
 
-### AI Natural Language Parsing (Gemini + ML Kit)
-Combined Google Gemini 2.5 Flash API with ML Kit Korean OCR to auto-extract events from natural language and images. Applied context-optimized prompt engineering: exam schedules grouped by time slot, recipes with ingredients as sub-tasks, shopping lists with product-only extraction, and more.
+### AI Natural Language & Image Parsing (Gemini)
+Sends images straight to Gemini through Firebase AI Logic (the Gemini API key is not embedded in the app; App Check allows only the genuine app). Skipping on-device OCR reduces misread course and professor names, and the user's existing group list is passed along so school items land in the right group. Applied context-optimized prompt engineering: exam schedules grouped by time slot, recipes with ingredients as sub-tasks, shopping lists with product-only extraction, and more.
 
 ### Image Share Card Generation
 Built a feature to render D-Day and To-Do items as card-style PNG images for sharing. Uses Canvas API to draw rounded corners, auto-adjusted text color based on background brightness, and progress bars for To-Do items.
@@ -213,19 +214,22 @@ git clone https://github.com/esheo1787/Dayli.git
 - [x] Push notifications with customizable settings
 - [x] Per-item notification rules
 - [x] Time scheduling & memo field
-- [x] AI auto-input (Gemini + ML Kit OCR)
+- [x] AI auto-input (image, text, voice; automatic course grouping)
+- [x] Emoji search, auto-suggestion, flat style
+- [x] In-app update prompt
+- [x] Backup & restore (file)
 - [x] Calendar view
 - [x] Text & image sharing
 - [x] Banner ad integration (AdMob)
 - [x] Google Play Store release
 - [ ] Theme packs (Clean, Mono)
-- [ ] Cloud backup & sync
+- [ ] Cloud sync
 
 ---
 
 ## 📄 Privacy Policy
 
-Dayli stores all data locally on your device. The AI auto-input feature uses Google Gemini API and ML Kit for text processing only — no personal data is stored on external servers.
+Events and to-dos you create are stored on your device and may be included in the OS backup depending on your device settings. When you use AI auto-input, the image or text you provide (for voice, the text produced by the device's speech recognizer) and your existing group names are sent to Google Gemini. The developer does not store the original input on any separate server.
 
 [View Privacy Policy](https://esheo1787.github.io/Dayli/privacy-policy.html)
 
