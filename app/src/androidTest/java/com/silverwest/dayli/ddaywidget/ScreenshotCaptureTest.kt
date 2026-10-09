@@ -85,7 +85,8 @@ class ScreenshotCaptureTest {
         flat: Boolean,
         dark: Boolean = false,
         tinted: Boolean = false,
-        todoTab: Boolean = false
+        todoTab: Boolean = false,
+        calendar: Boolean = false
     ) {
         val db = DdayDatabase.getDatabase(context)
         db.clearAllTables()
@@ -116,6 +117,7 @@ class ScreenshotCaptureTest {
         DdaySettings.setGroupEmoji(context, "학교", "🏫")
         DdaySettings.setBackgroundEnabled(context, tinted)
         DdaySettings.setLastTab(context, if (todoTab) 1 else 0)
+        DdaySettings.setCalendarView(context, calendar)
         compose.setContent {
             MyApplicationTheme(themeMode = if (dark) DdaySettings.ThemeMode.DARK else DdaySettings.ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalFlatEmoji provides flat) {
@@ -123,7 +125,7 @@ class ScreenshotCaptureTest {
                 }
             }
         }
-        val anchor = if (todoTab) "장보기" else "치과 예약"
+        val anchor = if (todoTab) "장보기" else if (calendar) "이 날짜에 D-Day 추가" else "치과 예약"
         compose.waitUntil(8_000) { compose.onAllNodesWithText(anchor).fetchSemanticsNodes().isNotEmpty() }
         Thread.sleep(700)
     }
@@ -164,4 +166,8 @@ class ScreenshotCaptureTest {
     @Test fun listDark() { mainList(false, dark = true); save("09_list_dark") }
 
     @Test fun listTodo() { mainList(false, todoTab = true); save("10_list_todo") }
+
+    @Test fun calendarLight() { mainList(false, calendar = true); save("12_calendar") }
+
+    @Test fun calendarDark() { mainList(true, dark = true, calendar = true); save("13_calendar_dark_flat") }
 }

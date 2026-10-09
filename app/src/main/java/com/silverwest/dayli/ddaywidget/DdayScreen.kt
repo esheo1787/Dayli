@@ -53,7 +53,8 @@ fun DdayScreen(
     onTabChanged: (Int) -> Unit = {},
     onEditItem: (DdayItem) -> Unit = {},
     searchQuery: String = "",
-    isCalendarView: Boolean = false
+    isCalendarView: Boolean = false,
+    onAddForDate: (java.util.Date) -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -562,7 +563,8 @@ fun DdayScreen(
                             expandedSubTaskIds - id
                         else expandedSubTaskIds + id
                     },
-                    searchQuery = searchQuery
+                    searchQuery = searchQuery,
+                    onAddForDate = onAddForDate
                 )
             } else {
                 // D-Day 탭: 그룹 드래그 가능, 그룹 내 아이템은 정렬 옵션에 따라

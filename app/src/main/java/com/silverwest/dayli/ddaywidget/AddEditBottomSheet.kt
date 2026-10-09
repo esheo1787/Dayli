@@ -55,6 +55,7 @@ fun AddEditBottomSheet(
     isVisible: Boolean,
     itemType: ItemType,
     editItem: DdayItem? = null,
+    initialDate: Date? = null,  // 캘린더의 "이 날짜에 D-Day 추가"에서 날짜 미리 채우기
     existingGroups: List<String> = emptyList(),
     templates: List<TodoTemplate> = emptyList(),
     onDismiss: () -> Unit,
@@ -73,7 +74,7 @@ fun AddEditBottomSheet(
     // 입력 상태
     var title by remember(editItem) { mutableStateOf(editItem?.title ?: "") }
     var memo by remember(editItem) { mutableStateOf(editItem?.memo ?: "") }
-    var selectedDate by remember(editItem) { mutableStateOf(editItem?.date ?: Date()) }
+    var selectedDate by remember(editItem, initialDate) { mutableStateOf(editItem?.date ?: initialDate ?: Date()) }
     var selectedEmoji by remember(editItem) {
         mutableStateOf(editItem?.getEmoji() ?: if (actualItemType == ItemType.TODO) "✅" else "📌")
     }

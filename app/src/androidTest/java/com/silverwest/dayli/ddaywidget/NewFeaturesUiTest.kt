@@ -254,6 +254,44 @@ class NewFeaturesUiTest {
     // 실제 앱 + adb input swipe로 확인함. 순서 계산은 단위 테스트(groupNameFromKey)로 검증.
 
     @Test
+    fun calendar_addForSelectedDate_prefillsSheetDate_andSavesIt() {
+        val today = java.util.Calendar.getInstance()
+        val day = if (today.get(java.util.Calendar.DAY_OF_MONTH) == 20) 21 else 20
+        val expected = (today.clone() as java.util.Calendar).apply { set(java.util.Calendar.DAY_OF_MONTH, day) }
+        var sheetDate by mutableStateOf<java.util.Date?>(null)
+        var savedDate: java.util.Date? = null
+        compose.setContent {
+            DdayCalendarView(
+                ddayItems = emptyList(),
+                onToggle = {},
+                onAddForDate = { sheetDate = it }
+            )
+            AddEditBottomSheet(
+                isVisible = sheetDate != null,
+                itemType = ItemType.DDAY,
+                initialDate = sheetDate,
+                onDismiss = { sheetDate = null },
+                onSave = { _, _, date, _, _, _, _, _, _, _, _, _, _, _, _ -> savedDate = date }
+            )
+        }
+        compose.onNodeWithContentDescription("${day}일").performClick()
+        compose.onNodeWithText("이 날짜에 D-Day 추가").performScrollTo().performClick()
+        compose.waitForIdle()
+
+        // 시트의 날짜 칸이 캘린더에서 고른 날짜로 채워짐
+        val label = java.text.SimpleDateFormat("yyyy.MM.dd (E)", java.util.Locale.getDefault()).format(expected.time)
+        compose.onNodeWithText(label).assertExists()
+        compose.onNode(hasSetTextAction() and hasText("제목")).performTextInput("캘린더에서 추가")
+        compose.onNodeWithText("추가").performScrollTo().performClick()
+        compose.waitForIdle()
+
+        val saved = java.util.Calendar.getInstance().apply { time = savedDate!! }
+        assertEquals(expected.get(java.util.Calendar.YEAR), saved.get(java.util.Calendar.YEAR))
+        assertEquals(expected.get(java.util.Calendar.MONTH), saved.get(java.util.Calendar.MONTH))
+        assertEquals(day, saved.get(java.util.Calendar.DAY_OF_MONTH))
+    }
+
+    @Test
     fun settingsReset_resetsColorWheelToDefault() {
         DdaySettings.setHeroCardEnabled(context, true)
         DdaySettings.setHeroCardColor(context, "#C2185B")

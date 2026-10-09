@@ -188,6 +188,7 @@ fun MainDdayScreen(
 
     // 추가/수정 바텀시트 상태
     var showAddSheet by remember { mutableStateOf(false) }
+    var addInitialDate by remember { mutableStateOf<java.util.Date?>(null) }
     var editItem by remember { mutableStateOf<DdayItem?>(null) }
 
     // 기존 그룹 목록
@@ -304,6 +305,7 @@ fun MainDdayScreen(
             ExtendedFloatingActionButton(
                 onClick = {
                     editItem = null
+                    addInitialDate = null
                     showAddSheet = true
                 },
                 shape = RoundedCornerShape(14.dp),
@@ -331,7 +333,12 @@ fun MainDdayScreen(
                             showAddSheet = true
                         },
                         searchQuery = searchQuery,
-                        isCalendarView = isCalendarView
+                        isCalendarView = isCalendarView,
+                        onAddForDate = { date ->
+                            editItem = null
+                            addInitialDate = date
+                            showAddSheet = true
+                        }
                     )
                 }
             }
@@ -345,6 +352,7 @@ fun MainDdayScreen(
         isVisible = showAddSheet,
         itemType = if (selectedTab == 0) ItemType.DDAY else ItemType.TODO,
         editItem = editItem,
+        initialDate = addInitialDate,
         existingGroups = existingGroups,
         templates = templates,
         onDismiss = {
