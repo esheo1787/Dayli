@@ -8,6 +8,7 @@ import android.net.Uri
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -139,6 +140,104 @@ class NewFeaturesUiTest {
         assertEquals("치과 예약", savedTitle)
         assertEquals("🦷", savedEmoji)
         assertEquals("🦷", DdaySettings.getRecentEmojis(context).first())
+    }
+
+    @Test
+    fun addSheet_manuallyPickedDefaultEmoji_notOverwrittenBySuggestion() {
+        var savedEmoji: String? = null
+        compose.setContent {
+            AddEditBottomSheet(
+                isVisible = true,
+                itemType = ItemType.DDAY,
+                onDismiss = {},
+                onSave = { _, _, _, emoji, _, _, _, _, _, _, _, _, _, _, _ -> savedEmoji = emoji }
+            )
+        }
+        compose.waitForIdle()
+        // 피커에서 기본값과 같은 📌를 직접 선택
+        compose.onNodeWithText("이모지 변경").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("추천").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNode(hasSetTextAction() and hasText("검색", substring = true)).performTextInput("압정")
+        compose.waitUntil(3_000) { compose.onAllNodesWithText("📌").fetchSemanticsNodes().size >= 2 }
+        // 시트 미리보기·피커 미리보기·검색 결과 중 마지막(검색 결과)을 선택
+        compose.onAllNodesWithText("📌")[compose.onAllNodesWithText("📌").fetchSemanticsNodes().size - 1].performClick()
+        compose.onNodeWithText("선택").performClick()
+        compose.waitForIdle()
+
+        // 그 뒤 제목을 입력해도 🦷로 바뀌면 안 됨
+        compose.onNode(hasSetTextAction() and hasText("제목")).performTextInput("치과 예약")
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("🦷").fetchSemanticsNodes().isNotEmpty() }  // 추천 칩은 표시
+        compose.onNodeWithText("추가").performScrollTo().performClick()
+        compose.waitForIdle()
+
+        assertEquals("📌", savedEmoji)
+    }
+
+    // ===== AI 자동 입력: 날짜를 못 찾아도 첨부 이미지 유지 (Codex 지적 1) =====
+
+    @Test
+    fun autoInput_noDatesFound_keepsImageForRetry_thenSuccessSavesAll() {
+        DdaySettings.setAiConsentShown(context)
+        val imageUri = writePng("pick.png", 400, 600)
+        // 사진 선택기 대신 바로 이미지 Uri를 돌려주는 가짜 registry
+        val registryOwner = object : androidx.activity.result.ActivityResultRegistryOwner {
+            override val activityResultRegistry = object : androidx.activity.result.ActivityResultRegistry() {
+                override fun <I, O> onLaunch(
+                    requestCode: Int,
+                    contract: androidx.activity.result.contract.ActivityResultContract<I, O>,
+                    input: I,
+                    options: androidx.core.app.ActivityOptionsCompat?
+                ) {
+                    dispatchResult(requestCode, imageUri)
+                }
+            }
+        }
+        val saved = mutableListOf<String>()
+        // 1차 응답: 날짜 없는 일정 2개 → 실패
+        GeminiParser.parseOverrideForTest = { _, images ->
+            assertEquals(1, images.size)
+            listOf(GeminiParser.ParsedEvent(title = "A"), GeminiParser.ParsedEvent(title = "B"))
+        }
+        try {
+            compose.setContent {
+                CompositionLocalProvider(
+                    androidx.activity.compose.LocalActivityResultRegistryOwner provides registryOwner
+                ) {
+                    AddEditBottomSheet(
+                        isVisible = true,
+                        itemType = ItemType.DDAY,
+                        onDismiss = {},
+                        onSave = { title, _, _, _, _, _, _, _, _, _, _, _, _, _, _ -> saved.add(title) }
+                    )
+                }
+            }
+            compose.waitForIdle()
+            compose.onNodeWithText("텍스트로 자동 입력").performScrollTo().performClick()
+            compose.onNodeWithText("이미지").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("이미지 첨부됨").fetchSemanticsNodes().isNotEmpty() }
+
+            compose.onNodeWithText("분석").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("날짜를 찾지 못했습니다").fetchSemanticsNodes().isNotEmpty() }
+            // 이미지가 남아 있어 바로 재시도 가능해야 함
+            compose.onNodeWithText("이미지 첨부됨").assertExists()
+            compose.onNodeWithText("분석").assertIsEnabled()
+            assertTrue(saved.isEmpty())
+
+            // 2차 응답: 날짜 있는 일정 2개 → 일괄 저장 성공, 다이얼로그 닫힘
+            GeminiParser.parseOverrideForTest = { _, images ->
+                assertEquals("재시도 때도 이미지가 전달돼야 함", 1, images.size)
+                listOf(
+                    GeminiParser.ParsedEvent(title = "A", date = "2026-12-01"),
+                    GeminiParser.ParsedEvent(title = "B", date = "2026-12-02")
+                )
+            }
+            compose.onNodeWithText("분석").performClick()
+            compose.waitUntil(5_000) { saved.size == 2 }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("이미지 첨부됨").fetchSemanticsNodes().isEmpty() }
+            assertEquals(listOf("A", "B"), saved)
+        } finally {
+            GeminiParser.parseOverrideForTest = null
+        }
     }
 
     // ===== AI 입력용 이미지 로드 =====

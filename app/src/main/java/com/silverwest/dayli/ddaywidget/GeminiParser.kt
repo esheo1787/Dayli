@@ -120,12 +120,17 @@ object GeminiParser {
             .also { if (it !== bitmap) bitmap.recycle() }
     }
 
+    /** UI 테스트 전용: 설정하면 실제 Gemini 호출 대신 이 결과를 사용 (앱 코드에서는 항상 null) */
+    @androidx.annotation.VisibleForTesting
+    internal var parseOverrideForTest: (suspend (text: String, images: List<Bitmap>) -> List<ParsedEvent>)? = null
+
     suspend fun parse(
         context: Context,
         text: String,
         images: List<Bitmap> = emptyList(),
         existingGroups: List<String> = emptyList()
     ): List<ParsedEvent> {
+        parseOverrideForTest?.let { fake -> return fake(text, images).map { normalizeDeadline(it) } }
         DdaySettings.recordAiCall(context)
 
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())

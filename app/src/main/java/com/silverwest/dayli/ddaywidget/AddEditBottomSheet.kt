@@ -137,15 +137,12 @@ fun AddEditBottomSheet(
     val emojiSuggestions = remember(title, emojiCatalog) {
         if (emojiCatalog.isEmpty()) emptyList() else EmojiCatalog.suggest(emojiCatalog, title)
     }
-    // 마지막으로 자동 선택한 이모지. 사용자가 직접 고른 이모지는 덮어쓰지 않기 위해 기억
-    var lastAutoEmoji by remember(editItem) { mutableStateOf<String?>(null) }
+    // 사용자가 이모지를 직접 정했는지 (피커·추천 칩·템플릿·AI 결과). 값 비교가 아니라 별도 기록 —
+    // 직접 고른 이모지가 기본값(📌/✅)과 같아도 자동 추천이 덮어쓰지 않게
+    var emojiManuallyChosen by remember(editItem) { mutableStateOf(false) }
     LaunchedEffect(emojiSuggestions) {
-        if (isEditMode) return@LaunchedEffect
-        if (selectedEmoji == defaultEmoji || selectedEmoji == lastAutoEmoji) {
-            val top = emojiSuggestions.firstOrNull()
-            selectedEmoji = top ?: defaultEmoji
-            lastAutoEmoji = top
-        }
+        if (isEditMode || emojiManuallyChosen) return@LaunchedEffect
+        selectedEmoji = emojiSuggestions.firstOrNull() ?: defaultEmoji
     }
     var showRepeatPicker by remember { mutableStateOf(false) }
 
@@ -397,7 +394,6 @@ fun AddEditBottomSheet(
                                         val (group, isNew) = GeminiParser.resolveGroupName(parsed.groupName, existingGroups)
                                         parsed.copy(groupName = group, groupEmoji = if (isNew) parsed.groupEmoji ?: "📁" else null)
                                     }
-                                attachedImages = emptyList()  // 분석 끝난 이미지는 메모리에서 해제
                                 if (results.size > 1) {
                                     // 복수 일정 → 일괄 생성 (날짜 없는 항목은 D-Day로 만들 수 없어 제외)
                                     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -440,6 +436,7 @@ fun AddEditBottomSheet(
                                         context, "${dated.size}개 D-Day가 추가되었습니다$groupSuffix", android.widget.Toast.LENGTH_SHORT
                                     ).show()
                                     showAutoInputDialog = false
+                                    attachedImages = emptyList()  // 저장 성공 후에만 해제 (날짜 못 찾으면 이미지 유지해 재시도)
                                 } else {
                                     // 단일 일정 → 폼 자동완성
                                     val parsed = results.firstOrNull() ?: GeminiParser.ParsedEvent()
@@ -461,7 +458,7 @@ fun AddEditBottomSheet(
                                     }
                                     parsed.emoji?.let {
                                         selectedEmoji = it
-                                        lastAutoEmoji = null
+                                        emojiManuallyChosen = true
                                     }
                                     parsed.memo?.let { memo = it }
                                     if (actualItemType == ItemType.DDAY) {
@@ -469,6 +466,7 @@ fun AddEditBottomSheet(
                                         pendingNewGroupEmoji = parsed.groupName?.let { g -> parsed.groupEmoji?.let { g to it } }
                                     }
                                     showAutoInputDialog = false
+                                    attachedImages = emptyList()  // 폼 적용 성공 후에만 해제 (실패 시 이미지로 재시도 가능)
                                 }
                             } catch (e: Exception) {
                                 parseError = "분석 실패: ${e.localizedMessage}"
@@ -499,7 +497,7 @@ fun AddEditBottomSheet(
             categoryColor = selectedColor.toComposeColor(),
             onEmojiSelected = { emoji ->
                 selectedEmoji = emoji
-                lastAutoEmoji = null
+                emojiManuallyChosen = true
             },
             onDismiss = { showEmojiPicker = false }
         )
@@ -680,7 +678,7 @@ fun AddEditBottomSheet(
                                     .clickable {
                                         // 템플릿에서 값 불러오기
                                         selectedEmoji = template.iconName
-                                        lastAutoEmoji = null
+                                        emojiManuallyChosen = true
                                         selectedColor = template.customColor
                                         subTasks = template.getSubTaskList()
                                         selectedTemplateId = template.id
@@ -863,7 +861,7 @@ fun AddEditBottomSheet(
                                     )
                                     .clickable {
                                         selectedEmoji = emoji
-                                        lastAutoEmoji = null  // 직접 고른 것으로 취급
+                                        emojiManuallyChosen = true
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -1316,6 +1314,7 @@ fun AddEditBottomSheet(
                                 memo = ""
                                 selectedDate = Date()
                                 selectedEmoji = if (actualItemType == ItemType.TODO) "✅" else "📌"
+                                emojiManuallyChosen = false
                                 selectedColor = 0xFFA8C5DAL
                                 selectedRepeatType = RepeatType.NONE
                                 selectedWeeklyDays = emptySet()
@@ -1378,6 +1377,7 @@ fun AddEditBottomSheet(
                                 memo = ""
                                 selectedDate = Date()
                                 selectedEmoji = if (actualItemType == ItemType.TODO) "✅" else "📌"
+                                emojiManuallyChosen = false
                                 selectedColor = 0xFFA8C5DAL
                                 selectedRepeatType = RepeatType.NONE
                                 selectedWeeklyDays = emptySet()

@@ -7,6 +7,7 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.Lifecycle
 import com.google.android.play.core.appupdate.AppUpdateInfo
+import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.appupdate.AppUpdateOptions
 import com.google.android.play.core.install.InstallStateUpdatedListener
@@ -24,12 +25,16 @@ import com.silverwest.dayli.ddaywidget.DdaySettings
  */
 class InAppUpdater(
     private val activity: ComponentActivity,
+    // 테스트에서는 Play의 FakeAppUpdateManager를 넣어 업데이트 흐름을 재현
+    private val manager: AppUpdateManager = AppUpdateManagerFactory.create(activity),
     private val onReadyToInstall: () -> Unit
 ) {
-    private val manager = AppUpdateManagerFactory.create(activity)
-
+    // registry에 직접 등록 (lifecycle 시점 제약 없음, release()에서 해제)
+    // 화면 회전으로 Activity가 재생성돼도 같은 키로 다시 등록되어 결과를 받음
     private val launcher: ActivityResultLauncher<IntentSenderRequest> =
-        activity.registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        activity.activityResultRegistry.register(
+            "dayli_in_app_update", ActivityResultContracts.StartIntentSenderForResult()
+        ) { result ->
             if (result.resultCode != Activity.RESULT_OK) {
                 // 사용자가 "나중에"/뒤로가기 → 이 버전은 당분간 다시 묻지 않음
                 // (화면 회전 등으로 Activity가 재생성돼도 버전을 잃지 않도록 prefs에 보관된 값 사용)
@@ -83,6 +88,7 @@ class InAppUpdater(
     /** onDestroy에서 호출 */
     fun release() {
         manager.unregisterListener(installListener)
+        launcher.unregister()
     }
 
     private fun isActive(): Boolean =
