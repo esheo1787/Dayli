@@ -109,6 +109,21 @@ fun SettingsScreen(
     }
     var showTimePicker by remember { mutableStateOf(false) }
     var showLicenses by remember { mutableStateOf(false) }
+
+    // 정확한 알람 권한 상태: 시스템 설정에서 돌아올 때 다시 확인하고, 새로 켜졌으면 알람 재등록
+    var exactAlarmOk by remember { mutableStateOf(ExactAlarms.canSchedule(context)) }
+    val settingsLifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(settingsLifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                val now = ExactAlarms.canSchedule(context)
+                if (now && !exactAlarmOk) ExactAlarms.rescheduleAll(context)
+                exactAlarmOk = now
+            }
+        }
+        settingsLifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { settingsLifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val aiCallsThisMonth = remember {
         DdaySettings.getAiCallsThisMonth(context)
     }
@@ -275,6 +290,35 @@ fun SettingsScreen(
         }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+        // 정확한 시간에 알림 (Android 12+: 꺼져 있으면 알림이 늦게 올 수 있음)
+        if (ExactAlarms.isPermissionNeeded()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { ExactAlarms.openSettings(context) }
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "정확한 시간에 알림", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = if (exactAlarmOk) "켜짐 · 정한 시각에 알림이 와요"
+                        else "꺼짐 · 알림이 늦게 올 수 있어요 (절전 중에는 더 늦어질 수 있음)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (exactAlarmOk) Color.Gray else MaterialTheme.colorScheme.error
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = if (exactAlarmOk) "켜짐" else "켜기 ›",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
 
         // 소리 설정
         Row(

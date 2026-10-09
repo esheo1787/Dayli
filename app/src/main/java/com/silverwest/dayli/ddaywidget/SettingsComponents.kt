@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -121,6 +122,7 @@ private val HERO_SWATCHES = listOf(
 
 private fun isPreset(color: String) = HERO_SWATCHES.any { it.first.equals(color, ignoreCase = true) }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HeroCardSettings(
     enabled: Boolean,
@@ -131,6 +133,8 @@ fun HeroCardSettings(
 ) {
     var current by remember(color) { mutableStateOf(color) }
     var showWheel by remember { mutableStateOf(!isPreset(color)) }
+    // 바깥에서 색이 바뀌면(기본값 복원 등) 프리셋이면 색상환 닫기
+    LaunchedEffect(color) { if (isPreset(color)) showWheel = false }
 
     SettingsSwitchRow(
         title = "가장 가까운 일정 카드",
@@ -146,7 +150,12 @@ fun HeroCardSettings(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+    // 좁은 화면(360dp 등)에서는 다음 줄로 넘어가도록 (버튼이 눌리거나 잘리지 않게)
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
         HERO_SWATCHES.forEach { (value, label) ->
             val selected = !showWheel && current.equals(value, ignoreCase = true)
             ColorSwatch(
@@ -227,6 +236,13 @@ fun HsvColorPicker(hex: String, onChange: (String) -> Unit, onCommit: (String) -
     var sat by remember { mutableFloatStateOf(initial[1]) }
     var value by remember { mutableFloatStateOf(initial[2]) }
     val currentHex = ColorMath.hsvToHex(hue, sat, value)
+    // 바깥에서 색이 바뀐 경우(기본값 복원·프리셋 선택 등)만 색상환 상태를 맞춤.
+    // 드래그 중 내가 보낸 값이 되돌아온 경우는 그대로 둠 (색상 값이 흔들리지 않게)
+    LaunchedEffect(hex) {
+        if (!hex.equals(ColorMath.hsvToHex(hue, sat, value), ignoreCase = true)) {
+            ColorMath.hexToHsv(hex)?.let { hue = it[0]; sat = it[1]; value = it[2] }
+        }
+    }
 
     fun pick(offset: Offset, radius: Float) {
         val (h, s) = ColorMath.wheelPick(offset.x, offset.y, radius)

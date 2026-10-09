@@ -127,6 +127,7 @@ fun AddEditBottomSheet(
     }
 
     var showEmojiPicker by remember { mutableStateOf(false) }
+    var showExactAlarmPrompt by remember { mutableStateOf(false) }
 
     // 제목 기반 이모지 추천 (오프라인 키워드 매칭)
     val defaultEmoji = if (actualItemType == ItemType.TODO) "✅" else "📌"
@@ -219,6 +220,33 @@ fun AddEditBottomSheet(
         selectedMinute,
         false  // 12시간 형식
     )
+
+    // 정확한 알람 안내 (N분·N시간 전 알림을 처음 추가할 때 한 번)
+    if (showExactAlarmPrompt) {
+        AlertDialog(
+            onDismissRequest = {
+                showExactAlarmPrompt = false
+                DdaySettings.setExactAlarmPromptShown(context)
+            },
+            title = { Text("정확한 시간에 알림 받기") },
+            text = {
+                Text("지금은 \"알람 및 리마인더\" 권한이 꺼져 있어서 \"분·시간 전\" 알림이 정한 시각보다 늦게 올 수 있어요.\n\n설정에서 Dayli의 권한을 켜면 정확한 시간에 알려드려요. 나중에 Dayli 설정 > 알림에서도 켤 수 있어요.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showExactAlarmPrompt = false
+                    DdaySettings.setExactAlarmPromptShown(context)
+                    ExactAlarms.openSettings(context)
+                }) { Text("설정으로 이동") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showExactAlarmPrompt = false
+                    DdaySettings.setExactAlarmPromptShown(context)
+                }) { Text("나중에") }
+            }
+        )
+    }
 
     // AI 자동 입력 최초 사용 안내 다이얼로그
     if (showAiConsentDialog) {
@@ -1246,6 +1274,10 @@ fun AddEditBottomSheet(
                                             onClick = {
                                                 notificationRules = notificationRules + rule
                                                 showNotifDropdown = false
+                                                // 분·시간 전 알림은 정확한 알람이 필요 → 꺼져 있으면 한 번 안내
+                                                if (!ExactAlarms.canSchedule(context) && !DdaySettings.isExactAlarmPromptShown(context)) {
+                                                    showExactAlarmPrompt = true
+                                                }
                                             }
                                         )
                                     }

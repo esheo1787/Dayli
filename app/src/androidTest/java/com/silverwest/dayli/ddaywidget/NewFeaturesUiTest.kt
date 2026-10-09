@@ -8,6 +8,7 @@ import android.net.Uri
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
@@ -251,6 +252,34 @@ class NewFeaturesUiTest {
 
     // 그룹 손잡이 끌기는 Compose 테스트의 가상 터치·테스트 시계로는 재현되지 않아(라이브러리 특성)
     // 실제 앱 + adb input swipe로 확인함. 순서 계산은 단위 테스트(groupNameFromKey)로 검증.
+
+    @Test
+    fun settingsReset_resetsColorWheelToDefault() {
+        DdaySettings.setHeroCardEnabled(context, true)
+        DdaySettings.setHeroCardColor(context, "#C2185B")
+        compose.setContent {
+            androidx.compose.foundation.layout.Column(
+                androidx.compose.ui.Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())
+            ) { SettingsScreen() }
+        }
+        compose.waitForIdle()
+        // 직접 고른 색이면 색상환이 열려 있고 그 색을 표시
+        compose.onAllNodesWithText("#C2185B").fetchSemanticsNodes().let { assertTrue("처음엔 직접 고른 색 표시", it.isNotEmpty()) }
+
+        compose.onNodeWithText("기본값으로 복원").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(DdaySettings.DEFAULT_HERO_COLOR, DdaySettings.getHeroCardColor(context))
+        // 프리셋으로 돌아왔으니 색상환은 닫힘
+        compose.onAllNodesWithContentDescription("색상환: 눌러서 색 고르기").assertCountEquals(0)
+
+        // 다시 직접 고르기를 열면 이전 색이 아니라 기본색에서 시작
+        compose.onNodeWithContentDescription("직접 고르기").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onAllNodesWithText("#C2185B").assertCountEquals(0)
+        compose.onAllNodesWithText(DdaySettings.DEFAULT_HERO_COLOR).fetchSemanticsNodes().let {
+            assertTrue("기본색 표시", it.isNotEmpty())
+        }
+    }
 
     @Test
     fun checkbox_exposesCheckedStateToAccessibility() {

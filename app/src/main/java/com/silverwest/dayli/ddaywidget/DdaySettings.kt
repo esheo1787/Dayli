@@ -413,6 +413,17 @@ object DdaySettings {
         return nowMillis - prefs.getLong(KEY_UPDATE_DECLINED_AT, 0L) < UPDATE_REPROMPT_MS
     }
 
+    // ===== 정확한 알람 안내 (N분·N시간 전 알림을 처음 추가할 때 한 번) =====
+
+    private const val KEY_EXACT_ALARM_PROMPT_SHOWN = "exact_alarm_prompt_shown"
+
+    fun isExactAlarmPromptShown(context: Context): Boolean =
+        getPrefs(context).getBoolean(KEY_EXACT_ALARM_PROMPT_SHOWN, false)
+
+    fun setExactAlarmPromptShown(context: Context) {
+        getPrefs(context).edit().putBoolean(KEY_EXACT_ALARM_PROMPT_SHOWN, true).apply()
+    }
+
     // ===== 가장 가까운 일정 카드 (D-Day 목록 맨 위) =====
 
     private const val KEY_HERO_CARD_ENABLED = "hero_card_enabled"

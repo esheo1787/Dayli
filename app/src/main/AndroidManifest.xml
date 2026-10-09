@@ -98,6 +98,15 @@
             </intent-filter>
         </receiver>
 
+        <!-- ✅ 정확한 알람 권한 허용 시 알람 재등록 -->
+        <receiver
+            android:name="com.silverwest.dayli.ddaywidget.ExactAlarmPermissionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
         <!-- ✅ 알림용 Receiver -->
         <receiver
             android:name="com.silverwest.dayli.ddaywidget.NotificationReceiver"
