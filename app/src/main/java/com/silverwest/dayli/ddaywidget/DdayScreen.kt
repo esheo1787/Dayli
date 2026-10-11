@@ -56,18 +56,22 @@ fun DdayScreen(
     searchQuery: String = "",
     isCalendarView: Boolean = false,
     onAddForDate: (java.util.Date) -> Unit = {},
-    twoPane: Boolean = false  // 넓은 화면(폴드 펼침·태블릿): 왼쪽 목록 + 오른쪽 캘린더 항상 표시
+    twoPane: Boolean = false,  // 넓은 화면(폴드 펼침·태블릿): 왼쪽 목록 + 오른쪽 캘린더 항상 표시
+    onImportPhoneEvent: (PhoneEvent) -> Unit = {},
+    phoneImportVersion: Int = 0  // 가져오기가 끝나면 올라감 → "가져옴" 표시 갱신
 ) {
     val context = LocalContext.current
     // 2단에서는 캘린더가 오른쪽에 항상 있으므로 왼쪽은 목록만
     val showCalendarInList = isCalendarView && !twoPane
 
-    // 위젯에서 변경된 데이터를 앱 복귀 시 자동 반영
+    // 위젯에서 변경된 데이터를 앱 복귀 시 자동 반영 (폰 캘린더 일정도 다시 읽음: 권한·설정 변경 반영)
+    var phoneRefresh by remember { mutableIntStateOf(0) }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.loadAll()
+                phoneRefresh++
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -260,6 +264,26 @@ fun DdayScreen(
     // D-Day 캘린더 (1단: 목록 대신 / 2단: 오른쪽에 항상)
     // 월·선택 날짜는 여기서 보관 → 두 배치가 같은 상태를 써서 1단↔2단 전환에도 유지
     val calendarState = rememberCalendarState()
+
+    // 폰 캘린더(구글·삼성) 일정: 보고 있는 달 앞뒤로 넉넉히 읽음
+    val phoneEvents by produceState(
+        initialValue = emptyList<PhoneEvent>(),
+        calendarState.year, calendarState.month, phoneRefresh, Premium.unlocked
+    ) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val start = java.util.Calendar.getInstance().apply {
+                clear(); set(calendarState.year, calendarState.month, 1); add(java.util.Calendar.DAY_OF_MONTH, -7)
+            }
+            val end = (start.clone() as java.util.Calendar).apply { add(java.util.Calendar.DAY_OF_MONTH, 7 + 31 + 7) }
+            PhoneCalendar.enabledEvents(context, start.timeInMillis, end.timeInMillis)
+        }
+    }
+    // 가져온 D-Day가 지워졌으면 "가져옴"을 풀어 다시 가져올 수 있게 (남아 있는 D-Day 번호로 거름, 검색과 무관하게 전체 기준)
+    val existingDdayIds = remember(ddays, hiddenDdays) { (ddays + hiddenDdays).map { it.id }.toSet() }
+    val importedPhoneKeys = remember(phoneImportVersion, phoneRefresh, existingDdayIds) {
+        DdaySettings.importedPhoneKeys(context, existingDdayIds)
+    }
+
     val calendarContent: @Composable () -> Unit = {
         DdayCalendarView(
             ddayItems = filteredDdays + filteredHiddenDdays,
@@ -279,7 +303,10 @@ fun DdayScreen(
             },
             searchQuery = searchQuery,
             onAddForDate = onAddForDate,
-            state = calendarState
+            state = calendarState,
+            phoneEvents = phoneEvents,
+            importedPhoneKeys = importedPhoneKeys,
+            onImportPhoneEvent = onImportPhoneEvent
         )
     }
 

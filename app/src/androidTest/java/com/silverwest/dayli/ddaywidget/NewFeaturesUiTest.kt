@@ -93,7 +93,7 @@ class NewFeaturesUiTest {
         }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("추천").fetchSemanticsNodes().isNotEmpty() }
 
-        compose.onNode(hasSetTextAction() and hasText("또는 글로 입력·붙여넣기")).performTextInput("케이크")
+        compose.onNode(hasSetTextAction()).performTextInput("케이크")
         compose.waitUntil(3_000) { compose.onAllNodesWithText("🎂").fetchSemanticsNodes().isNotEmpty() }
         compose.onAllNodesWithText("🎂")[0].performClick()
         compose.onNodeWithText("선택").performClick()
@@ -164,7 +164,7 @@ class NewFeaturesUiTest {
         }
         compose.waitForIdle()
         // 피커에서 기본값과 같은 📌를 직접 선택
-        compose.onNodeWithText("이모지 변경").performClick()
+        compose.onNodeWithContentDescription("이모지 변경").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("추천").fetchSemanticsNodes().isNotEmpty() }
         compose.onNode(hasSetTextAction() and hasText("검색", substring = true)).performTextInput("압정")
         compose.waitUntil(3_000) { compose.onAllNodesWithText("📌").fetchSemanticsNodes().size >= 2 }
@@ -347,6 +347,21 @@ class NewFeaturesUiTest {
             RewardedAds.loadEnabledForTest = true
             RewardedAds.setStatusForTest(RewardedAds.Status.IDLE)
         }
+    }
+
+    // ===== 캘린더 가져오기 기록: 가져온 D-Day를 지우면 다시 가져올 수 있음 =====
+
+    @Test
+    fun importedPhoneEvent_onlyWhileItsDdayExists() {
+        DdaySettings.addImportedPhoneEvent(context, "10@1000", itemId = 7)
+        DdaySettings.addImportedPhoneEvent(context, "11@2000", itemId = 8)
+        // 두 D-Day가 모두 있으면 둘 다 "가져옴"
+        assertEquals(setOf("10@1000", "11@2000"), DdaySettings.importedPhoneKeys(context, setOf(7, 8, 9)))
+        // 7번 D-Day를 지우면 그 일정은 다시 가져올 수 있음
+        assertEquals(setOf("11@2000"), DdaySettings.importedPhoneKeys(context, setOf(8, 9)))
+        // 같은 일정을 다시 가져오면 새 D-Day 번호로 바뀜
+        DdaySettings.addImportedPhoneEvent(context, "10@1000", itemId = 12)
+        assertEquals(setOf("10@1000", "11@2000"), DdaySettings.importedPhoneKeys(context, setOf(8, 12)))
     }
 
     // ===== 1라운드 Codex 지적: 그룹 이동 · 체크박스 접근성 =====

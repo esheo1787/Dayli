@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 생성 파일: tools/gen_calendar_widget_layouts.py 로 다시 만들 것 (직접 수정 금지) -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/cal_widget_root" android:layout_width="match_parent" android:layout_height="match_parent">
+    <ImageView android:id="@+id/cal_widget_bg" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:scaleType="fitXY" android:src="@drawable/widget_shape_r16" android:importantForAccessibility="no" />
+    <LinearLayout android:id="@+id/cal_widget_content" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical" android:padding="12dp">
+        <include layout="@layout/widget_calendar_agenda_block" />
+    </LinearLayout>
+    <!-- 프리미엄이 아닐 때 안내 -->
+    <TextView android:id="@+id/cal_widget_locked" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:gravity="center" android:padding="16dp" android:textSize="13sp" android:visibility="gone"
+        android:text="캘린더 위젯은 Dayli 프리미엄 기능이에요\n눌러서 알아보기" />
+</FrameLayout>

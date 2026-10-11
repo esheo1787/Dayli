@@ -693,6 +693,12 @@ fun SettingsScreen(
 
         }
 
+        SettingsSectionLabel("프리미엄")
+        PremiumSettingsCard()
+
+        SettingsSectionLabel("캘린더 연동")
+        CalendarSyncSettingsCard(onChanged = onSettingsChanged)
+
         SettingsSectionLabel("데이터")
         SettingsCard {
 

@@ -72,6 +72,8 @@ class MainActivity : ComponentActivity() {
 
         // AdMob 초기화
         MobileAds.initialize(this) {}
+        // 프리미엄 구매 상태를 Play에서 확인 (저장값으로 먼저 그리고 맞춤)
+        Premium.init(this)
 
         // 알림 권한 요청은 사용자가 알림 토글을 켤 때만 (Android best practice).
         // 첫 실행 즉시 권한 요청을 띄우지 않는다.
@@ -131,6 +133,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         inAppUpdater.onResume()
+        // 앱으로 돌아올 때마다 Play 구매 내역으로 맞춤 (환불·다른 기기 구매 반영, 확인 안 된 구매 재확인)
+        Premium.refreshPurchases(this)
     }
 
     override fun onDestroy() {
@@ -192,6 +196,9 @@ fun MainDdayScreen(
     var showAddSheet by remember { mutableStateOf(false) }
     var addInitialDate by remember { mutableStateOf<java.util.Date?>(null) }
     var editItem by remember { mutableStateOf<DdayItem?>(null) }
+    // 폰 캘린더 일정을 "D-Day로" 가져오는 중이면 그 일정 (저장되면 가져옴으로 기록)
+    var importDraft by remember { mutableStateOf<PhoneEvent?>(null) }
+    var phoneImportVersion by remember { mutableIntStateOf(0) }
 
     // 기존 그룹 목록
     val existingGroups by viewModel.existingGroups.observeAsState(emptyList())
@@ -212,6 +219,17 @@ fun MainDdayScreen(
             DdaySettings.setWidgetPromptShown(context)
         }
     }
+    // 새 항목 저장 직후 평점 요청 (Google Play 인앱 리뷰). 시트가 닫힌 뒤 띄우고, 실제 표시 여부는 Google이 정함
+    val reviewPromptEvent by viewModel.reviewPromptEvent.observeAsState()
+    LaunchedEffect(reviewPromptEvent) {
+        if (reviewPromptEvent == true) {
+            kotlinx.coroutines.delay(800)
+            (context as? android.app.Activity)?.let { launchInAppReview(it) }
+            // 이벤트를 먼저 지우면 이 LaunchedEffect의 키가 바뀌어 대기 중 취소됨 → 요청 뒤에 지움
+            viewModel.consumeReviewPromptEvent()
+        }
+    }
+
     if (showWidgetPrompt) {
         WidgetPinPromptDialog(
             onAdd = {
@@ -338,10 +356,19 @@ fun MainDdayScreen(
                         isCalendarView = isCalendarView,
                         onAddForDate = { date ->
                             editItem = null
+                            importDraft = null
                             addInitialDate = date
                             showAddSheet = true
                         },
-                        twoPane = twoPane
+                        twoPane = twoPane,
+                        onImportPhoneEvent = { event ->
+                            val (y, m, d) = event.startDay
+                            editItem = null
+                            importDraft = event
+                            addInitialDate = Calendar.getInstance().apply { clear(); set(y, m - 1, d) }.time
+                            showAddSheet = true
+                        },
+                        phoneImportVersion = phoneImportVersion
                     )
                 }
             }
@@ -357,12 +384,14 @@ fun MainDdayScreen(
         itemType = if (selectedTab == 0 || addInitialDate != null) ItemType.DDAY else ItemType.TODO,
         editItem = editItem,
         initialDate = addInitialDate,
+        importDraft = importDraft,
         existingGroups = existingGroups,
         templates = templates,
         onDismiss = {
             showAddSheet = false
             editItem = null
             addInitialDate = null
+            importDraft = null
         },
         onSave = { title, memo, date, emoji, color, repeatType, itemType, subTasks, groupName, repeatDay, advanceDisplayDays, templateId, timeHour, timeMinute, notificationRules ->
             if (editItem != null) {
@@ -391,7 +420,17 @@ fun MainDdayScreen(
             } else {
                 // 추가 모드
                 if (itemType == ItemType.DDAY) {
-                    viewModel.insertDday(title, memo ?: "", date!!, emoji, color, repeatType, groupName, advanceDisplayDays, timeHour, timeMinute, notificationRules)
+                    val importKey = importDraft?.importKey
+                    viewModel.insertDday(
+                        title, memo ?: "", date!!, emoji, color, repeatType, groupName, advanceDisplayDays, timeHour, timeMinute, notificationRules,
+                        onInserted = { newId ->
+                            // 저장이 끝난 뒤에 가져오기 기록 (실패하면 "가져옴"으로 남지 않게)
+                            if (importKey != null) {
+                                DdaySettings.addImportedPhoneEvent(context, importKey, newId)
+                                phoneImportVersion++
+                            }
+                        }
+                    )
                 } else {
                     viewModel.insertTodo(title, memo, emoji, color, repeatType, subTasks, repeatDay, advanceDisplayDays, templateId)
                 }
@@ -399,6 +438,7 @@ fun MainDdayScreen(
             showAddSheet = false
             editItem = null
             addInitialDate = null
+            importDraft = null
         },
         onSaveAsTemplate = { name, iconName, customColor, subTasks ->
             viewModel.saveAsTemplate(name, iconName, customColor, subTasks)
@@ -464,7 +504,8 @@ var bannerAdsEnabled = true
 
 @Composable
 fun BannerAd() {
-    if (!bannerAdsEnabled) return
+    // 프리미엄은 광고 제거
+    if (!bannerAdsEnabled || Premium.unlocked) return
     AndroidView(
         modifier = Modifier.fillMaxWidth(),
         factory = { context ->
@@ -477,6 +518,20 @@ fun BannerAd() {
     )
 }
 
+/** Google Play 인앱 리뷰 창 요청. 실패해도 조용히 넘어감 (앱 사용에 영향 없음) */
+private fun launchInAppReview(activity: android.app.Activity) {
+    val manager = com.google.android.play.core.review.ReviewManagerFactory.create(activity)
+    manager.requestReviewFlow().addOnCompleteListener { request ->
+        if (request.isSuccessful) {
+            // 실제로 요청이 나간 시점에 기록 (실패하면 다음 저장 때 다시 시도)
+            DdaySettings.setReviewLastAsked(activity, System.currentTimeMillis())
+            manager.launchReviewFlow(activity, request.result)
+        } else {
+            android.util.Log.w("DDAY_WIDGET", "인앱 리뷰 요청 실패", request.exception)
+        }
+    }
+}
+
 /** Dayli의 위젯(통합/D-Day/To-Do) 중 하나라도 홈 화면에 설치되어 있으면 true. */
 private fun isAnyWidgetInstalled(context: android.content.Context): Boolean {
     val mgr = AppWidgetManager.getInstance(context)
@@ -487,7 +542,7 @@ private fun isAnyWidgetInstalled(context: android.content.Context): Boolean {
     )
     return providers.any { cls ->
         mgr.getAppWidgetIds(ComponentName(context, cls)).isNotEmpty()
-    }
+    } || CalendarWidgets.isAnyInstalled(context)
 }
 
 /**

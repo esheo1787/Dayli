@@ -58,6 +58,12 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
     fun consumeWidgetPromptEvent() { _widgetPromptEvent.value = null }
 
+    // 새 항목 저장 직후 평점 요청 (소비형 이벤트: null로 리셋). 조건은 ReviewPrompt
+    private val _reviewPromptEvent = MutableLiveData<Boolean?>(null)
+    val reviewPromptEvent: LiveData<Boolean?> = _reviewPromptEvent
+
+    fun consumeReviewPromptEvent() { _reviewPromptEvent.value = null }
+
     // 기존 그룹 목록
     private val _existingGroups = MutableLiveData<List<String>>(emptyList())
     val existingGroups: LiveData<List<String>> = _existingGroups
@@ -237,7 +243,8 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         advanceDisplayDays: Int? = null,
         timeHour: Int? = null,
         timeMinute: Int? = null,
-        notificationRules: List<NotificationRule> = emptyList()
+        notificationRules: List<NotificationRule> = emptyList(),
+        onInserted: (Int) -> Unit = {}  // 저장이 끝난 뒤 새 D-Day 번호 (캘린더 가져오기 기록용)
     ) {
         viewModelScope.launch {
             // 반복 기준 날짜 계산 (매주: 요일, 매월: 날짜)
@@ -265,7 +272,9 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 notifications = DdayItem.notificationRulesToJson(notificationRules)
             )
             val insertedId = dao.insert(item)
+            onInserted(insertedId.toInt())
             maybeTriggerWidgetPrompt()
+            maybeTriggerReviewPrompt()
             loadAll()
             loadGroups()  // 그룹 목록 갱신
             // 개별 알림 스케줄링
@@ -289,6 +298,21 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         if (totalCount == 1) {
             _widgetPromptEvent.postValue(true)
         }
+    }
+
+    /**
+     * 새 항목을 저장한 직후 평점 요청 조건을 확인해 이벤트 발행.
+     * AI로 여러 개를 한 번에 저장해도 화면에서는 한 번만 요청 (이벤트 값이 그대로라 다시 실행되지 않음)
+     */
+    private suspend fun maybeTriggerReviewPrompt() {
+        val app = getApplication<Application>()
+        val now = System.currentTimeMillis()
+        val installedAt = try {
+            app.packageManager.getPackageInfo(app.packageName, 0).firstInstallTime
+        } catch (e: Exception) { now }
+        if (!ReviewPrompt.shouldAsk(installedAt, now, dao.getAll().size, DdaySettings.getReviewLastAsked(app))) return
+        // 날짜는 화면에서 실제로 요청한 뒤 기록. 같은 이벤트가 여러 번 와도 화면은 한 번만 처리(키가 그대로)
+        _reviewPromptEvent.postValue(true)
     }
 
     // To-Do 아이템 추가
@@ -320,6 +344,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             )
             dao.insert(item)
             maybeTriggerWidgetPrompt()
+            maybeTriggerReviewPrompt()
             loadAll()
             // 위젯 동기화
             DdayWidgetProvider.refreshAllWidgets(getApplication())
@@ -480,6 +505,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             )
             dao.insert(item)
             maybeTriggerWidgetPrompt()
+            maybeTriggerReviewPrompt()
             loadAll()
             DdayWidgetProvider.refreshAllWidgets(getApplication())
         }
