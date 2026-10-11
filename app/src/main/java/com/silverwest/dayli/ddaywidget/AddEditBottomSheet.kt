@@ -42,6 +42,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,6 +69,7 @@ fun AddEditBottomSheet(
     itemType: ItemType,
     editItem: DdayItem? = null,
     initialDate: Date? = null,  // 캘린더의 "이 날짜에 D-Day 추가"에서 날짜 미리 채우기
+    importDraft: PhoneEvent? = null,  // 폰 캘린더 일정을 "D-Day로" 가져올 때 제목·시간·장소 미리 채우기
     existingGroups: List<String> = emptyList(),
     templates: List<TodoTemplate> = emptyList(),
     onDismiss: () -> Unit,
@@ -137,6 +140,22 @@ fun AddEditBottomSheet(
     var hasTime by remember(editItem) { mutableStateOf(editItem?.hasTime() == true) }
     var selectedHour by remember(editItem) { mutableStateOf(editItem?.timeHour ?: 12) }
     var selectedMinute by remember(editItem) { mutableStateOf(editItem?.timeMinute ?: 0) }
+
+    // 폰 캘린더 일정 가져오기: 시트가 열릴 때 제목·시간·장소를 채움 (종일 일정은 시간 없음)
+    LaunchedEffect(isVisible, importDraft) {
+        val draft = importDraft ?: return@LaunchedEffect
+        if (!isVisible || editItem != null) return@LaunchedEffect
+        title = draft.title
+        memo = draft.location ?: ""
+        if (draft.allDay) {
+            hasTime = false
+        } else {
+            val cal = Calendar.getInstance().apply { timeInMillis = draft.beginMs }
+            selectedHour = cal.get(Calendar.HOUR_OF_DAY)
+            selectedMinute = cal.get(Calendar.MINUTE)
+            hasTime = true
+        }
+    }
 
     // 개별 알림 상태 (D-Day 전용)
     var notificationRules by remember(editItem) {
@@ -944,7 +963,8 @@ fun AddEditBottomSheet(
                             .size(56.dp)
                             .clip(RoundedCornerShape(14.dp))
                             .background(selectedColor.toComposeColor().copy(alpha = 0.25f))
-                            .clickable { showEmojiPicker = true },
+                            .clickable(onClickLabel = "이모지 변경") { showEmojiPicker = true }
+                            .semantics { contentDescription = "이모지 변경" },
                         contentAlignment = Alignment.Center
                     ) {
                         EmojiText(selectedEmoji, fontSize = 28.sp)

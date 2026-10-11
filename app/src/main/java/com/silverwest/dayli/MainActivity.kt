@@ -72,6 +72,8 @@ class MainActivity : ComponentActivity() {
 
         // AdMob 초기화
         MobileAds.initialize(this) {}
+        // 프리미엄 구매 상태를 Play에서 확인 (저장값으로 먼저 그리고 맞춤)
+        Premium.init(this)
 
         // 알림 권한 요청은 사용자가 알림 토글을 켤 때만 (Android best practice).
         // 첫 실행 즉시 권한 요청을 띄우지 않는다.
@@ -192,6 +194,9 @@ fun MainDdayScreen(
     var showAddSheet by remember { mutableStateOf(false) }
     var addInitialDate by remember { mutableStateOf<java.util.Date?>(null) }
     var editItem by remember { mutableStateOf<DdayItem?>(null) }
+    // 폰 캘린더 일정을 "D-Day로" 가져오는 중이면 그 일정 (저장되면 가져옴으로 기록)
+    var importDraft by remember { mutableStateOf<PhoneEvent?>(null) }
+    var phoneImportVersion by remember { mutableIntStateOf(0) }
 
     // 기존 그룹 목록
     val existingGroups by viewModel.existingGroups.observeAsState(emptyList())
@@ -348,10 +353,19 @@ fun MainDdayScreen(
                         isCalendarView = isCalendarView,
                         onAddForDate = { date ->
                             editItem = null
+                            importDraft = null
                             addInitialDate = date
                             showAddSheet = true
                         },
-                        twoPane = twoPane
+                        twoPane = twoPane,
+                        onImportPhoneEvent = { event ->
+                            val (y, m, d) = event.startDay
+                            editItem = null
+                            importDraft = event
+                            addInitialDate = Calendar.getInstance().apply { clear(); set(y, m - 1, d) }.time
+                            showAddSheet = true
+                        },
+                        phoneImportVersion = phoneImportVersion
                     )
                 }
             }
@@ -367,12 +381,14 @@ fun MainDdayScreen(
         itemType = if (selectedTab == 0 || addInitialDate != null) ItemType.DDAY else ItemType.TODO,
         editItem = editItem,
         initialDate = addInitialDate,
+        importDraft = importDraft,
         existingGroups = existingGroups,
         templates = templates,
         onDismiss = {
             showAddSheet = false
             editItem = null
             addInitialDate = null
+            importDraft = null
         },
         onSave = { title, memo, date, emoji, color, repeatType, itemType, subTasks, groupName, repeatDay, advanceDisplayDays, templateId, timeHour, timeMinute, notificationRules ->
             if (editItem != null) {
@@ -402,6 +418,10 @@ fun MainDdayScreen(
                 // 추가 모드
                 if (itemType == ItemType.DDAY) {
                     viewModel.insertDday(title, memo ?: "", date!!, emoji, color, repeatType, groupName, advanceDisplayDays, timeHour, timeMinute, notificationRules)
+                    importDraft?.let {
+                        DdaySettings.addImportedPhoneEvent(context, it.importKey)
+                        phoneImportVersion++
+                    }
                 } else {
                     viewModel.insertTodo(title, memo, emoji, color, repeatType, subTasks, repeatDay, advanceDisplayDays, templateId)
                 }
@@ -409,6 +429,7 @@ fun MainDdayScreen(
             showAddSheet = false
             editItem = null
             addInitialDate = null
+            importDraft = null
         },
         onSaveAsTemplate = { name, iconName, customColor, subTasks ->
             viewModel.saveAsTemplate(name, iconName, customColor, subTasks)
@@ -474,7 +495,8 @@ var bannerAdsEnabled = true
 
 @Composable
 fun BannerAd() {
-    if (!bannerAdsEnabled) return
+    // 프리미엄은 광고 제거
+    if (!bannerAdsEnabled || Premium.unlocked) return
     AndroidView(
         modifier = Modifier.fillMaxWidth(),
         factory = { context ->
@@ -509,7 +531,7 @@ private fun isAnyWidgetInstalled(context: android.content.Context): Boolean {
     )
     return providers.any { cls ->
         mgr.getAppWidgetIds(ComponentName(context, cls)).isNotEmpty()
-    }
+    } || CalendarWidgets.isAnyInstalled(context)
 }
 
 /**

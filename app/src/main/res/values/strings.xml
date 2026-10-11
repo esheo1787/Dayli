@@ -3,4 +3,11 @@
     <string name="empty_dday">등록된 D-Day 없음</string>
     <string name="cd_checkbox_checked">완료됨</string>
     <string name="cd_checkbox_unchecked">미완료</string>
+    <!-- 캘린더 위젯 (프리미엄) -->
+    <string name="widget_calendar_month_label">캘린더 · 월간</string>
+    <string name="widget_calendar_month_desc">한 달 달력에 D-Day와 캘린더 일정을 점으로 표시해요 (프리미엄)</string>
+    <string name="widget_calendar_agenda_label">캘린더 · 오늘·내일</string>
+    <string name="widget_calendar_agenda_desc">오늘과 내일 일정을 시간순으로 보여줘요 (프리미엄)</string>
+    <string name="widget_calendar_combined_label">캘린더 · 달력+오늘·내일</string>
+    <string name="widget_calendar_combined_desc">한 달 달력과 오늘·내일 일정을 한 위젯에 (프리미엄)</string>
 </resources>

@@ -664,6 +664,45 @@ object DdaySettings {
             saveAiQuota(context, AiQuota.addReward(getAiQuota(context, nowMillis)))
         }
 
+    // ===== 프리미엄 (Play 구매 상태 캐시 — 실제 기준은 Premium이 Play에서 다시 확인) =====
+
+    private const val KEY_PREMIUM_CACHED = "premium_cached"
+
+    fun isPremiumCached(context: Context): Boolean = getPrefs(context).getBoolean(KEY_PREMIUM_CACHED, false)
+
+    fun setPremiumCached(context: Context, value: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_PREMIUM_CACHED, value).apply()
+    }
+
+    // ===== 폰 캘린더 연동 (읽기 전용) — PhoneCalendar =====
+
+    private const val KEY_PHONE_CALENDAR_ENABLED = "phone_calendar_enabled"
+    private const val KEY_PHONE_CALENDAR_IDS = "phone_calendar_ids"
+    private const val KEY_PHONE_CALENDAR_IMPORTED = "phone_calendar_imported"
+
+    fun isPhoneCalendarEnabled(context: Context): Boolean =
+        getPrefs(context).getBoolean(KEY_PHONE_CALENDAR_ENABLED, false)
+
+    fun setPhoneCalendarEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_PHONE_CALENDAR_ENABLED, enabled).apply()
+    }
+
+    /** 고른 캘린더 ID. 한 번도 고른 적 없으면 null (= 보이는 캘린더 전부) */
+    fun getPhoneCalendarIds(context: Context): Set<Long>? =
+        getPrefs(context).getStringSet(KEY_PHONE_CALENDAR_IDS, null)?.mapNotNull { it.toLongOrNull() }?.toSet()
+
+    fun setPhoneCalendarIds(context: Context, ids: Set<Long>) {
+        getPrefs(context).edit().putStringSet(KEY_PHONE_CALENDAR_IDS, ids.map { it.toString() }.toSet()).apply()
+    }
+
+    /** 이미 D-Day로 가져온 일정 (PhoneEvent.importKey) — 같은 일정을 두 번 가져오지 않게 */
+    fun getImportedPhoneEvents(context: Context): Set<String> =
+        getPrefs(context).getStringSet(KEY_PHONE_CALENDAR_IMPORTED, emptySet()) ?: emptySet()
+
+    fun addImportedPhoneEvent(context: Context, key: String) {
+        getPrefs(context).edit().putStringSet(KEY_PHONE_CALENDAR_IMPORTED, getImportedPhoneEvents(context) + key).apply()
+    }
+
     // ===== 평점 요청 (마지막으로 요청한 시각) — 규칙은 ReviewPrompt =====
 
     private const val KEY_REVIEW_LAST_ASKED = "review_last_asked"

@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- 인터넷 (Gemini API) -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 폰 캘린더(구글·삼성) 일정 읽기 전용 (프리미엄 캘린더 연동). 기기 밖으로 보내지 않음 -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
     <!-- 광고 ID (AdMob) -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
@@ -87,6 +89,43 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/todo_only_widget_info" />
+        </receiver>
+
+        <!-- 캘린더 위젯 3종 (프리미엄) -->
+        <receiver
+            android:name="com.silverwest.dayli.ddaywidget.CalendarMonthWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_calendar_month_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_month_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name="com.silverwest.dayli.ddaywidget.CalendarAgendaWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_calendar_agenda_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_agenda_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name="com.silverwest.dayli.ddaywidget.CalendarCombinedWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_calendar_combined_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_combined_widget_info" />
         </receiver>
 
         <!-- ✅ 부팅 시 자정 알람 재설정용 Receiver -->

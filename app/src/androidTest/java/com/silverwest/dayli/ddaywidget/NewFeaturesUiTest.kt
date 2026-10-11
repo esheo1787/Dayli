@@ -93,7 +93,7 @@ class NewFeaturesUiTest {
         }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("추천").fetchSemanticsNodes().isNotEmpty() }
 
-        compose.onNode(hasSetTextAction() and hasText("또는 글로 입력·붙여넣기")).performTextInput("케이크")
+        compose.onNode(hasSetTextAction()).performTextInput("케이크")
         compose.waitUntil(3_000) { compose.onAllNodesWithText("🎂").fetchSemanticsNodes().isNotEmpty() }
         compose.onAllNodesWithText("🎂")[0].performClick()
         compose.onNodeWithText("선택").performClick()
@@ -164,7 +164,7 @@ class NewFeaturesUiTest {
         }
         compose.waitForIdle()
         // 피커에서 기본값과 같은 📌를 직접 선택
-        compose.onNodeWithText("이모지 변경").performClick()
+        compose.onNodeWithContentDescription("이모지 변경").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("추천").fetchSemanticsNodes().isNotEmpty() }
         compose.onNode(hasSetTextAction() and hasText("검색", substring = true)).performTextInput("압정")
         compose.waitUntil(3_000) { compose.onAllNodesWithText("📌").fetchSemanticsNodes().size >= 2 }

@@ -44,7 +44,11 @@ fun DdayCalendarView(
     searchQuery: String = "",
     onAddForDate: (Date) -> Unit = {},
     // 보고 있는 월·선택 날짜. 1단↔2단 전환(폴드 접기/펼치기)에도 유지되도록 상위에서 넘겨받음
-    state: CalendarState = rememberCalendarState()
+    state: CalendarState = rememberCalendarState(),
+    // 폰 캘린더(구글·삼성) 일정 — 연동이 꺼져 있으면 빈 목록
+    phoneEvents: List<PhoneEvent> = emptyList(),
+    importedPhoneKeys: Set<String> = emptySet(),
+    onImportPhoneEvent: (PhoneEvent) -> Unit = {}
 ) {
     val context = LocalContext.current
     val fontScale = DdaySettings.getAppFontScale(context)
@@ -77,6 +81,17 @@ fun DdayCalendarView(
         map
     }
     val monthPendingCount = itemsByDay.values.sumOf { list -> list.count { !it.isChecked } }
+
+    // 폰 캘린더 일정을 이번 달 날짜별로 (시작 날짜 기준)
+    val phoneByDay = remember(phoneEvents, currentYear, currentMonth) {
+        phoneEvents.filter { it.startDay.first == currentYear && it.startDay.second == currentMonth + 1 }
+            .groupBy { it.startDay.third }
+    }
+    val monthPhoneCount = phoneByDay.values.sumOf { it.size }
+    val phoneForSelectedDate = remember(selectedDate, phoneEvents) {
+        val sel = selectedDate ?: return@remember emptyList()
+        phoneEvents.filter { it.startDay == Triple(sel.first, sel.second + 1, sel.third) }
+    }
 
     // 선택된 날짜의 아이템 필터링
     val itemsForSelectedDate = remember(selectedDate, ddayItems) {
@@ -131,7 +146,7 @@ fun DdayCalendarView(
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "이번 달 일정 ${monthPendingCount}개",
+                        "이번 달 일정 ${monthPendingCount}개" + (if (monthPhoneCount > 0) " · 캘린더 ${monthPhoneCount}개" else ""),
                         fontSize = (13 * fontScale).sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -203,6 +218,8 @@ fun DdayCalendarView(
                                         isSelected = isSelected,
                                         markerEmoji = pending.firstOrNull()?.getEmoji(),
                                         extraCount = (pending.size - 1).coerceAtLeast(0),
+                                        phoneDots = phoneByDay[dayNumber].orEmpty().map { Color(it.color) }.distinct().take(3),
+                                        showPhoneRow = phoneEvents.isNotEmpty(),
                                         dayColor = when (col) {
                                             0 -> sundayColor
                                             6 -> saturdayColor
@@ -245,7 +262,7 @@ fun DdayCalendarView(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "${itemsForSelectedDate.size}개",
+                        text = "${itemsForSelectedDate.size + phoneForSelectedDate.size}개",
                         fontSize = (13 * fontScale).sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -266,6 +283,14 @@ fun DdayCalendarView(
                     isExpanded = item.id in expandedSubTaskIds,
                     onExpandToggle = { onExpandSubTask(item.id) },
                     searchQuery = searchQuery
+                )
+            }
+            items(phoneForSelectedDate, key = { "phone_${it.importKey}" }) { event ->
+                PhoneEventRow(
+                    event = event,
+                    imported = event.importKey in importedPhoneKeys,
+                    fontScale = fontScale,
+                    onImport = { onImportPhoneEvent(event) }
                 )
             }
             item(key = "add_for_date") {
@@ -367,7 +392,9 @@ private fun CalendarDayCell(
     extraCount: Int,
     dayColor: Color,
     fontScale: Float,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    phoneDots: List<Color> = emptyList(),
+    showPhoneRow: Boolean = false
 ) {
     val accent = MaterialTheme.colorScheme.primary
     Column(
@@ -378,6 +405,7 @@ private fun CalendarDayCell(
             .clickable(onClick = onClick)
             .semantics {
                 contentDescription = "${day}일" + (if (markerEmoji != null) ", 일정 ${extraCount + 1}개" else "") +
+                    (if (phoneDots.isNotEmpty()) ", 캘린더 일정 있음" else "") +
                     (if (isToday) ", 오늘" else "")
             }
             .padding(vertical = 3.dp),
@@ -415,6 +443,62 @@ private fun CalendarDayCell(
                 if (extraCount > 0) {
                     Text("+$extraCount", fontSize = (9 * fontScale).sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+        }
+        // 폰 캘린더 일정 점 (연동 중일 때만 줄 자리를 잡아 칸 높이를 고정)
+        if (showPhoneRow) {
+            Row(
+                modifier = Modifier.height(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                phoneDots.forEach { dot ->
+                    Box(Modifier.size(5.dp).clip(CircleShape).background(dot))
+                }
+            }
+        }
+    }
+}
+
+/** 선택한 날짜의 폰 캘린더 일정 한 줄: 색 점 · 제목 · 시간·출처 · "D-Day로" */
+@Composable
+private fun PhoneEventRow(event: PhoneEvent, imported: Boolean, fontScale: Float, onImport: () -> Unit) {
+    val timeText = if (event.allDay) "종일" else {
+        val f = java.text.SimpleDateFormat("a h:mm", Locale.KOREAN)
+        f.format(Date(event.beginMs))
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(10.dp).clip(CircleShape).background(Color(event.color)))
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(event.title, fontSize = (14.5f * fontScale).sp, fontWeight = FontWeight.Medium, maxLines = 2)
+            Text(
+                "$timeText · ${event.sourceLabel}" + (event.location?.let { " · $it" } ?: ""),
+                fontSize = (12 * fontScale).sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        if (imported) {
+            Text("가져옴", fontSize = (12 * fontScale).sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            OutlinedButton(
+                onClick = onImport,
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                modifier = Modifier.heightIn(min = 36.dp)
+            ) {
+                Text("D-Day로", fontSize = (12 * fontScale).sp, fontWeight = FontWeight.Bold)
             }
         }
     }

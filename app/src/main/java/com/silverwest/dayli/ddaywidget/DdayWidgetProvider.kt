@@ -172,6 +172,9 @@ class DdayWidgetProvider : AppWidgetProvider() {
                 manager.notifyAppWidgetViewDataChanged(todoOnlyIds, R.id.widgetListView)
             }
 
+            // 캘린더 위젯은 목록이 아니라 통째로 다시 그림
+            CalendarWidgets.refreshAll(context)
+
             android.util.Log.d("DDAY_WIDGET", "🔁 refreshAllWidgets() 호출됨: 통합=${mainIds.size}, D-Day=${ddayOnlyIds.size}, To-Do=${todoOnlyIds.size}")
         }
 
@@ -196,6 +199,8 @@ class DdayWidgetProvider : AppWidgetProvider() {
                 todoOnlyIds.forEach { TodoOnlyWidgetProvider.updateAppWidget(context, manager, it) }
                 manager.notifyAppWidgetViewDataChanged(todoOnlyIds, R.id.widgetListView)
             }
+
+            CalendarWidgets.refreshAll(context)
 
             android.util.Log.d("DDAY_WIDGET", "🔁 refreshAllWidgetsFull() 호출됨")
         }

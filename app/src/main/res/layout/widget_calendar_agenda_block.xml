@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 생성 파일: tools/gen_calendar_widget_layouts.py 로 다시 만들 것 (직접 수정 금지) -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"
+    android:paddingHorizontal="4dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"
+        android:gravity="bottom">
+        <TextView android:id="@+id/today_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="13.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/today_date" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginStart="6dp" android:textSize="11.5sp" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/today_row_0" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="5dp" android:visibility="gone">
+        <ImageView android:id="@+id/today_dot_0" android:layout_width="7dp" android:layout_height="7dp"
+            android:src="@drawable/widget_dot" android:importantForAccessibility="no" />
+        <TextView android:id="@+id/today_time_0" android:layout_width="60dp" android:layout_height="wrap_content"
+            android:layout_marginStart="8dp" android:textSize="12sp" android:maxLines="1" />
+        <TextView android:id="@+id/today_title_0" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:textSize="12.5sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/today_row_1" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="5dp" android:visibility="gone">
+        <ImageView android:id="@+id/today_dot_1" android:layout_width="7dp" android:layout_height="7dp"
+            android:src="@drawable/widget_dot" android:importantForAccessibility="no" />
+        <TextView android:id="@+id/today_time_1" android:layout_width="60dp" android:layout_height="wrap_content"
+            android:layout_marginStart="8dp" android:textSize="12sp" android:maxLines="1" />
+        <TextView android:id="@+id/today_title_1" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:textSize="12.5sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/today_row_2" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="5dp" android:visibility="gone">
+        <ImageView android:id="@+id/today_dot_2" android:layout_width="7dp" android:layout_height="7dp"
+            android:src="@drawable/widget_dot" android:importantForAccessibility="no" />
+        <TextView android:id="@+id/today_time_2" android:layout_width="60dp" android:layout_height="wrap_content"
+            android:layout_marginStart="8dp" android:textSize="12sp" android:maxLines="1" />
+        <TextView android:id="@+id/today_title_2" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:textSize="12.5sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/today_row_3" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="5dp" android:visibility="gone">
+        <ImageView android:id="@+id/today_dot_3" android:layout_width="7dp" android:layout_height="7dp"
+            android:src="@drawable/widget_dot" android:importantForAccessibility="no" />
+        <TextView android:id="@+id/today_time_3" android:layout_width="60dp" android:layout_height="wrap_content"
+            android:layout_marginStart="8dp" android:textSize="12sp" android:maxLines="1" />
+        <TextView android:id="@+id/today_title_3" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:textSize="12.5sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+    <TextView android:id="@+id/today_empty" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="5dp" android:textSize="12sp" android:text="일정 없음" android:visibility="gone" />
+    <TextView android:id="@+id/today_more" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="4dp" android:textSize="11sp" android:visibility="gone" />
+    <ImageView android:id="@+id/agenda_divider" android:layout_width="match_parent" android:layout_height="1dp"
+        android:layout_marginVertical="8dp" android:scaleType="fitXY" android:src="@drawable/widget_line"
+        android:importantForAccessibility="no" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"
+        android:gravity="bottom">
+        <TextView android:id="@+id/tomorrow_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="13.5sp" android:textStyle="bold" />
+        <TextView android:id="@+id/tomorrow_date" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginStart="6dp" android:textSize="11.5sp" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/tomorrow_row_0" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="5dp" android:visibility="gone">
+        <ImageView android:id="@+id/tomorrow_dot_0" android:layout_width="7dp" android:layout_height="7dp"
+            android:src="@drawable/widget_dot" android:importantForAccessibility="no" />
+        <TextView android:id="@+id/tomorrow_time_0" android:layout_width="60dp" android:layout_height="wrap_content"
+            android:layout_marginStart="8dp" android:textSize="12sp" android:maxLines="1" />
+        <TextView android:id="@+id/tomorrow_title_0" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:textSize="12.5sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/tomorrow_row_1" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="5dp" android:visibility="gone">
+        <ImageView android:id="@+id/tomorrow_dot_1" android:layout_width="7dp" android:layout_height="7dp"
+            android:src="@drawable/widget_dot" android:importantForAccessibility="no" />
+        <TextView android:id="@+id/tomorrow_time_1" android:layout_width="60dp" android:layout_height="wrap_content"
+            android:layout_marginStart="8dp" android:textSize="12sp" android:maxLines="1" />
+        <TextView android:id="@+id/tomorrow_title_1" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:textSize="12.5sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/tomorrow_row_2" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="5dp" android:visibility="gone">
+        <ImageView android:id="@+id/tomorrow_dot_2" android:layout_width="7dp" android:layout_height="7dp"
+            android:src="@drawable/widget_dot" android:importantForAccessibility="no" />
+        <TextView android:id="@+id/tomorrow_time_2" android:layout_width="60dp" android:layout_height="wrap_content"
+            android:layout_marginStart="8dp" android:textSize="12sp" android:maxLines="1" />
+        <TextView android:id="@+id/tomorrow_title_2" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:textSize="12.5sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+    <TextView android:id="@+id/tomorrow_empty" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="5dp" android:textSize="12sp" android:text="일정 없음" android:visibility="gone" />
+    <TextView android:id="@+id/tomorrow_more" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="4dp" android:textSize="11sp" android:visibility="gone" />
+</LinearLayout>

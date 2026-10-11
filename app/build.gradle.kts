@@ -118,6 +118,8 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads:23.6.0")
     // 평점 요청 (Google Play 인앱 리뷰)
     implementation("com.google.android.play:review-ktx:2.0.2")
+    // 프리미엄 한 번 결제 (Google Play 결제 라이브러리)
+    implementation("com.android.billingclient:billing-ktx:8.0.0")
 
     // Firebase AI Logic (Gemini) — APK에 API 키를 내장하지 않는 구조
     implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
