@@ -42,7 +42,7 @@ fun PremiumSettingsCard() {
                 Column {
                     Text("프리미엄 사용 중", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                     Text(
-                        "광고 없음 · 캘린더 연동 · 캘린더 위젯",
+                        "배너 광고 없음 · 캘린더 연동 · 캘린더 위젯",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -53,7 +53,7 @@ fun PremiumSettingsCard() {
                 Text("Dayli 프리미엄", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text("한 번 결제하면 계속 쓸 수 있어요", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 listOf(
-                    "광고 제거",
+                    "배너 광고 제거",
                     "구글·삼성 캘린더 일정을 Dayli 캘린더에 함께 보기",
                     "캘린더 위젯 3종 (월간 · 오늘·내일 · 합친 위젯)"
                 ).forEach { line ->

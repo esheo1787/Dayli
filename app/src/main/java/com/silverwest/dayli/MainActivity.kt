@@ -133,6 +133,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         inAppUpdater.onResume()
+        // 앱으로 돌아올 때마다 Play 구매 내역으로 맞춤 (환불·다른 기기 구매 반영, 확인 안 된 구매 재확인)
+        Premium.refreshPurchases(this)
     }
 
     override fun onDestroy() {
@@ -221,9 +223,10 @@ fun MainDdayScreen(
     val reviewPromptEvent by viewModel.reviewPromptEvent.observeAsState()
     LaunchedEffect(reviewPromptEvent) {
         if (reviewPromptEvent == true) {
-            viewModel.consumeReviewPromptEvent()
             kotlinx.coroutines.delay(800)
             (context as? android.app.Activity)?.let { launchInAppReview(it) }
+            // 이벤트를 먼저 지우면 이 LaunchedEffect의 키가 바뀌어 대기 중 취소됨 → 요청 뒤에 지움
+            viewModel.consumeReviewPromptEvent()
         }
     }
 
@@ -417,11 +420,17 @@ fun MainDdayScreen(
             } else {
                 // 추가 모드
                 if (itemType == ItemType.DDAY) {
-                    viewModel.insertDday(title, memo ?: "", date!!, emoji, color, repeatType, groupName, advanceDisplayDays, timeHour, timeMinute, notificationRules)
-                    importDraft?.let {
-                        DdaySettings.addImportedPhoneEvent(context, it.importKey)
-                        phoneImportVersion++
-                    }
+                    val importKey = importDraft?.importKey
+                    viewModel.insertDday(
+                        title, memo ?: "", date!!, emoji, color, repeatType, groupName, advanceDisplayDays, timeHour, timeMinute, notificationRules,
+                        onInserted = { newId ->
+                            // 저장이 끝난 뒤에 가져오기 기록 (실패하면 "가져옴"으로 남지 않게)
+                            if (importKey != null) {
+                                DdaySettings.addImportedPhoneEvent(context, importKey, newId)
+                                phoneImportVersion++
+                            }
+                        }
+                    )
                 } else {
                     viewModel.insertTodo(title, memo, emoji, color, repeatType, subTasks, repeatDay, advanceDisplayDays, templateId)
                 }
@@ -514,6 +523,8 @@ private fun launchInAppReview(activity: android.app.Activity) {
     val manager = com.google.android.play.core.review.ReviewManagerFactory.create(activity)
     manager.requestReviewFlow().addOnCompleteListener { request ->
         if (request.isSuccessful) {
+            // 실제로 요청이 나간 시점에 기록 (실패하면 다음 저장 때 다시 시도)
+            DdaySettings.setReviewLastAsked(activity, System.currentTimeMillis())
             manager.launchReviewFlow(activity, request.result)
         } else {
             android.util.Log.w("DDAY_WIDGET", "인앱 리뷰 요청 실패", request.exception)

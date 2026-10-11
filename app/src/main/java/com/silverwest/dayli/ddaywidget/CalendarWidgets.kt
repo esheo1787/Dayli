@@ -101,7 +101,9 @@ object CalendarWidgets {
 
     private suspend fun loadModel(context: Context): CalendarWidgetModel {
         val now = Calendar.getInstance()
-        val dayli = DdayDatabase.getDatabase(context).ddayDao().getAllDdays()
+        val dao = DdayDatabase.getDatabase(context).ddayDao()
+        // 반복 일정을 완료하면 다음 회차가 숨김 상태로 저장됨 → 앱 캘린더처럼 함께 표시
+        val dayli = (dao.getAllDdays() + dao.getHiddenDdays())
             .filter { !it.isChecked && it.date != null }
             .map {
                 val c = Calendar.getInstance().apply { time = it.date!! }

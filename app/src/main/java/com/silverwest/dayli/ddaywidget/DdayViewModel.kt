@@ -243,7 +243,8 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         advanceDisplayDays: Int? = null,
         timeHour: Int? = null,
         timeMinute: Int? = null,
-        notificationRules: List<NotificationRule> = emptyList()
+        notificationRules: List<NotificationRule> = emptyList(),
+        onInserted: (Int) -> Unit = {}  // 저장이 끝난 뒤 새 D-Day 번호 (캘린더 가져오기 기록용)
     ) {
         viewModelScope.launch {
             // 반복 기준 날짜 계산 (매주: 요일, 매월: 날짜)
@@ -271,6 +272,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
                 notifications = DdayItem.notificationRulesToJson(notificationRules)
             )
             val insertedId = dao.insert(item)
+            onInserted(insertedId.toInt())
             maybeTriggerWidgetPrompt()
             maybeTriggerReviewPrompt()
             loadAll()
@@ -300,7 +302,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
     /**
      * 새 항목을 저장한 직후 평점 요청 조건을 확인해 이벤트 발행.
-     * 요청 시각을 바로 기록 → AI로 여러 개를 한 번에 저장해도 한 번만 요청
+     * AI로 여러 개를 한 번에 저장해도 화면에서는 한 번만 요청 (이벤트 값이 그대로라 다시 실행되지 않음)
      */
     private suspend fun maybeTriggerReviewPrompt() {
         val app = getApplication<Application>()
@@ -309,7 +311,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             app.packageManager.getPackageInfo(app.packageName, 0).firstInstallTime
         } catch (e: Exception) { now }
         if (!ReviewPrompt.shouldAsk(installedAt, now, dao.getAll().size, DdaySettings.getReviewLastAsked(app))) return
-        DdaySettings.setReviewLastAsked(app, now)
+        // 날짜는 화면에서 실제로 요청한 뒤 기록. 같은 이벤트가 여러 번 와도 화면은 한 번만 처리(키가 그대로)
         _reviewPromptEvent.postValue(true)
     }
 

@@ -349,6 +349,21 @@ class NewFeaturesUiTest {
         }
     }
 
+    // ===== 캘린더 가져오기 기록: 가져온 D-Day를 지우면 다시 가져올 수 있음 =====
+
+    @Test
+    fun importedPhoneEvent_onlyWhileItsDdayExists() {
+        DdaySettings.addImportedPhoneEvent(context, "10@1000", itemId = 7)
+        DdaySettings.addImportedPhoneEvent(context, "11@2000", itemId = 8)
+        // 두 D-Day가 모두 있으면 둘 다 "가져옴"
+        assertEquals(setOf("10@1000", "11@2000"), DdaySettings.importedPhoneKeys(context, setOf(7, 8, 9)))
+        // 7번 D-Day를 지우면 그 일정은 다시 가져올 수 있음
+        assertEquals(setOf("11@2000"), DdaySettings.importedPhoneKeys(context, setOf(8, 9)))
+        // 같은 일정을 다시 가져오면 새 D-Day 번호로 바뀜
+        DdaySettings.addImportedPhoneEvent(context, "10@1000", itemId = 12)
+        assertEquals(setOf("10@1000", "11@2000"), DdaySettings.importedPhoneKeys(context, setOf(8, 12)))
+    }
+
     // ===== 1라운드 Codex 지적: 그룹 이동 · 체크박스 접근성 =====
 
     // 그룹 손잡이 끌기는 Compose 테스트의 가상 터치·테스트 시계로는 재현되지 않아(라이브러리 특성)

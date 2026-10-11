@@ -89,7 +89,9 @@ object Premium {
     /** Play 구매 내역으로 잠금 상태를 맞춤 (구매 복원도 이것) */
     fun refreshPurchases(context: Context) {
         val app = context.applicationContext
+        if (debugForced(app)) return
         val c = client ?: return
+        if (!c.isReady) return  // 연결되면 onBillingSetupFinished에서 다시 조회
         val params = QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()
         c.queryPurchasesAsync(params) { result, purchases ->
             if (result.responseCode != BillingClient.BillingResponseCode.OK) return@queryPurchasesAsync
@@ -133,16 +135,28 @@ object Premium {
     private fun handlePurchases(app: Context, purchases: List<Purchase>) {
         purchases.filter { isOwnedPremium(it) }.forEach { purchase ->
             setUnlocked(app, true)
-            if (!purchase.isAcknowledged) {
-                val params = AcknowledgePurchaseParams.newBuilder().setPurchaseToken(purchase.purchaseToken).build()
-                client?.acknowledgePurchase(params) { result ->
-                    if (result.responseCode != BillingClient.BillingResponseCode.OK) {
-                        Log.w("DDAY_WIDGET", "구매 확인 실패: ${result.debugMessage}")
-                    }
-                }
+            if (!purchase.isAcknowledged) acknowledge(purchase.purchaseToken, attempt = 1)
+        }
+    }
+
+    /**
+     * 구매 확인. 3일 안에 확인하지 않으면 Play가 자동 환불하므로 실패하면 잠시 뒤 다시 시도하고,
+     * 그래도 실패하면 앱으로 돌아올 때(onResume → refreshPurchases)마다 다시 시도됨
+     */
+    private fun acknowledge(token: String, attempt: Int) {
+        val params = AcknowledgePurchaseParams.newBuilder().setPurchaseToken(token).build()
+        client?.acknowledgePurchase(params) { result ->
+            if (result.responseCode == BillingClient.BillingResponseCode.OK) return@acknowledgePurchase
+            Log.w("DDAY_WIDGET", "구매 확인 실패($attempt): ${result.debugMessage}")
+            if (attempt < MAX_ACK_ATTEMPTS) {
+                android.os.Handler(android.os.Looper.getMainLooper())
+                    .postDelayed({ acknowledge(token, attempt + 1) }, ACK_RETRY_DELAY_MS * attempt)
             }
         }
     }
+
+    private const val MAX_ACK_ATTEMPTS = 3
+    private const val ACK_RETRY_DELAY_MS = 5_000L
 
     private fun setUnlocked(app: Context, value: Boolean) {
         if (unlocked == value && DdaySettings.isPremiumCached(app) == value) return

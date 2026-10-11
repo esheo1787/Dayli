@@ -678,7 +678,8 @@ object DdaySettings {
 
     private const val KEY_PHONE_CALENDAR_ENABLED = "phone_calendar_enabled"
     private const val KEY_PHONE_CALENDAR_IDS = "phone_calendar_ids"
-    private const val KEY_PHONE_CALENDAR_IMPORTED = "phone_calendar_imported"
+    // v2: 원본 키 → D-Day 번호(JSON). 출시 전 개발 빌드의 v1(문자열 집합)과 키를 나눠 타입 충돌 방지
+    private const val KEY_PHONE_CALENDAR_IMPORTED = "phone_calendar_imported_v2"
 
     fun isPhoneCalendarEnabled(context: Context): Boolean =
         getPrefs(context).getBoolean(KEY_PHONE_CALENDAR_ENABLED, false)
@@ -695,12 +696,29 @@ object DdaySettings {
         getPrefs(context).edit().putStringSet(KEY_PHONE_CALENDAR_IDS, ids.map { it.toString() }.toSet()).apply()
     }
 
-    /** 이미 D-Day로 가져온 일정 (PhoneEvent.importKey) — 같은 일정을 두 번 가져오지 않게 */
-    fun getImportedPhoneEvents(context: Context): Set<String> =
-        getPrefs(context).getStringSet(KEY_PHONE_CALENDAR_IMPORTED, emptySet()) ?: emptySet()
+    /**
+     * D-Day로 가져온 일정: 원본 키(PhoneEvent.importKey) → 만든 D-Day 번호.
+     * "가져옴"은 그 D-Day가 아직 있을 때만 표시 → 지우면 다시 가져올 수 있음
+     */
+    fun getImportedPhoneEvents(context: Context): Map<String, Int> {
+        // 다른 타입으로 저장돼 있어도 앱이 꺼지지 않게 (getString은 타입이 다르면 예외)
+        val json = try {
+            getPrefs(context).getString(KEY_PHONE_CALENDAR_IMPORTED, null)
+        } catch (e: ClassCastException) { null } ?: return emptyMap()
+        return try {
+            val obj = org.json.JSONObject(json)
+            obj.keys().asSequence().associateWith { obj.getInt(it) }
+        } catch (e: Exception) { emptyMap() }
+    }
 
-    fun addImportedPhoneEvent(context: Context, key: String) {
-        getPrefs(context).edit().putStringSet(KEY_PHONE_CALENDAR_IMPORTED, getImportedPhoneEvents(context) + key).apply()
+    /** 지금 남아 있는 D-Day(itemIds)로 가져온 일정 키만 */
+    fun importedPhoneKeys(context: Context, existingItemIds: Set<Int>): Set<String> =
+        getImportedPhoneEvents(context).filterValues { it in existingItemIds }.keys
+
+    fun addImportedPhoneEvent(context: Context, key: String, itemId: Int) {
+        // 지워진 D-Day를 가리키는 기록은 정리할 수 없으므로(목록을 모름) 덮어쓰기만. 표시는 importedPhoneKeys가 걸러냄
+        val updated = getImportedPhoneEvents(context) + (key to itemId)
+        getPrefs(context).edit().putString(KEY_PHONE_CALENDAR_IMPORTED, org.json.JSONObject(updated as Map<*, *>).toString()).apply()
     }
 
     // ===== 평점 요청 (마지막으로 요청한 시각) — 규칙은 ReviewPrompt =====

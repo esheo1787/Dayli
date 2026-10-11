@@ -278,7 +278,11 @@ fun DdayScreen(
             PhoneCalendar.enabledEvents(context, start.timeInMillis, end.timeInMillis)
         }
     }
-    val importedPhoneKeys = remember(phoneImportVersion, phoneRefresh) { DdaySettings.getImportedPhoneEvents(context) }
+    // 가져온 D-Day가 지워졌으면 "가져옴"을 풀어 다시 가져올 수 있게 (남아 있는 D-Day 번호로 거름, 검색과 무관하게 전체 기준)
+    val existingDdayIds = remember(ddays, hiddenDdays) { (ddays + hiddenDdays).map { it.id }.toSet() }
+    val importedPhoneKeys = remember(phoneImportVersion, phoneRefresh, existingDdayIds) {
+        DdaySettings.importedPhoneKeys(context, existingDdayIds)
+    }
 
     val calendarContent: @Composable () -> Unit = {
         DdayCalendarView(
