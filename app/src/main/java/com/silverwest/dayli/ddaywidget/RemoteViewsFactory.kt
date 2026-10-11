@@ -19,7 +19,7 @@ sealed class WidgetRow {
     data class Item(val item: DdayItem, val showProgress: Boolean = false) : WidgetRow()  // showProgress: To-Do 진행률 표시
     data class TodoHeader(val item: DdayItem, val completedCount: Int, val totalCount: Int, val isCollapsed: Boolean = false) : WidgetRow()  // To-Do 위젯 헤더
     data class SubTaskItem(val parentItem: DdayItem, val subTask: SubTask, val subTaskIndex: Int) : WidgetRow()  // To-Do 서브태스크
-    data class Hero(val item: DdayItem) : WidgetRow()  // 가장 가까운 일정 카드 (앱 설정과 같이 켜고 끔)
+    data class Hero(val item: DdayItem) : WidgetRow()  // 가장 가까운 일정 카드 (위젯 설정에서 따로 켜고 끔)
 }
 
 class RemoteViewsFactory(
@@ -44,7 +44,7 @@ class RemoteViewsFactory(
 
         /** 혼합·D-Day 위젯 맨 위 "가장 가까운 일정" 행 (설정이 꺼져 있거나 대상이 없으면 null) */
         fun heroRow(context: Context, ddayItems: List<DdayItem>): WidgetRow.Hero? {
-            if (!DdaySettings.isHeroCardEnabled(context)) return null
+            if (!DdaySettings.isWidgetHeroEnabled(context)) return null
             return DayliUi.nearestUpcoming(ddayItems)?.let { WidgetRow.Hero(it) }
         }
     }

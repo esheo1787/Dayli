@@ -344,12 +344,12 @@ object DdaySettings {
         val json = getPrefs(context).getString(KEY_GROUP_ORDER, null) ?: return emptyList()
         return try {
             val arr = org.json.JSONArray(json)
-            (0 until arr.length()).map { arr.getString(it) }
+            (0 until arr.length()).map { arr.getString(it) }.distinct()
         } catch (e: Exception) { emptyList() }
     }
 
     fun setGroupOrder(context: Context, order: List<String>) {
-        val arr = org.json.JSONArray(order)
+        val arr = org.json.JSONArray(order.distinct())
         getPrefs(context).edit().putString(KEY_GROUP_ORDER, arr.toString()).apply()
     }
 
@@ -381,6 +381,48 @@ object DdaySettings {
         } catch (e: Exception) { org.json.JSONObject() }
         obj.put(groupName, emoji)
         getPrefs(context).edit().putString(KEY_GROUP_EMOJIS, obj.toString()).apply()
+    }
+
+    private fun moveGroupEmoji(context: Context, oldName: String, newName: String) {
+        val obj = try {
+            val json = getPrefs(context).getString(KEY_GROUP_EMOJIS, null)
+            if (json != null) org.json.JSONObject(json) else org.json.JSONObject()
+        } catch (e: Exception) { org.json.JSONObject() }
+        val current = obj.keys().asSequence().associateWith { obj.getString(it) }
+        val moved = GroupNames.moveEmoji(current, oldName, newName)
+        getPrefs(context).edit().putString(KEY_GROUP_EMOJIS, org.json.JSONObject(moved as Map<*, *>).toString()).apply()
+    }
+
+    // ===== D-Day 직접 만든 그룹 (아직 D-Day가 없어도 목록에 남음) =====
+
+    private const val KEY_SAVED_GROUPS = "dday_saved_groups"
+
+    fun getSavedGroups(context: Context): List<String> {
+        val json = getPrefs(context).getString(KEY_SAVED_GROUPS, null) ?: return emptyList()
+        return try {
+            val arr = org.json.JSONArray(json)
+            (0 until arr.length()).map { arr.getString(it) }
+        } catch (e: Exception) { emptyList() }
+    }
+
+    private fun setSavedGroups(context: Context, groups: List<String>) {
+        getPrefs(context).edit().putString(KEY_SAVED_GROUPS, org.json.JSONArray(groups.distinct()).toString()).apply()
+    }
+
+    fun addSavedGroup(context: Context, groupName: String) {
+        setSavedGroups(context, getSavedGroups(context) + groupName)
+    }
+
+    fun removeSavedGroup(context: Context, groupName: String) {
+        setSavedGroups(context, getSavedGroups(context) - groupName)
+    }
+
+    /** 그룹 이름 변경 시 직접 만든 그룹 목록·이모지·순서를 새 이름으로 옮김 */
+    fun renameGroupSettings(context: Context, oldName: String, newName: String) {
+        val saved = getSavedGroups(context)
+        if (oldName in saved) setSavedGroups(context, saved.map { if (it == oldName) newName else it })
+        moveGroupEmoji(context, oldName, newName)
+        setGroupOrder(context, GroupNames.renameInOrder(getGroupOrder(context), oldName, newName))
     }
 
     // ===== 앱 내 업데이트: "나중에" 누른 버전은 일정 기간 다시 묻지 않음 =====
@@ -438,6 +480,19 @@ object DdaySettings {
         getPrefs(context).edit().putBoolean(KEY_HERO_CARD_ENABLED, enabled).apply()
     }
 
+    // 위젯의 가장 가까운 일정 카드 (따로 켜고 끔. 아직 정한 적 없으면 앱 설정을 따름 — 이전 동작 유지)
+    private const val KEY_WIDGET_HERO_ENABLED = "widget_hero_enabled"
+
+    fun isWidgetHeroEnabled(context: Context): Boolean {
+        val prefs = getPrefs(context)
+        val widgetSetting = if (prefs.contains(KEY_WIDGET_HERO_ENABLED)) prefs.getBoolean(KEY_WIDGET_HERO_ENABLED, true) else null
+        return GroupNames.widgetHeroEnabled(widgetSetting, isHeroCardEnabled(context))
+    }
+
+    fun setWidgetHeroEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_WIDGET_HERO_ENABLED, enabled).apply()
+    }
+
     /** "auto" 또는 "#RRGGBB" */
     fun getHeroCardColor(context: Context): String =
         getPrefs(context).getString(KEY_HERO_CARD_COLOR, DEFAULT_HERO_COLOR) ?: DEFAULT_HERO_COLOR
@@ -474,6 +529,25 @@ object DdaySettings {
         val updated = (listOf(emoji) + getRecentEmojis(context).filter { it != emoji })
             .take(MAX_RECENT_EMOJIS)
         getPrefs(context).edit().putString(KEY_RECENT_EMOJIS, org.json.JSONArray(updated).toString()).apply()
+    }
+
+    // ===== 직접 고른 색 (최근 사용) =====
+
+    private const val KEY_RECENT_COLORS = "recent_custom_colors"
+    private const val MAX_RECENT_COLORS = 8
+
+    fun getRecentColors(context: Context): List<Long> {
+        val json = getPrefs(context).getString(KEY_RECENT_COLORS, null) ?: return emptyList()
+        return try {
+            val arr = org.json.JSONArray(json)
+            (0 until arr.length()).map { arr.getLong(it) }
+        } catch (e: Exception) { emptyList() }
+    }
+
+    fun addRecentColor(context: Context, color: Long) {
+        val updated = (listOf(color) + getRecentColors(context).filter { it != color })
+            .take(MAX_RECENT_COLORS)
+        getPrefs(context).edit().putString(KEY_RECENT_COLORS, org.json.JSONArray(updated).toString()).apply()
     }
 
     // ===== D-Day 위젯 그룹 접기/펼치기 =====

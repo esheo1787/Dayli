@@ -65,6 +65,7 @@ fun SettingsScreen(
     // 설정 상태
     var heroEnabled by remember { mutableStateOf(DdaySettings.isHeroCardEnabled(context)) }
     var heroColor by remember { mutableStateOf(DdaySettings.getHeroCardColor(context)) }
+    var widgetHeroEnabled by remember { mutableStateOf(DdaySettings.isWidgetHeroEnabled(context)) }
     var backgroundEnabled by remember {
         mutableStateOf(DdaySettings.isBackgroundEnabled(context))
     }
@@ -497,6 +498,8 @@ fun SettingsScreen(
             onEnabledChange = { enabled ->
                 heroEnabled = enabled
                 DdaySettings.setHeroCardEnabled(context, enabled)
+                // 위젯 스위치를 직접 정한 적 없으면 앱 설정을 따르므로 화면도 다시 읽음
+                widgetHeroEnabled = DdaySettings.isWidgetHeroEnabled(context)
                 onSettingsChanged()
             },
             color = heroColor,
@@ -655,6 +658,20 @@ fun SettingsScreen(
             }
         }
 
+        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+        // 위젯의 가장 가까운 일정 카드 (앱 목록과 따로)
+        SettingsSwitchRow(
+            title = "가장 가까운 일정 카드",
+            subtitle = "위젯 맨 위에 다음 일정을 크게 보여줘요 (D-Day·통합 위젯)",
+            checked = widgetHeroEnabled,
+            onCheckedChange = { enabled ->
+                widgetHeroEnabled = enabled
+                DdaySettings.setWidgetHeroEnabled(context, enabled)
+                onSettingsChanged()
+            }
+        )
+
         // 위젯 미리보기
         Text(
             text = "미리보기",
@@ -670,7 +687,7 @@ fun SettingsScreen(
             iconBgOpacity = iconBgOpacity,
             widgetFontSize = widgetFontSize,
             isDark = isDark,
-            heroEnabled = heroEnabled,
+            heroEnabled = widgetHeroEnabled,
             heroColor = heroColor
         )
 
@@ -940,6 +957,8 @@ fun SettingsScreen(
                 heroEnabled = true
                 heroColor = DdaySettings.DEFAULT_HERO_COLOR
                 DdaySettings.setHeroCardEnabled(context, true)
+                widgetHeroEnabled = true
+                DdaySettings.setWidgetHeroEnabled(context, true)
                 DdaySettings.setHeroCardColor(context, DdaySettings.DEFAULT_HERO_COLOR)
                 onSettingsChanged()
             },

@@ -402,6 +402,9 @@ fun MainDdayScreen(
         },
         onSaveAsTemplate = { name, iconName, customColor, subTasks ->
             viewModel.saveAsTemplate(name, iconName, customColor, subTasks)
+        },
+        onCreateGroup = { name, emoji ->
+            viewModel.addGroup(name, emoji)
         }
     )
 
