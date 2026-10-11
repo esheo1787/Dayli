@@ -124,6 +124,10 @@ object GeminiParser {
     @androidx.annotation.VisibleForTesting
     internal var parseOverrideForTest: (suspend (text: String, images: List<Bitmap>) -> List<ParsedEvent>)? = null
 
+    /** 테스트 전용: 설정하면 Gemini 대신 이 함수가 응답 글자를 돌려주거나 실패를 던짐 (오류 전달 경로 검증용) */
+    @androidx.annotation.VisibleForTesting
+    internal var modelCallOverrideForTest: (suspend () -> String)? = null
+
     suspend fun parse(
         context: Context,
         text: String,
@@ -240,26 +244,25 @@ LMS 학습활동 목록 규칙 (과목명·교수명·활동명·제출마감이
 - memo는 장소, 주소, 참고사항 등 부가 정보가 있을 때만 사용. 없으면 null
 """.trimIndent()
 
+        // 실패하면 원래 예외를 그대로 던짐 → 화면에서 AiErrors가 원인(지출 상한·요청 제한·네트워크)별로 안내
         try {
-            val response = if (images.isNotEmpty()) {
-                model.generateContent(content {
-                    images.forEach { image(it) }
-                    text(prompt)
-                })
-            } else {
-                model.generateContent(prompt)
+            val responseText = modelCallOverrideForTest?.invoke() ?: run {
+                val response = if (images.isNotEmpty()) {
+                    model.generateContent(content {
+                        images.forEach { image(it) }
+                        text(prompt)
+                    })
+                } else {
+                    model.generateContent(prompt)
+                }
+                response.text ?: throw IllegalStateException("응답이 비어있습니다")
             }
-            val responseText = response.text ?: throw Exception("응답이 비어있습니다")
             return parseResponse(responseText).map { normalizeDeadline(it) }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             android.util.Log.e("GeminiParser", "Gemini 호출 실패: ${e.javaClass.simpleName}", e)
-            val msg = e.localizedMessage ?: e.message ?: "알 수 없는 오류"
-            when {
-                "404" in msg || "NOT_FOUND" in msg -> throw Exception("네트워크 오류. 잠시 후 다시 시도해주세요.")
-                "429" in msg || "RESOURCE_EXHAUSTED" in msg -> throw Exception("요청 한도 초과. 잠시 후 다시 시도해주세요.")
-                "403" in msg -> throw Exception("API 인증 오류")
-                else -> throw Exception("분석 실패. 네트워크를 확인해주세요.")
-            }
+            throw e
         }
     }
 

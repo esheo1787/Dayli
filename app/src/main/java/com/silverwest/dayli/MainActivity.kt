@@ -470,7 +470,7 @@ fun BannerAd() {
         factory = { context ->
             AdView(context).apply {
                 setAdSize(AdSize.BANNER)
-                adUnitId = "ca-app-pub-1913317477324858/1275802348"
+                adUnitId = BuildConfig.BANNER_AD_UNIT_ID
                 loadAd(AdRequest.Builder().build())
             }
         }

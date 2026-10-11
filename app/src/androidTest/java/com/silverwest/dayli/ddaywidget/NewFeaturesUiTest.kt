@@ -17,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -92,7 +93,7 @@ class NewFeaturesUiTest {
         }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("추천").fetchSemanticsNodes().isNotEmpty() }
 
-        compose.onNode(hasSetTextAction()).performTextInput("케이크")
+        compose.onNode(hasSetTextAction() and hasText("또는 글로 입력·붙여넣기")).performTextInput("케이크")
         compose.waitUntil(3_000) { compose.onAllNodesWithText("🎂").fetchSemanticsNodes().isNotEmpty() }
         compose.onAllNodesWithText("🎂")[0].performClick()
         compose.onNodeWithText("선택").performClick()
@@ -220,8 +221,8 @@ class NewFeaturesUiTest {
                 }
             }
             compose.waitForIdle()
-            compose.onNodeWithText("텍스트로 자동 입력").performScrollTo().performClick()
-            compose.onNodeWithText("이미지").performClick()
+            compose.onNodeWithText("AI로 빠르게 입력").performScrollTo().performClick()
+            compose.onNodeWithText("사진으로 입력").performClick()
             compose.waitUntil(5_000) { compose.onAllNodesWithText("이미지 첨부됨").fetchSemanticsNodes().isNotEmpty() }
 
             compose.onNodeWithText("분석").performClick()
@@ -245,6 +246,106 @@ class NewFeaturesUiTest {
             assertEquals(listOf("A", "B"), saved)
         } finally {
             GeminiParser.parseOverrideForTest = null
+        }
+    }
+
+    // ===== AI 횟수: 실제 호출 실패가 원인별 안내까지 이어지고, 쓴 횟수는 돌려줌 =====
+
+    @Test
+    fun autoInput_failure_showsCauseMessage_andRefundsQuota() {
+        DdaySettings.setAiConsentShown(context)
+        val cases = listOf(
+            java.io.IOException("Unable to resolve host") to "인터넷 연결을 확인하고 다시 시도해 주세요.",
+            Exception("429 RESOURCE_EXHAUSTED: Quota exceeded for generate content requests per minute") to
+                "요청이 많아 잠시 막혔어요. 잠시 후 다시 시도해 주세요.",
+            Exception("429 RESOURCE_EXHAUSTED: billing spend cap reached") to
+                "이번 달 AI 자동 입력이 일시 중지됐어요. 직접 입력은 계속 쓸 수 있어요."
+        )
+        var failure: Exception = cases[0].first
+        GeminiParser.modelCallOverrideForTest = { throw failure }
+        try {
+            compose.setContent {
+                AddEditBottomSheet(
+                    isVisible = true,
+                    itemType = ItemType.DDAY,
+                    onDismiss = {},
+                    onSave = { _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ -> }
+                )
+            }
+            compose.waitForIdle()
+            compose.onNodeWithText("AI로 빠르게 입력").performScrollTo().performClick()
+            compose.onNode(hasSetTextAction() and hasText("또는 글로 입력·붙여넣기")).performTextInput("다음 주 금요일 치과")
+            for ((error, message) in cases) {
+                failure = error
+                compose.onNodeWithText("분석").performClick()
+                compose.waitUntil(5_000) { compose.onAllNodesWithText(message).fetchSemanticsNodes().isNotEmpty() }
+                // 실패한 분석은 횟수를 쓰지 않음
+                assertEquals(0, DdaySettings.getAiQuota(context).freeUsed)
+            }
+            compose.onNodeWithText("이번 달 무료 ${AiQuota.FREE_PER_MONTH}/${AiQuota.FREE_PER_MONTH}회 남음").assertExists()
+        } finally {
+            GeminiParser.modelCallOverrideForTest = null
+        }
+    }
+
+    @Test
+    fun autoInput_noQuotaLeft_disablesAnalyzeAndOffersAd() {
+        DdaySettings.setAiConsentShown(context)
+        repeat(AiQuota.FREE_PER_MONTH) { DdaySettings.consumeAiQuota(context) }
+        compose.setContent {
+            AddEditBottomSheet(
+                isVisible = true,
+                itemType = ItemType.DDAY,
+                onDismiss = {},
+                onSave = { _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ -> }
+            )
+        }
+        compose.waitForIdle()
+        compose.onNodeWithText("AI로 빠르게 입력").performScrollTo().performClick()
+        compose.onNode(hasSetTextAction() and hasText("또는 글로 입력·붙여넣기")).performTextInput("내일 회의")
+        compose.onNodeWithText("이번 달 무료 0/${AiQuota.FREE_PER_MONTH}회 남음").assertExists()
+        compose.onNodeWithText("분석").assertIsNotEnabled()
+        // debug 빌드는 테스트 광고 단위가 있음 → 불러온 뒤 광고 버튼, 못 불러오면 다시 시도 (횟수를 대신 주지 않음)
+        compose.waitUntil(15_000) {
+            compose.onAllNodesWithText("광고 보고 ${AiQuota.AD_REWARD}회 받기").fetchSemanticsNodes().isNotEmpty() ||
+                compose.onAllNodesWithText("다시 시도").fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals(0, AiQuota.totalRemaining(DdaySettings.getAiQuota(context)))
+        // 광고로 받은 횟수가 생기면 다시 분석 가능
+        DdaySettings.addAiAdReward(context)
+        assertEquals(AiQuota.AD_REWARD, AiQuota.totalRemaining(DdaySettings.getAiQuota(context)))
+    }
+
+    @Test
+    fun autoInput_noAdAvailable_showsReasonAndRetry_withoutGrantingQuota() {
+        DdaySettings.setAiConsentShown(context)
+        repeat(AiQuota.FREE_PER_MONTH) { DdaySettings.consumeAiQuota(context) }
+        // 실제 광고를 불러오지 않고 "보여줄 광고 없음" 상태를 넣음
+        RewardedAds.loadEnabledForTest = false
+        RewardedAds.setStatusForTest(RewardedAds.Status.NO_FILL)
+        try {
+            compose.setContent {
+                AddEditBottomSheet(
+                    isVisible = true,
+                    itemType = ItemType.DDAY,
+                    onDismiss = {},
+                    onSave = { _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ -> }
+                )
+            }
+            compose.waitForIdle()
+            compose.onNodeWithText("AI로 빠르게 입력").performScrollTo().performClick()
+            compose.onNodeWithText("지금은 볼 수 있는 광고가 없어요.").assertExists()
+            compose.onNodeWithText("다시 시도").assertExists()
+            compose.onNodeWithText("광고 보고 ${AiQuota.AD_REWARD}회 받기").assertDoesNotExist()
+            // 광고가 없다고 횟수를 대신 주지 않음
+            compose.onNodeWithText("다시 시도").performClick()
+            assertEquals(0, AiQuota.totalRemaining(DdaySettings.getAiQuota(context)))
+            // 네트워크 오류는 다른 안내
+            RewardedAds.setStatusForTest(RewardedAds.Status.NETWORK_ERROR)
+            compose.onNodeWithText("인터넷 연결을 확인해 주세요.").assertExists()
+        } finally {
+            RewardedAds.loadEnabledForTest = true
+            RewardedAds.setStatusForTest(RewardedAds.Status.IDLE)
         }
     }
 

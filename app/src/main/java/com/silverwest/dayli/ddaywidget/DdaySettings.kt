@@ -619,6 +619,51 @@ object DdaySettings {
         getPrefs(context).edit().putBoolean(KEY_AI_CONSENT_SHOWN, true).apply()
     }
 
+    // ===== AI 사용 횟수 (무료 월 제공분 + 광고로 받은 횟수) — 규칙은 AiQuota =====
+
+    private const val KEY_AI_QUOTA_MONTH = "ai_quota_month"
+    private const val KEY_AI_QUOTA_FREE_USED = "ai_quota_free_used"
+    private const val KEY_AI_QUOTA_AD_CREDITS = "ai_quota_ad_credits"
+    private val aiQuotaLock = Any()
+
+    fun getAiQuota(context: Context, nowMillis: Long = System.currentTimeMillis()): AiQuota.State {
+        val prefs = getPrefs(context)
+        val stored = AiQuota.State(
+            monthKey = prefs.getString(KEY_AI_QUOTA_MONTH, null) ?: AiQuota.monthKey(nowMillis),
+            freeUsed = prefs.getInt(KEY_AI_QUOTA_FREE_USED, 0),
+            adCredits = prefs.getInt(KEY_AI_QUOTA_AD_CREDITS, 0)
+        )
+        return AiQuota.normalized(stored, AiQuota.monthKey(nowMillis))
+    }
+
+    private fun saveAiQuota(context: Context, state: AiQuota.State) {
+        getPrefs(context).edit()
+            .putString(KEY_AI_QUOTA_MONTH, state.monthKey)
+            .putInt(KEY_AI_QUOTA_FREE_USED, state.freeUsed)
+            .putInt(KEY_AI_QUOTA_AD_CREDITS, state.adCredits)
+            .commit()  // 연속 요청에서 바로 반영되도록 동기 저장
+    }
+
+    /** AI 분석 1회 사용. 남은 횟수가 없으면 null (연속 클릭에도 잔액보다 많이 쓰지 않게 잠금) */
+    fun consumeAiQuota(context: Context, nowMillis: Long = System.currentTimeMillis()): AiQuota.Source? =
+        synchronized(aiQuotaLock) {
+            val (next, source) = AiQuota.consume(getAiQuota(context, nowMillis)) ?: return null
+            saveAiQuota(context, next)
+            source
+        }
+
+    /** 분석이 실패하면 쓴 횟수를 같은 몫으로 돌려줌 */
+    fun refundAiQuota(context: Context, source: AiQuota.Source, nowMillis: Long = System.currentTimeMillis()) =
+        synchronized(aiQuotaLock) {
+            saveAiQuota(context, AiQuota.refund(getAiQuota(context, nowMillis), source))
+        }
+
+    /** 보상형 광고 보상 지급 (광고 SDK의 보상 이벤트에서만 호출) */
+    fun addAiAdReward(context: Context, nowMillis: Long = System.currentTimeMillis()) =
+        synchronized(aiQuotaLock) {
+            saveAiQuota(context, AiQuota.addReward(getAiQuota(context, nowMillis)))
+        }
+
     // ===== AI 사용량 측정 =====
 
     fun recordAiCall(context: Context, timestamp: Long = System.currentTimeMillis()) {

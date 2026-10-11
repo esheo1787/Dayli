@@ -31,7 +31,7 @@
         <!-- ✅ AdMob 앱 ID -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-1913317477324858~8120945126" />
+            android:value="ca-app-pub-1913317477324858~9574204896" />
 
         <!-- ✅ 메인 액티비티 -->
         <activity
