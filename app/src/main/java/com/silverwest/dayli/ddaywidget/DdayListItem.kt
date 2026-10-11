@@ -218,7 +218,7 @@ fun DdayListItem(
 
             ddayLabel?.let { text ->
                 Spacer(modifier = Modifier.width(8.dp))
-                DdayPill(label = text, diff = ddayDiff, checked = item.isChecked, onTinted = tinted, fontScale = fontScale)
+                DdayPill(label = text, diff = ddayDiff, checked = item.isChecked, onTinted = tinted, fontScale = fontScale, card = colors.card)
             }
 
             if (showCheckbox && (forceCheckbox || !hasSubTasks)) {

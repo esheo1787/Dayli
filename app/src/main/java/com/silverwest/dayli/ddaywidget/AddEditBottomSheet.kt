@@ -16,6 +16,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,12 +25,21 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +58,7 @@ import java.util.*
  * @param onDismiss 닫기 콜백
  * @param onSave 저장 콜백
  * @param onSaveAsTemplate 템플릿으로 저장 콜백 (To-Do 전용)
+ * @param onCreateGroup 새 그룹 만들기 콜백 (D-Day가 없어도 그룹 목록에 남김)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +71,8 @@ fun AddEditBottomSheet(
     templates: List<TodoTemplate> = emptyList(),
     onDismiss: () -> Unit,
     onSave: (title: String, memo: String?, date: Date?, emoji: String, color: Long, repeatType: RepeatType, itemType: ItemType, subTasks: List<SubTask>, groupName: String?, repeatDay: Int?, advanceDisplayDays: Int?, templateId: Int?, timeHour: Int?, timeMinute: Int?, notificationRules: List<NotificationRule>) -> Unit,
-    onSaveAsTemplate: ((name: String, iconName: String, customColor: Long, subTasks: List<SubTask>) -> Unit)? = null
+    onSaveAsTemplate: ((name: String, iconName: String, customColor: Long, subTasks: List<SubTask>) -> Unit)? = null,
+    onCreateGroup: ((name: String, emoji: String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -289,27 +301,38 @@ fun AddEditBottomSheet(
                     showAutoInputDialog = false
                 }
             },
-            title = { Text("텍스트로 자동 입력") },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("AI로 자동 입력")
+                }
+            },
             text = {
                 Column {
-                    // 이미지 OCR + 음성 입력 버튼
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        OutlinedButton(
-                            onClick = {
-                                imagePickerLauncher.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                )
-                            },
-                            modifier = Modifier.weight(1f),
+                    Text(
+                        "말하거나, 사진을 고르거나, 글을 붙여넣으면 AI가 일정으로 바꿔줘요",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(14.dp))
+
+                    // 음성 + 이미지 입력 (둘 다 된다는 걸 한눈에)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AiInputModeTile(
+                            icon = Icons.Default.Mic,
+                            title = "말로 입력",
+                            subtitle = "말하면 받아써요",
                             enabled = !isOcrProcessing && !isParsingText,
-                            contentPadding = PaddingValues(horizontal = 8.dp)
-                        ) {
-                            Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(if (isOcrProcessing) "불러오는 중..." else "이미지", maxLines = 1)
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
                             onClick = {
                                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                                     putExtra(
@@ -323,15 +346,20 @@ fun AddEditBottomSheet(
                                 } catch (e: ActivityNotFoundException) {
                                     parseError = "이 기기에서 음성 인식을 사용할 수 없습니다"
                                 }
-                            },
-                            modifier = Modifier.weight(1f),
+                            }
+                        )
+                        AiInputModeTile(
+                            icon = Icons.Default.Image,
+                            title = if (isOcrProcessing) "불러오는 중..." else "사진으로 입력",
+                            subtitle = "캡처·사진 속 일정을 읽어요",
                             enabled = !isOcrProcessing && !isParsingText,
-                            contentPadding = PaddingValues(horizontal = 8.dp)
-                        ) {
-                            Icon(Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("말로 입력", maxLines = 1)
-                        }
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                imagePickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
+                        )
                     }
 
                     // 첨부 이미지 미리보기
@@ -370,20 +398,20 @@ fun AddEditBottomSheet(
 
                     Spacer(Modifier.height(12.dp))
 
-                    // 텍스트 입력 필드
+                    // 텍스트 입력 필드 (말로 입력한 내용도 여기에 들어옴)
                     OutlinedTextField(
                         value = autoInputText,
                         onValueChange = { autoInputText = it },
-                        label = { Text(if (attachedImages.isNotEmpty()) "추가 설명 (선택)" else "텍스트 입력") },
+                        label = { Text(if (attachedImages.isNotEmpty()) "추가 설명 (선택)" else "또는 글로 입력·붙여넣기") },
                         placeholder = {
                             Text(
                                 if (attachedImages.isNotEmpty()) "예: 퀴즈만 넣어줘"
-                                else "일정 정보가 담긴 텍스트를 입력하세요"
+                                else "예: 다음 주 금요일 오후 3시 치과"
                             )
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 120.dp),
+                            .heightIn(min = 110.dp),
                         maxLines = 8,
                         enabled = !isParsingText
                     )
@@ -551,6 +579,8 @@ fun AddEditBottomSheet(
 
     // 새 그룹 입력 다이얼로그
     if (showGroupDialog) {
+        val trimmedGroupName = newGroupName.trim()
+        val isDuplicateGroup = existingGroups.any { it == trimmedGroupName }
         AlertDialog(
             onDismissRequest = {
                 showGroupDialog = false
@@ -560,47 +590,54 @@ fun AddEditBottomSheet(
             title = { Text("새 그룹") },
             text = {
                 Column {
-                    // 이모지 선택
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    ) {
-                        Text("이모지: ", style = MaterialTheme.typography.bodyMedium)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // 이모지 선택
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .size(52.dp)
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .clickable { showGroupEmojiPicker = true },
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(newGroupEmoji, fontSize = 22.sp)
+                            EmojiText(newGroupEmoji, fontSize = 26.sp)
                         }
+                        Spacer(Modifier.width(10.dp))
+                        OutlinedTextField(
+                            value = newGroupName,
+                            onValueChange = { newGroupName = it },
+                            label = { Text("그룹 이름") },
+                            placeholder = { Text("예: 학교, 여행") },
+                            singleLine = true,
+                            isError = isDuplicateGroup,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
-                    OutlinedTextField(
-                        value = newGroupName,
-                        onValueChange = { newGroupName = it },
-                        label = { Text("그룹 이름") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                    Text(
+                        text = if (isDuplicateGroup) "이미 있는 그룹이에요" else "이모지를 누르면 바꿀 수 있어요",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isDuplicateGroup) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp)
                     )
                 }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        if (newGroupName.isNotBlank()) {
-                            val trimmedName = newGroupName.trim()
-                            DdaySettings.setGroupEmoji(context, trimmedName, newGroupEmoji)
-                            selectedGroupName = trimmedName
-                            newGroupName = ""
-                            newGroupEmoji = "📁"
-                            showGroupDialog = false
+                        if (onCreateGroup != null) {
+                            onCreateGroup(trimmedGroupName, newGroupEmoji)
+                        } else {
+                            DdaySettings.setGroupEmoji(context, trimmedGroupName, newGroupEmoji)
                         }
+                        selectedGroupName = trimmedGroupName
+                        newGroupName = ""
+                        newGroupEmoji = "📁"
+                        showGroupDialog = false
                     },
-                    enabled = newGroupName.isNotBlank()
+                    enabled = trimmedGroupName.isNotEmpty() && !isDuplicateGroup
                 ) {
-                    Text("추가")
+                    Text("만들기")
                 }
             },
             dismissButton = {
@@ -782,49 +819,9 @@ fun AddEditBottomSheet(
                     modifier = Modifier.padding(bottom = 20.dp)
                 )
 
-                // 아이콘 + 색상 섹션
-                Text(
-                    text = "아이콘",
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // 이모지 미리보기
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(selectedColor.toComposeColor().copy(alpha = 0.2f))
-                            .clickable { showEmojiPicker = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        EmojiText(selectedEmoji, fontSize = 28.sp)
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    TextButton(onClick = { showEmojiPicker = true }) {
-                        Text("이모지 변경")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // 색상 팔레트
-                ColorPalette(
-                    selectedColor = selectedColor,
-                    onColorSelected = { selectedColor = it }
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // 텍스트로 자동 입력 버튼 (추가 모드에서만)
+                // AI 자동 입력 (추가 모드에서만) — 말·사진·글 모두 된다는 걸 바로 보이게
                 if (!isEditMode) {
-                    OutlinedButton(
+                    Surface(
                         onClick = {
                             // 네트워크 체크
                             val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
@@ -832,7 +829,7 @@ fun AddEditBottomSheet(
                                 ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
                             if (!isOnline) {
                                 Toast.makeText(context, "인터넷 연결이 필요합니다. 연결 후 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
-                                return@OutlinedButton
+                                return@Surface
                             }
                             // 최초 사용 동의
                             if (!DdaySettings.isAiConsentShown(context)) {
@@ -844,35 +841,86 @@ fun AddEditBottomSheet(
                                 showAutoInputDialog = true
                             }
                         },
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(
-                            Icons.Default.AutoAwesome,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("텍스트로 자동 입력")
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "AI로 빠르게 입력",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "말하기 · 사진 · 글 모두 돼요",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                listOf(Icons.Default.Mic, Icons.Default.Image, Icons.Default.TextFields).forEach { icon ->
+                                    Icon(
+                                        icon,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // 제목 입력
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text(if (actualItemType == ItemType.TODO) "할 일" else "제목") },
-                    placeholder = { Text(if (actualItemType == ItemType.TODO) "할 일을 입력하세요" else "제목을 입력하세요") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 2
-                )
+                // 제목 입력 (이모지 버튼을 왼쪽에 붙여 한 줄에서 정함)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(selectedColor.toComposeColor().copy(alpha = 0.25f))
+                            .clickable { showEmojiPicker = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        EmojiText(selectedEmoji, fontSize = 28.sp)
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text(if (actualItemType == ItemType.TODO) "할 일" else "제목") },
+                        placeholder = { Text(if (actualItemType == ItemType.TODO) "할 일을 입력하세요" else "제목을 입력하세요") },
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2
+                    )
+                }
 
                 // 제목에 어울리는 이모지 추천 칩
                 if (emojiSuggestions.isNotEmpty()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 6.dp)
+                            .padding(top = 8.dp)
                             .horizontalScroll(rememberScrollState()),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -913,6 +961,14 @@ fun AddEditBottomSheet(
                     label = { Text("메모 (선택)") },
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 3
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 색상 팔레트
+                ColorPalette(
+                    selectedColor = selectedColor,
+                    onColorSelected = { selectedColor = it }
                 )
 
                 // 체크리스트 섹션 (To-Do 전용)
@@ -1029,203 +1085,178 @@ fun AddEditBottomSheet(
                     }
                 }
 
-                // D-Day일 때만 날짜 선택 표시
-                if (actualItemType == ItemType.DDAY) {
-                    Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "날짜",
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = SimpleDateFormat("yyyy.MM.dd (E)", Locale.getDefault()).format(selectedDate),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            TextButton(onClick = { datePickerDialog.show() }) {
-                                Text("변경")
-                            }
-                        }
-                    }
-
-                    // 시간 설정
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "시간",
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                        if (hasTime) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                val amPm = if (selectedHour < 12) "오전" else "오후"
-                                val displayHour = when {
-                                    selectedHour == 0 -> 12
-                                    selectedHour > 12 -> selectedHour - 12
-                                    else -> selectedHour
-                                }
-                                val timeText = if (selectedMinute == 0) "$amPm ${displayHour}시"
-                                    else "$amPm ${displayHour}시 ${selectedMinute}분"
-                                Text(
-                                    text = timeText,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                TextButton(onClick = { timePickerDialog.show() }) {
-                                    Text("변경")
-                                }
-                                TextButton(onClick = {
-                                    hasTime = false
-                                    // 시간 제거 시 분/시간 단위 알림 제거
-                                    notificationRules = notificationRules.filter { it.type == "days" }
-                                }) {
-                                    Text("삭제", color = MaterialTheme.colorScheme.error)
-                                }
-                            }
-                        } else {
-                            TextButton(onClick = { timePickerDialog.show() }) {
-                                Text("시간 추가")
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // 그룹 선택
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "그룹",
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                        Box {
-                            TextButton(onClick = { groupDropdownExpanded = true }) {
-                                Text(selectedGroupName ?: "없음")
-                            }
-                            DropdownMenu(
-                                expanded = groupDropdownExpanded,
-                                onDismissRequest = { groupDropdownExpanded = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("없음") },
-                                    onClick = {
-                                        selectedGroupName = null
-                                        groupDropdownExpanded = false
-                                    }
-                                )
-                                existingGroups.forEach { group ->
-                                    DropdownMenuItem(
-                                        text = { Text(group) },
-                                        onClick = {
-                                            selectedGroupName = group
-                                            groupDropdownExpanded = false
-                                        }
-                                    )
-                                }
-                                HorizontalDivider()
-                                DropdownMenuItem(
-                                    text = { Text("+ 새 그룹") },
-                                    onClick = {
-                                        groupDropdownExpanded = false
-                                        showGroupDialog = true
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // 반복 설정 (D-Day와 To-Do 모두 지원)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                // 일정 설정 카드: 줄 전체를 눌러 바꿈
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                        .padding(horizontal = 12.dp)
                 ) {
-                    Text(
-                        text = "반복",
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = if (selectedRepeatType == RepeatType.NONE) "없음" else selectedRepeatType.displayName,
-                            style = MaterialTheme.typography.bodyMedium
+                    if (actualItemType == ItemType.DDAY) {
+                        // 날짜
+                        FormRow(
+                            icon = Icons.Outlined.CalendarToday,
+                            label = "날짜",
+                            value = SimpleDateFormat("yyyy.MM.dd (E)", Locale.getDefault()).format(selectedDate),
+                            onClick = { datePickerDialog.show() }
                         )
-                        TextButton(onClick = { showRepeatPicker = true }) {
-                            Text("설정")
-                        }
-                    }
-                }
+                        FormDivider()
 
-                // 매주 요일 선택
-                if (selectedRepeatType == RepeatType.WEEKLY) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        listOf(
-                            Calendar.MONDAY to "월", Calendar.TUESDAY to "화",
-                            Calendar.WEDNESDAY to "수", Calendar.THURSDAY to "목",
-                            Calendar.FRIDAY to "금", Calendar.SATURDAY to "토",
-                            Calendar.SUNDAY to "일"
-                        ).forEach { (day, label) ->
-                            FilterChip(
-                                selected = day in selectedWeeklyDays,
-                                onClick = {
-                                    selectedWeeklyDays = if (day in selectedWeeklyDays) {
-                                        selectedWeeklyDays - day
-                                    } else {
-                                        selectedWeeklyDays + day
+                        // 시간
+                        val timeText = if (hasTime) {
+                            val amPm = if (selectedHour < 12) "오전" else "오후"
+                            val displayHour = when {
+                                selectedHour == 0 -> 12
+                                selectedHour > 12 -> selectedHour - 12
+                                else -> selectedHour
+                            }
+                            if (selectedMinute == 0) "$amPm ${displayHour}시" else "$amPm ${displayHour}시 ${selectedMinute}분"
+                        } else "없음"
+                        FormRow(
+                            icon = Icons.Outlined.Schedule,
+                            label = "시간",
+                            value = timeText,
+                            valueActive = hasTime,
+                            onClick = { timePickerDialog.show() },
+                            trailing = if (hasTime) {
+                                {
+                                    IconButton(
+                                        onClick = {
+                                            hasTime = false
+                                            // 시간 제거 시 분/시간 단위 알림 제거
+                                            notificationRules = notificationRules.filter { it.type == "days" }
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "시간 삭제",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
                                     }
-                                },
-                                label = { Text(label, fontSize = 12.sp) },
-                                modifier = Modifier.weight(1f)
+                                }
+                            } else null
+                        )
+                        FormDivider()
+
+                        // 그룹: 칩으로 바로 선택
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 14.dp, bottom = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Outlined.Folder,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text("그룹", style = MaterialTheme.typography.bodyLarge)
+                        }
+                        val groupChoices = (existingGroups + listOfNotNull(selectedGroupName)).distinct()
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 32.dp, bottom = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            FilterChip(
+                                selected = selectedGroupName == null,
+                                onClick = { selectedGroupName = null },
+                                label = { Text("없음") }
+                            )
+                            groupChoices.forEach { group ->
+                                FilterChip(
+                                    selected = selectedGroupName == group,
+                                    onClick = { selectedGroupName = group },
+                                    label = {
+                                        EmojiText(DdaySettings.getGroupEmoji(context, group), fontSize = 14.sp)
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(group)
+                                    }
+                                )
+                            }
+                            AssistChip(
+                                onClick = { showGroupDialog = true },
+                                label = { Text("새 그룹") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                }
                             )
                         }
+                        FormDivider()
                     }
-                }
 
-                // 미리 표시 설정 (매주/매월/매년일 때만)
-                if (selectedRepeatType in listOf(RepeatType.WEEKLY, RepeatType.MONTHLY, RepeatType.YEARLY)) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "미리 표시",
-                            style = MaterialTheme.typography.labelMedium
-                        )
+                    // 반복 (D-Day와 To-Do 모두 지원)
+                    FormRow(
+                        icon = Icons.Outlined.Repeat,
+                        label = "반복",
+                        value = if (selectedRepeatType == RepeatType.NONE) "없음" else selectedRepeatType.displayName,
+                        valueActive = selectedRepeatType != RepeatType.NONE,
+                        onClick = { showRepeatPicker = true }
+                    )
+
+                    // 매주 요일 선택
+                    if (selectedRepeatType == RepeatType.WEEKLY) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            listOf(
+                                Calendar.MONDAY to "월", Calendar.TUESDAY to "화",
+                                Calendar.WEDNESDAY to "수", Calendar.THURSDAY to "목",
+                                Calendar.FRIDAY to "금", Calendar.SATURDAY to "토",
+                                Calendar.SUNDAY to "일"
+                            ).forEach { (day, label) ->
+                                FilterChip(
+                                    selected = day in selectedWeeklyDays,
+                                    onClick = {
+                                        selectedWeeklyDays = if (day in selectedWeeklyDays) {
+                                            selectedWeeklyDays - day
+                                        } else {
+                                            selectedWeeklyDays + day
+                                        }
+                                    },
+                                    label = { Text(label, fontSize = 12.sp) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+
+                    // 미리 표시 설정 (매주/매월/매년일 때만)
+                    if (selectedRepeatType in listOf(RepeatType.WEEKLY, RepeatType.MONTHLY, RepeatType.YEARLY)) {
+                        FormDivider()
+                        val presets = when (selectedRepeatType) {
+                            RepeatType.WEEKLY -> listOf(0 to "당일", 1 to "1일 전", 2 to "2일 전", 3 to "3일 전")
+                            RepeatType.MONTHLY -> listOf(7 to "1주 전", 14 to "2주 전", 21 to "3주 전")
+                            RepeatType.YEARLY -> listOf(14 to "2주 전", 30 to "1달 전", 60 to "2달 전")
+                            else -> emptyList()
+                        }
+                        val defaultDays = when (selectedRepeatType) {
+                            RepeatType.WEEKLY -> 2
+                            RepeatType.MONTHLY -> 14
+                            RepeatType.YEARLY -> 30
+                            else -> 0
+                        }
+                        val currentDays = selectedAdvanceDays ?: defaultDays
+                        val currentLabel = presets.find { it.first == currentDays }?.second ?: "${currentDays}일 전"
                         Box {
-                            val presets = when (selectedRepeatType) {
-                                RepeatType.WEEKLY -> listOf(0 to "당일", 1 to "1일 전", 2 to "2일 전", 3 to "3일 전")
-                                RepeatType.MONTHLY -> listOf(7 to "1주 전", 14 to "2주 전", 21 to "3주 전")
-                                RepeatType.YEARLY -> listOf(14 to "2주 전", 30 to "1달 전", 60 to "2달 전")
-                                else -> emptyList()
-                            }
-                            val defaultDays = when (selectedRepeatType) {
-                                RepeatType.WEEKLY -> 2
-                                RepeatType.MONTHLY -> 14
-                                RepeatType.YEARLY -> 30
-                                else -> 0
-                            }
-                            val currentDays = selectedAdvanceDays ?: defaultDays
-                            val currentLabel = presets.find { it.first == currentDays }?.second ?: "${currentDays}일 전"
-                            TextButton(onClick = { advanceDropdownExpanded = true }) {
-                                Text(currentLabel)
-                            }
+                            FormRow(
+                                icon = Icons.Outlined.Visibility,
+                                label = "미리 표시",
+                                value = currentLabel,
+                                onClick = { advanceDropdownExpanded = true }
+                            )
                             DropdownMenu(
                                 expanded = advanceDropdownExpanded,
                                 onDismissRequest = { advanceDropdownExpanded = false }
@@ -1242,26 +1273,27 @@ fun AddEditBottomSheet(
                             }
                         }
                     }
-                }
 
-                // 개별 알림 설정 (D-Day 전용)
-                if (actualItemType == ItemType.DDAY) {
-                    var showNotifDropdown by remember { mutableStateOf(false) }
-
-                    // 라벨 + 추가 버튼 (반복 행과 동일 패턴)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "개별 알림",
-                            style = MaterialTheme.typography.labelMedium
-                        )
+                    // 개별 알림 (D-Day 전용)
+                    if (actualItemType == ItemType.DDAY) {
+                        var showNotifDropdown by remember { mutableStateOf(false) }
+                        FormDivider()
                         Box {
-                            TextButton(onClick = { showNotifDropdown = true }) {
-                                Text("+ 알림 추가")
-                            }
+                            FormRow(
+                                icon = Icons.Outlined.NotificationsNone,
+                                label = "알림",
+                                value = if (notificationRules.isEmpty()) "없음" else "${notificationRules.size}개",
+                                valueActive = notificationRules.isNotEmpty(),
+                                onClick = { showNotifDropdown = true },
+                                trailing = {
+                                    Icon(
+                                        Icons.Default.Add,
+                                        contentDescription = "알림 추가",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            )
                             DropdownMenu(
                                 expanded = showNotifDropdown,
                                 onDismissRequest = { showNotifDropdown = false }
@@ -1305,32 +1337,33 @@ fun AddEditBottomSheet(
                                 }
                             }
                         }
-                    }
 
-                    // 추가된 알림 Chip 표시
-                    if (notificationRules.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        @OptIn(ExperimentalLayoutApi::class)
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            notificationRules.forEachIndexed { index, rule ->
-                                FilterChip(
-                                    selected = true,
-                                    onClick = {
-                                        notificationRules = notificationRules.toMutableList().apply { removeAt(index) }
-                                    },
-                                    label = { Text("🔔 ${rule.displayText()}", style = MaterialTheme.typography.bodySmall) },
-                                    trailingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "삭제",
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                )
+                        // 추가된 알림 칩 (누르면 삭제)
+                        if (notificationRules.isNotEmpty()) {
+                            @OptIn(ExperimentalLayoutApi::class)
+                            FlowRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 32.dp, bottom = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                notificationRules.forEachIndexed { index, rule ->
+                                    FilterChip(
+                                        selected = true,
+                                        onClick = {
+                                            notificationRules = notificationRules.toMutableList().apply { removeAt(index) }
+                                        },
+                                        label = { Text("🔔 ${rule.displayText()}", style = MaterialTheme.typography.bodySmall) },
+                                        trailingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "삭제",
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -1441,6 +1474,98 @@ fun AddEditBottomSheet(
                     }
                 }
             }
+        }
+    }
+}
+
+/** 일정 설정 카드의 한 줄: 줄 전체를 누르면 바꿈 */
+@Composable
+private fun FormRow(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    onClick: () -> Unit,
+    valueActive: Boolean = true,
+    trailing: (@Composable () -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = if (valueActive) FontWeight.Medium else FontWeight.Normal,
+            color = if (valueActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.width(4.dp))
+        if (trailing != null) {
+            trailing()
+        } else {
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun FormDivider() {
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+}
+
+/** AI 입력 창의 입력 방식 타일 (말로 입력 / 사진으로 입력) */
+@Composable
+private fun AiInputModeTile(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (enabled) 0.6f else 0.3f),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
         }
     }
 }

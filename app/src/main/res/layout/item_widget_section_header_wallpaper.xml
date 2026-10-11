@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 위젯 배경이 옅을 때(배경화면이 비칠 때) 머리글: 홈 화면 앱 이름처럼 흰 글자 + 어두운 그림자 → 밝은·어두운 배경화면 모두에서 읽힘 -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="14dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="4dp"
+    android:background="@android:color/transparent">
+
+    <!-- 플랫 이모지 스타일일 때 그룹 이모지 이미지 (기본은 숨김) -->
+    <ImageView
+        android:id="@+id/header_icon"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_marginEnd="6dp"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/header_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFFFF"
+        android:shadowColor="#B3000000"
+        android:shadowRadius="4"
+        android:shadowDx="0"
+        android:shadowDy="1"
+        android:background="@android:color/transparent" />
+
+</LinearLayout>

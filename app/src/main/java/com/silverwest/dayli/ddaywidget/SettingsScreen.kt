@@ -65,6 +65,7 @@ fun SettingsScreen(
     // 설정 상태
     var heroEnabled by remember { mutableStateOf(DdaySettings.isHeroCardEnabled(context)) }
     var heroColor by remember { mutableStateOf(DdaySettings.getHeroCardColor(context)) }
+    var widgetHeroEnabled by remember { mutableStateOf(DdaySettings.isWidgetHeroEnabled(context)) }
     var backgroundEnabled by remember {
         mutableStateOf(DdaySettings.isBackgroundEnabled(context))
     }
@@ -497,6 +498,8 @@ fun SettingsScreen(
             onEnabledChange = { enabled ->
                 heroEnabled = enabled
                 DdaySettings.setHeroCardEnabled(context, enabled)
+                // 위젯 스위치를 직접 정한 적 없으면 앱 설정을 따르므로 화면도 다시 읽음
+                widgetHeroEnabled = DdaySettings.isWidgetHeroEnabled(context)
                 onSettingsChanged()
             },
             color = heroColor,
@@ -655,6 +658,20 @@ fun SettingsScreen(
             }
         }
 
+        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+        // 위젯의 가장 가까운 일정 카드 (앱 목록과 따로)
+        SettingsSwitchRow(
+            title = "가장 가까운 일정 카드",
+            subtitle = "위젯 맨 위에 다음 일정을 크게 보여줘요 (D-Day·통합 위젯)",
+            checked = widgetHeroEnabled,
+            onCheckedChange = { enabled ->
+                widgetHeroEnabled = enabled
+                DdaySettings.setWidgetHeroEnabled(context, enabled)
+                onSettingsChanged()
+            }
+        )
+
         // 위젯 미리보기
         Text(
             text = "미리보기",
@@ -670,7 +687,7 @@ fun SettingsScreen(
             iconBgOpacity = iconBgOpacity,
             widgetFontSize = widgetFontSize,
             isDark = isDark,
-            heroEnabled = heroEnabled,
+            heroEnabled = widgetHeroEnabled,
             heroColor = heroColor
         )
 
@@ -940,6 +957,8 @@ fun SettingsScreen(
                 heroEnabled = true
                 heroColor = DdaySettings.DEFAULT_HERO_COLOR
                 DdaySettings.setHeroCardEnabled(context, true)
+                widgetHeroEnabled = true
+                DdaySettings.setWidgetHeroEnabled(context, true)
                 DdaySettings.setHeroCardColor(context, DdaySettings.DEFAULT_HERO_COLOR)
                 onSettingsChanged()
             },
@@ -998,7 +1017,23 @@ private fun WidgetPreviewItem(
     val inTwoDays = remember { Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 2) }.time }
     val ddaySample = Color(0xFF81D4FA)
     val todoSample = Color(0xFFA5D6A7)
-    val headerColor = if (isDark) Color(0xDDF5F5F0) else Color(0xDD4A4A4A)
+    // 위젯 머리글: 바탕이 옅으면 흰 글자 + 그림자, 진하면 테마 글자 (RemoteViewsFactory와 같은 판단)
+    @Composable
+    fun HeaderLabel(text: String) {
+        val onWallpaper = WidgetStyle.headerOnWallpaper(isDark, widgetBgOpacity)
+        Text(
+            text, fontSize = (16f * fm).sp, fontWeight = FontWeight.Bold,
+            color = WidgetStyle.headerText(isDark, onWallpaper),
+            style = if (onWallpaper) androidx.compose.ui.text.TextStyle(
+                shadow = androidx.compose.ui.graphics.Shadow(
+                    color = WidgetStyle.HEADER_WALLPAPER_SHADOW,
+                    offset = androidx.compose.ui.geometry.Offset(0f, 2f),
+                    blurRadius = 8f
+                )
+            ) else androidx.compose.ui.text.TextStyle.Default,
+            modifier = Modifier.padding(start = 10.dp, top = 6.dp, bottom = 2.dp)
+        )
+    }
 
     // 배경화면 느낌의 바탕 (위젯 전체 배경 투명도가 보이도록)
     Box(
@@ -1043,13 +1078,13 @@ private fun WidgetPreviewItem(
                 }
             }
 
-            Text("▎D-Day", fontSize = (16f * fm).sp, fontWeight = FontWeight.Bold, color = headerColor, modifier = Modifier.padding(start = 10.dp, top = 6.dp, bottom = 2.dp))
+            HeaderLabel("▎D-Day")
             WidgetPreviewCard(
                 emoji = "📚", title = "시험 공부", sub = DayliUi.koreanDate(inTwoDays), dday = "D-2", ddayDiff = 2,
                 itemColor = ddaySample, backgroundEnabled = backgroundEnabled, backgroundOpacity = backgroundOpacity,
                 iconBgOpacity = iconBgOpacity, isDark = isDark, fm = fm
             )
-            Text("▎To-Do", fontSize = (16f * fm).sp, fontWeight = FontWeight.Bold, color = headerColor, modifier = Modifier.padding(start = 10.dp, top = 6.dp, bottom = 2.dp))
+            HeaderLabel("▎To-Do")
             WidgetPreviewCard(
                 emoji = "🏃", title = "운동하기", sub = null, dday = null, ddayDiff = null,
                 itemColor = todoSample, backgroundEnabled = backgroundEnabled, backgroundOpacity = backgroundOpacity,

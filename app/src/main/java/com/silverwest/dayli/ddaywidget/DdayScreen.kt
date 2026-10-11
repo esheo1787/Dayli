@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.style.TextOverflow
 import org.burnoutcrew.reorderable.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -979,6 +980,9 @@ fun DdayScreen(
                 onDeleteGroup = { groupName ->
                     viewModel.deleteGroup(groupName)
                 },
+                onAddGroup = { name, emoji ->
+                    viewModel.addGroup(name, emoji)
+                },
                 viewModel = viewModel,
                 onEmojiChanged = { groupEmojiVersion++ }
             )
@@ -1272,6 +1276,7 @@ private fun CategoryFilterChip(
 
 /**
  * 그룹 관리 다이얼로그
+ * - 새 그룹 만들기 (D-Day 없이도 미리 만들어 둘 수 있음)
  * - 그룹 목록 표시
  * - 그룹 이름 변경
  * - 그룹 삭제 (해당 그룹의 D-Day는 미분류로 이동)
@@ -1282,6 +1287,7 @@ private fun GroupManageDialog(
     onDismiss: () -> Unit,
     onRenameGroup: (oldName: String, newName: String) -> Unit,
     onDeleteGroup: (groupName: String) -> Unit,
+    onAddGroup: (groupName: String, emoji: String) -> Unit,
     viewModel: DdayViewModel,
     onEmojiChanged: () -> Unit = {}
 ) {
@@ -1293,6 +1299,13 @@ private fun GroupManageDialog(
     var emojiPickerGroup by remember { mutableStateOf<String?>(null) }
     var emojiVersion by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
+    // 새 그룹 입력 (펼쳤을 때만 입력칸 표시)
+    var isAdding by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
+    var newEmoji by remember { mutableStateOf("📁") }
+    var showNewEmojiPicker by remember { mutableStateOf(false) }
+    val trimmedNewName = newName.trim()
+    val isDuplicate = groups.any { it == trimmedNewName }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1311,19 +1324,95 @@ private fun GroupManageDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 400.dp)
+                    .heightIn(max = 460.dp)
             ) {
+                // 새 그룹 만들기
+                if (isAdding) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.surface)
+                                        .clickable { showNewEmojiPicker = true },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    EmojiText(newEmoji, fontSize = 24.sp)
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                OutlinedTextField(
+                                    value = newName,
+                                    onValueChange = { newName = it },
+                                    modifier = Modifier.weight(1f),
+                                    placeholder = { Text("예: 학교, 여행, 가족") },
+                                    singleLine = true,
+                                    isError = isDuplicate,
+                                    textStyle = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            Text(
+                                text = if (isDuplicate) "이미 있는 그룹이에요" else "이모지를 누르면 바꿀 수 있어요",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isDuplicate) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(onClick = {
+                                    isAdding = false
+                                    newName = ""
+                                    newEmoji = "📁"
+                                }) { Text("취소") }
+                                Button(
+                                    onClick = {
+                                        onAddGroup(trimmedNewName, newEmoji)
+                                        isAdding = false
+                                        newName = ""
+                                        newEmoji = "📁"
+                                    },
+                                    enabled = trimmedNewName.isNotEmpty() && !isDuplicate
+                                ) { Text("만들기") }
+                            }
+                        }
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { isAdding = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("새 그룹 만들기")
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+
                 if (groups.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 32.dp),
+                            .padding(vertical = 24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "등록된 그룹이 없습니다",
+                            text = "아직 그룹이 없어요\n그룹을 만들면 D-Day를 묶어서 볼 수 있어요",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
                         )
                     }
                 } else {
@@ -1331,21 +1420,32 @@ private fun GroupManageDialog(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(groups, key = { "${it}_$emojiVersion" }) { groupName ->
+                            val isEditingThis = editingGroup == groupName
+                            val renameCheck = if (isEditingThis) GroupNames.checkRename(groupName, editingName, groups) else null
                             GroupManageItem(
                                 groupName = groupName,
-                                isEditing = editingGroup == groupName,
-                                editingName = if (editingGroup == groupName) editingName else groupName,
+                                isEditing = isEditingThis,
+                                editingName = if (isEditingThis) editingName else groupName,
+                                errorText = if (renameCheck == GroupNames.RenameCheck.Duplicate) "이미 있는 그룹이에요" else null,
                                 onEditStart = {
                                     editingGroup = groupName
                                     editingName = groupName
                                 },
                                 onEditChange = { editingName = it },
                                 onEditConfirm = {
-                                    if (editingName.isNotBlank() && editingName != groupName) {
-                                        onRenameGroup(groupName, editingName.trim())
+                                    when (renameCheck) {
+                                        is GroupNames.RenameCheck.Ok -> {
+                                            onRenameGroup(groupName, renameCheck.newName)
+                                            editingGroup = null
+                                            editingName = ""
+                                        }
+                                        GroupNames.RenameCheck.Unchanged -> {
+                                            editingGroup = null
+                                            editingName = ""
+                                        }
+                                        // 중복·빈 이름은 입력칸을 연 채로 둠 (오류 문구 표시)
+                                        else -> Unit
                                     }
-                                    editingGroup = null
-                                    editingName = ""
                                 },
                                 onEditCancel = {
                                     editingGroup = null
@@ -1408,6 +1508,16 @@ private fun GroupManageDialog(
         )
     }
 
+    // 새 그룹 이모지 피커
+    if (showNewEmojiPicker) {
+        EmojiPickerDialog(
+            currentEmoji = newEmoji,
+            categoryColor = MaterialTheme.colorScheme.primary,
+            onEmojiSelected = { newEmoji = it },
+            onDismiss = { showNewEmojiPicker = false }
+        )
+    }
+
     // 그룹 이모지 피커
     if (emojiPickerGroup != null) {
         val currentEmoji = DdaySettings.getGroupEmoji(context, emojiPickerGroup!!)
@@ -1435,7 +1545,8 @@ private fun GroupManageItem(
     onEditConfirm: () -> Unit,
     onEditCancel: () -> Unit,
     onDeleteClick: () -> Unit,
-    onEmojiClick: () -> Unit = {}
+    onEmojiClick: () -> Unit = {},
+    errorText: String? = null
 ) {
     val context = LocalContext.current
     val groupEmoji = DdaySettings.getGroupEmoji(context, groupName)
@@ -1472,6 +1583,7 @@ private fun GroupManageItem(
                     onValueChange = onEditChange,
                     modifier = Modifier.weight(1f),
                     singleLine = true,
+                    isError = errorText != null,
                     textStyle = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -1524,6 +1636,15 @@ private fun GroupManageItem(
                     )
                 }
             }
+        }
+        // 오류 문구는 줄 전체 폭으로 (입력칸 아래에 두면 좁아서 줄이 바뀜)
+        if (isEditing && errorText != null) {
+            Text(
+                text = errorText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 52.dp, end = 12.dp, bottom = 8.dp)
+            )
         }
     }
 }

@@ -81,6 +81,16 @@ object DayliUi {
     /** 이 배경에서 진한 글자가 밝은 글자보다 잘 읽히면 true */
     fun prefersDarkText(bg: Color): Boolean = contrast(DarkText, bg) >= contrast(LightText, bg)
 
+    /**
+     * 배경(투명도까지 합친 최종 색) 위에서 읽히는 글자색.
+     * 기본 진회색·밝은 회색 중 나은 쪽이 4.5:1 미만이면(중간 밝기 색) 검정·흰색 중 대비 높은 쪽으로 보정
+     */
+    fun readableText(bg: Color): Color {
+        val preferred = if (prefersDarkText(bg)) DarkText else LightText
+        if (contrast(preferred, bg) >= 4.5f) return preferred
+        return if (contrast(Color.Black, bg) >= contrast(Color.White, bg)) Color.Black else Color.White
+    }
+
     /** 배경 위에서 읽히는 글자색: 흰 글자 대비 4.5:1 이상이면 흰색, 아니면 진한 색 */
     fun readableOn(color: Color): Color =
         if (contrastWithWhite(color) >= 4.5f) Color.White else Color(0xFF2F2D2B)
@@ -120,8 +130,8 @@ object DayliUi {
             itemColor.copy(alpha = if (checked) iconBgOpacity * 0.6f else iconBgOpacity).compositeOver(surface)
         }
         // 카드 배경과의 대비를 비교해 더 잘 읽히는 글자색 선택 (항목 색을 진하게 칠한 경우 포함)
-        val lightCard = prefersDarkText(card)
-        val text = if (lightCard) DarkText else LightText
+        val text = readableText(card)
+        val lightCard = text.luminance() < 0.5f  // 진한 글자 = 밝은 카드
         // 보조 글자도 대비 4.5:1 미만이면 본문 글자색으로 (진한 항목 색에서 날짜가 흐려지지 않게)
         val subText = (if (lightCard) Color(0xFF5D5A58) else Color(0xFFCFCAC6))
             .let { if (contrast(it, card) >= 4.5f) it else text }
@@ -136,13 +146,19 @@ object DayliUi {
         dark: Boolean,
         surfaceVariant: Color,
         onSurface: Color,
-        onSurfaceVariant: Color
-    ): Pair<Color, Color> = when {
-        checked -> surfaceVariant to onSurfaceVariant
-        diff != null && diff <= 1 -> (if (dark) PillUrgentBgDark else PillUrgentBg) to (if (dark) PillUrgentTextDark else PillUrgentText)
-        diff == 2 || diff == 3 -> (if (dark) PillSoonBgDark else PillSoonBg) to (if (dark) PillSoonTextDark else PillSoonText)
-        onTinted -> Color.White.copy(alpha = if (dark) 0.12f else 0.75f) to onSurface
-        else -> surfaceVariant to onSurfaceVariant
+        onSurfaceVariant: Color,
+        card: Color? = null
+    ): Pair<Color, Color> {
+        val (bg, fg) = when {
+            checked -> surfaceVariant to onSurfaceVariant
+            diff != null && diff <= 1 -> (if (dark) PillUrgentBgDark else PillUrgentBg) to (if (dark) PillUrgentTextDark else PillUrgentText)
+            diff == 2 || diff == 3 -> (if (dark) PillSoonBgDark else PillSoonBg) to (if (dark) PillSoonTextDark else PillSoonText)
+            onTinted -> Color.White.copy(alpha = if (dark) 0.12f else 0.75f) to onSurface
+            else -> surfaceVariant to onSurfaceVariant
+        }
+        // 배지 바탕이 반투명이면 카드 색이 비침 → 카드와 합친 최종 바탕 기준으로 대비가 모자라면 글자색 보정
+        val shown = card?.let { bg.compositeOver(it) } ?: return bg to fg
+        return bg to (if (contrast(fg, shown) >= 4.5f) fg else readableText(shown))
     }
 }
 
@@ -155,12 +171,14 @@ fun DdayPill(
     diff: Int?,
     checked: Boolean,
     onTinted: Boolean,
-    fontScale: Float
+    fontScale: Float,
+    card: Color? = null  // 배지가 놓인 카드의 최종 색 (글자 대비 보정용)
 ) {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val (bg, fg) = DayliUi.pillColors(
         diff, checked, onTinted, dark,
-        MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.onSurfaceVariant
+        MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.onSurfaceVariant,
+        card
     )
     Box(
         modifier = Modifier

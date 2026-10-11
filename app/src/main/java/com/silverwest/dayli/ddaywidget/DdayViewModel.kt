@@ -82,9 +82,19 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadGroups() {
         viewModelScope.launch {
-            val groups = dao.getDistinctGroupNames()
+            val groups = (dao.getDistinctGroupNames() + DdaySettings.getSavedGroups(getApplication()))
+                .distinct()
+                .sorted()
             _existingGroups.postValue(groups)
         }
+    }
+
+    // 새 그룹 만들기 (D-Day가 아직 없어도 목록에 남김)
+    fun addGroup(groupName: String, emoji: String) {
+        val app = getApplication<Application>()
+        DdaySettings.addSavedGroup(app, groupName)
+        DdaySettings.setGroupEmoji(app, groupName, emoji)
+        loadGroups()
     }
 
     fun setCurrentTab(tab: ItemType) {
@@ -388,9 +398,14 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // 그룹 이름 변경
-    fun renameGroup(oldName: String, newName: String) {
+    fun renameGroup(oldName: String, rawNewName: String) {
         viewModelScope.launch {
+            // 화면에서 막았더라도 여기서 다시 검사 (중복 이름이면 순서·목록 키가 겹침)
+            val check = GroupNames.checkRename(oldName, rawNewName, _existingGroups.value.orEmpty())
+            if (check !is GroupNames.RenameCheck.Ok) return@launch
+            val newName = check.newName
             dao.renameGroup(oldName, newName)
+            DdaySettings.renameGroupSettings(getApplication(), oldName, newName)
             loadGroups()
             loadAllDdays()
             // 위젯 동기화
@@ -402,6 +417,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteGroup(groupName: String) {
         viewModelScope.launch {
             dao.deleteGroup(groupName)
+            DdaySettings.removeSavedGroup(getApplication(), groupName)
             loadGroups()
             loadAllDdays()
             // 위젯 동기화
