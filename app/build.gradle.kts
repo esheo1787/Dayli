@@ -30,12 +30,15 @@ android {
 
     buildTypes {
         debug {
-            // Google 공식 테스트 보상형 광고 (개발 중 실제 광고 클릭 방지)
+            // Google 공식 테스트 광고 (개발 중 실제 광고 노출·클릭 방지 — AdMob 정책)
+            buildConfigField("String", "BANNER_AD_UNIT_ID", "\"ca-app-pub-3940256099942544/6300978111\"")
             buildConfigField("String", "REWARDED_AD_UNIT_ID", "\"ca-app-pub-3940256099942544/5224354917\"")
         }
         release {
-            // AdMob 콘솔에서 만든 보상형 광고 단위 ID. 비어 있으면 광고 버튼 없이 무료 횟수만 제공
-            buildConfigField("String", "REWARDED_AD_UNIT_ID", "\"\"")
+            // AdMob 앱 "Dayli (데일리)…"(스토어 연결, ~9574204896)의 광고 단위
+            buildConfigField("String", "BANNER_AD_UNIT_ID", "\"ca-app-pub-1913317477324858/8172734487\"")
+            // 보상형 "AI 횟수 보상" (비우면 광고 버튼 없이 무료 횟수만 제공)
+            buildConfigField("String", "REWARDED_AD_UNIT_ID", "\"ca-app-pub-1913317477324858/2213830790\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
