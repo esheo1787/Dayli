@@ -58,6 +58,12 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
 
     fun consumeWidgetPromptEvent() { _widgetPromptEvent.value = null }
 
+    // 새 항목 저장 직후 평점 요청 (소비형 이벤트: null로 리셋). 조건은 ReviewPrompt
+    private val _reviewPromptEvent = MutableLiveData<Boolean?>(null)
+    val reviewPromptEvent: LiveData<Boolean?> = _reviewPromptEvent
+
+    fun consumeReviewPromptEvent() { _reviewPromptEvent.value = null }
+
     // 기존 그룹 목록
     private val _existingGroups = MutableLiveData<List<String>>(emptyList())
     val existingGroups: LiveData<List<String>> = _existingGroups
@@ -266,6 +272,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             )
             val insertedId = dao.insert(item)
             maybeTriggerWidgetPrompt()
+            maybeTriggerReviewPrompt()
             loadAll()
             loadGroups()  // 그룹 목록 갱신
             // 개별 알림 스케줄링
@@ -289,6 +296,21 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
         if (totalCount == 1) {
             _widgetPromptEvent.postValue(true)
         }
+    }
+
+    /**
+     * 새 항목을 저장한 직후 평점 요청 조건을 확인해 이벤트 발행.
+     * 요청 시각을 바로 기록 → AI로 여러 개를 한 번에 저장해도 한 번만 요청
+     */
+    private suspend fun maybeTriggerReviewPrompt() {
+        val app = getApplication<Application>()
+        val now = System.currentTimeMillis()
+        val installedAt = try {
+            app.packageManager.getPackageInfo(app.packageName, 0).firstInstallTime
+        } catch (e: Exception) { now }
+        if (!ReviewPrompt.shouldAsk(installedAt, now, dao.getAll().size, DdaySettings.getReviewLastAsked(app))) return
+        DdaySettings.setReviewLastAsked(app, now)
+        _reviewPromptEvent.postValue(true)
     }
 
     // To-Do 아이템 추가
@@ -320,6 +342,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             )
             dao.insert(item)
             maybeTriggerWidgetPrompt()
+            maybeTriggerReviewPrompt()
             loadAll()
             // 위젯 동기화
             DdayWidgetProvider.refreshAllWidgets(getApplication())
@@ -480,6 +503,7 @@ class DdayViewModel(application: Application) : AndroidViewModel(application) {
             )
             dao.insert(item)
             maybeTriggerWidgetPrompt()
+            maybeTriggerReviewPrompt()
             loadAll()
             DdayWidgetProvider.refreshAllWidgets(getApplication())
         }

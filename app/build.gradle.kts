@@ -14,8 +14,8 @@ android {
         applicationId = "com.silverwest.dayli"
         minSdk = 24
         targetSdk = 36
-        versionCode = 20
-        versionName = "1.2.1"
+        versionCode = 21
+        versionName = "1.2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -116,6 +116,8 @@ dependencies {
 
     // Google AdMob
     implementation("com.google.android.gms:play-services-ads:23.6.0")
+    // 평점 요청 (Google Play 인앱 리뷰)
+    implementation("com.google.android.play:review-ktx:2.0.2")
 
     // Firebase AI Logic (Gemini) — APK에 API 키를 내장하지 않는 구조
     implementation(platform("com.google.firebase:firebase-bom:34.18.0"))

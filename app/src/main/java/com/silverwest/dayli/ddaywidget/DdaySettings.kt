@@ -664,6 +664,17 @@ object DdaySettings {
             saveAiQuota(context, AiQuota.addReward(getAiQuota(context, nowMillis)))
         }
 
+    // ===== 평점 요청 (마지막으로 요청한 시각) — 규칙은 ReviewPrompt =====
+
+    private const val KEY_REVIEW_LAST_ASKED = "review_last_asked"
+
+    fun getReviewLastAsked(context: Context): Long? =
+        getPrefs(context).getLong(KEY_REVIEW_LAST_ASKED, -1L).takeIf { it >= 0 }
+
+    fun setReviewLastAsked(context: Context, timeMs: Long) {
+        getPrefs(context).edit().putLong(KEY_REVIEW_LAST_ASKED, timeMs).apply()
+    }
+
     // ===== AI 사용량 측정 =====
 
     fun recordAiCall(context: Context, timestamp: Long = System.currentTimeMillis()) {

@@ -212,6 +212,16 @@ fun MainDdayScreen(
             DdaySettings.setWidgetPromptShown(context)
         }
     }
+    // 새 항목 저장 직후 평점 요청 (Google Play 인앱 리뷰). 시트가 닫힌 뒤 띄우고, 실제 표시 여부는 Google이 정함
+    val reviewPromptEvent by viewModel.reviewPromptEvent.observeAsState()
+    LaunchedEffect(reviewPromptEvent) {
+        if (reviewPromptEvent == true) {
+            viewModel.consumeReviewPromptEvent()
+            kotlinx.coroutines.delay(800)
+            (context as? android.app.Activity)?.let { launchInAppReview(it) }
+        }
+    }
+
     if (showWidgetPrompt) {
         WidgetPinPromptDialog(
             onAdd = {
@@ -475,6 +485,18 @@ fun BannerAd() {
             }
         }
     )
+}
+
+/** Google Play 인앱 리뷰 창 요청. 실패해도 조용히 넘어감 (앱 사용에 영향 없음) */
+private fun launchInAppReview(activity: android.app.Activity) {
+    val manager = com.google.android.play.core.review.ReviewManagerFactory.create(activity)
+    manager.requestReviewFlow().addOnCompleteListener { request ->
+        if (request.isSuccessful) {
+            manager.launchReviewFlow(activity, request.result)
+        } else {
+            android.util.Log.w("DDAY_WIDGET", "인앱 리뷰 요청 실패", request.exception)
+        }
+    }
 }
 
 /** Dayli의 위젯(통합/D-Day/To-Do) 중 하나라도 홈 화면에 설치되어 있으면 true. */
