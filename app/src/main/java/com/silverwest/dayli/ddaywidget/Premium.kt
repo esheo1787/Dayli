@@ -91,10 +91,14 @@ object Premium {
         val app = context.applicationContext
         if (debugForced(app)) return
         val c = client ?: return
-        if (!c.isReady) return  // 연결되면 onBillingSetupFinished에서 다시 조회
+        // 연결이 끊겨 있어도 호출함: enableAutoServiceReconnection은 API를 호출할 때 다시 연결을 시도함
         val params = QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()
         c.queryPurchasesAsync(params) { result, purchases ->
-            if (result.responseCode != BillingClient.BillingResponseCode.OK) return@queryPurchasesAsync
+            // 연결 실패·네트워크 오류 등 OK가 아니면 상태를 바꾸지 않음 (잘못 잠그지 않게). 다음 복귀 때 다시 조회
+            if (result.responseCode != BillingClient.BillingResponseCode.OK) {
+                Log.w("DDAY_WIDGET", "구매 내역 조회 실패(${result.responseCode}): ${result.debugMessage}")
+                return@queryPurchasesAsync
+            }
             val owned = purchases.any { isOwnedPremium(it) }
             setUnlocked(app, owned)
             handlePurchases(app, purchases)
