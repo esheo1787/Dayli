@@ -39,7 +39,7 @@ data class PaletteColor(
     val colorLong: Long
 )
 
-// 색상 팔레트 (14색)
+// 색상 팔레트 (16색, 8개씩 2줄)
 val ddayColors = listOf(
     // 1열
     PaletteColor("코랄", Color(0xFFFF8A80), 0xFFFF8A80),
@@ -49,6 +49,7 @@ val ddayColors = listOf(
     PaletteColor("스카이블루", Color(0xFF81D4FA), 0xFF81D4FA),
     PaletteColor("라벤더", Color(0xFFCE93D8), 0xFFCE93D8),
     PaletteColor("아이보리", Color(0xFFFFF8E1), 0xFFFFF8E1),
+    PaletteColor("모카", Color(0xFFBCAAA4), 0xFFBCAAA4),
     // 2열
     PaletteColor("로즈핑크", Color(0xFFF48FB1), 0xFFF48FB1),
     PaletteColor("살몬", Color(0xFFFFAB91), 0xFFFFAB91),
@@ -56,15 +57,16 @@ val ddayColors = listOf(
     PaletteColor("틸", Color(0xFF80CBC4), 0xFF80CBC4),
     PaletteColor("퍼플블루", Color(0xFF9FA8DA), 0xFF9FA8DA),
     PaletteColor("모브", Color(0xFFB39DDB), 0xFFB39DDB),
-    PaletteColor("차콜", Color(0xFF90A4AE), 0xFF90A4AE)
+    PaletteColor("차콜", Color(0xFF90A4AE), 0xFF90A4AE),
+    PaletteColor("올리브", Color(0xFFC8C98F), 0xFFC8C98F)
 )
 
 // 직접 고르기: 진하기 단계 (밝음 → 진함)
-private val toneLightness = listOf(0.90f, 0.82f, 0.74f, 0.65f, 0.55f, 0.45f, 0.35f)
-private const val TONE_SATURATION = 0.7f
+internal val toneLightness = listOf(0.90f, 0.82f, 0.74f, 0.65f, 0.55f, 0.45f, 0.35f)
+internal const val TONE_SATURATION = 0.7f
 
 // 직접 고르기: 무채색
-private val neutralColors = listOf(
+internal val neutralColors = listOf(
     0xFFFAFAFAL, 0xFFE0E0E0L, 0xFFBDBDBDL, 0xFF9E9E9EL, 0xFF757575L, 0xFF546E7AL, 0xFF37474FL
 )
 
@@ -86,7 +88,7 @@ fun ColorPalette(
         (listOfNotNull(selectedColor?.takeIf { it !in presetLongs }) + recents)
             .filter { it !in presetLongs }
             .distinct()
-            .take(7)
+            .take(8)
     }
 
     Column(modifier = modifier) {
@@ -110,13 +112,13 @@ fun ColorPalette(
             }
         }
 
-        // 기본 14색 (7개씩 2줄) + 직접 고른 색 줄
+        // 기본 16색 (8개씩 2줄) + 직접 고른 색 줄
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            ddayColors.chunked(7).forEach { row ->
+            ddayColors.chunked(8).forEach { row ->
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     row.forEach { paletteColor ->
                         ColorCircle(
@@ -129,7 +131,7 @@ fun ColorPalette(
             }
             if (customColors.isNotEmpty()) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     customColors.forEach { colorLong ->
                         ColorCircle(
@@ -194,7 +196,7 @@ private fun CustomColorDialog(
                     Text(
                         "미리보기",
                         fontWeight = FontWeight.Medium,
-                        color = if (previewColor.luminance() > 0.45f) Color(0xFF1D2329) else Color.White
+                        color = DayliUi.readableText(previewColor)
                     )
                 }
 
@@ -319,7 +321,7 @@ private fun ColorCircle(
     color: Color,
     isSelected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier.size(36.dp)
+    modifier: Modifier = Modifier.size(28.dp)
 ) {
     Box(
         modifier = modifier
@@ -327,8 +329,8 @@ private fun ColorCircle(
             .background(color)
             .then(
                 if (isSelected) {
-                    Modifier.border(3.dp, Color.White, CircleShape)
-                        .border(4.dp, Color.DarkGray, CircleShape)
+                    Modifier.border(2.dp, Color.White, CircleShape)
+                        .border(3.dp, Color.DarkGray, CircleShape)
                 } else {
                     Modifier.border(1.dp, Color.Gray.copy(alpha = 0.3f), CircleShape)
                 }
@@ -342,7 +344,7 @@ private fun ColorCircle(
                 contentDescription = "선택됨",
                 // 밝은 색 위에서도 체크가 보이게
                 tint = if (color.luminance() > 0.6f) Color(0xFF37474F) else Color.White,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(16.dp)
             )
         }
     }

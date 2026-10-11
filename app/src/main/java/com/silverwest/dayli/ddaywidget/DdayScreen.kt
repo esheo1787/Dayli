@@ -1584,7 +1584,6 @@ private fun GroupManageItem(
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     isError = errorText != null,
-                    supportingText = errorText?.let { { Text(it) } },
                     textStyle = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -1637,6 +1636,15 @@ private fun GroupManageItem(
                     )
                 }
             }
+        }
+        // 오류 문구는 줄 전체 폭으로 (입력칸 아래에 두면 좁아서 줄이 바뀜)
+        if (isEditing && errorText != null) {
+            Text(
+                text = errorText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 52.dp, end = 12.dp, bottom = 8.dp)
+            )
         }
     }
 }

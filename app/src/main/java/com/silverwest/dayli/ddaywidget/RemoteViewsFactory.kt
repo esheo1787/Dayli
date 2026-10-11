@@ -225,7 +225,8 @@ class RemoteViewsFactory(
 
     override fun getCount(): Int = displayRows.size
 
-    override fun getViewTypeCount(): Int = 6
+    // 머리글 레이아웃은 기본·배경화면용(흰 글자+그림자)으로 2개씩이라 레이아웃 종류 8개
+    override fun getViewTypeCount(): Int = 8
 
     fun getItemViewType(position: Int): Int {
         return when (displayRows.getOrNull(position)) {
@@ -439,7 +440,8 @@ class RemoteViewsFactory(
 
     private fun createHeaderView(title: String): RemoteViews {
         val isDark = isDarkMode(context)
-        val views = RemoteViews(context.packageName, R.layout.item_widget_section_header)
+        val onWallpaper = headerOnWallpaper(isDark)
+        val views = RemoteViews(context.packageName, sectionHeaderLayout(onWallpaper))
         val fontSizeMultiplier = when (DdaySettings.getWidgetFontSize(context)) {
             0 -> 0.85f; 2 -> 1.15f; else -> 1f
         }
@@ -448,8 +450,7 @@ class RemoteViewsFactory(
         // 바 프리픽스 스타일: ▎D-Day / ▎To-Do
         views.setTextViewText(R.id.header_title, "▎$title")
         views.setTextViewTextSize(R.id.header_title, android.util.TypedValue.COMPLEX_UNIT_SP, 16f * fontSizeMultiplier)
-        val headerColor = if (isDark) 0xDDF5F5F0.toInt() else 0xDD4A4A4A.toInt()
-        views.setTextColor(R.id.header_title, headerColor)
+        views.setTextColor(R.id.header_title, WidgetStyle.headerText(isDark, onWallpaper).toArgb())
         views.setInt(R.id.header_title, "setBackgroundColor", 0x00000000)
         // 혼합 위젯: 헤더 클릭 시 앱 열기
         val itemIntent = Intent().apply {
@@ -459,21 +460,31 @@ class RemoteViewsFactory(
         return views
     }
 
+    /** 위젯 바탕이 옅어 배경화면이 비치면 머리글을 홈 화면 앱 이름처럼 (흰 글자 + 그림자 레이아웃) */
+    private fun headerOnWallpaper(isDark: Boolean) =
+        WidgetStyle.headerOnWallpaper(isDark, DdaySettings.getWidgetBgOpacity(context))
+
+    private fun sectionHeaderLayout(onWallpaper: Boolean) =
+        if (onWallpaper) R.layout.item_widget_section_header_wallpaper else R.layout.item_widget_section_header
+
+    private fun groupHeaderLayout(onWallpaper: Boolean) =
+        if (onWallpaper) R.layout.item_widget_group_header_wallpaper else R.layout.item_widget_group_header
+
     private fun createGroupHeaderView(groupName: String, isCollapsed: Boolean): RemoteViews {
         val isDark = isDarkMode(context)
+        val onWallpaper = headerOnWallpaper(isDark)
+        val headerText = WidgetStyle.headerText(isDark, onWallpaper).toArgb()
 
         // D-Day 전용 위젯에서만 접기/펼치기 사용 (새 레이아웃 사용)
         if (mode == DdayOnlyWidgetProvider.MODE_DDAY) {
-            val views = RemoteViews(context.packageName, R.layout.item_widget_group_header)
+            val views = RemoteViews(context.packageName, groupHeaderLayout(onWallpaper))
             // 그룹 헤더: "이모지 그룹명" 형식
             val groupEmoji = DdaySettings.getGroupEmoji(context, groupName)
             bindGroupTitle(views, R.id.group_header_title, R.id.group_header_icon, groupEmoji, groupName)
             // 접기/펼치기 아이콘
             views.setTextViewText(R.id.group_header_indicator, if (isCollapsed) "▼" else "▲")
-            // 다크모드 대응 색상
-            val groupHeaderColor = if (isDark) 0xCCD0D0D0.toInt() else 0xAA3A3A3A.toInt()
-            views.setTextColor(R.id.group_header_title, groupHeaderColor)
-            views.setTextColor(R.id.group_header_indicator, groupHeaderColor)
+            views.setTextColor(R.id.group_header_title, headerText)
+            views.setTextColor(R.id.group_header_indicator, headerText)
             // 오른쪽 영역(화살표) → 접기/펼치기
             val toggleIntent = Intent().apply {
                 putExtra(DdayOnlyWidgetProvider.EXTRA_GROUP_NAME, groupName)
@@ -489,12 +500,11 @@ class RemoteViewsFactory(
         }
 
         // 혼합 위젯에서는 기존 레이아웃 사용 (접기 없음, 클릭 시 앱 열기)
-        val views = RemoteViews(context.packageName, R.layout.item_widget_section_header)
+        val views = RemoteViews(context.packageName, sectionHeaderLayout(onWallpaper))
         val groupEmoji = DdaySettings.getGroupEmoji(context, groupName)
         bindGroupTitle(views, R.id.header_title, R.id.header_icon, groupEmoji, groupName)
         views.setTextViewTextSize(R.id.header_title, android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
-        val groupHeaderColor = if (isDark) 0xCCD0D0D0.toInt() else 0xAA3A3A3A.toInt()
-        views.setTextColor(R.id.header_title, groupHeaderColor)
+        views.setTextColor(R.id.header_title, headerText)
         // 그룹 헤더 클릭 시 앱 열기
         val itemIntent = Intent().apply {
             putExtra(DdayWidgetProvider.EXTRA_CLICK_TYPE, DdayWidgetProvider.CLICK_TYPE_ITEM)

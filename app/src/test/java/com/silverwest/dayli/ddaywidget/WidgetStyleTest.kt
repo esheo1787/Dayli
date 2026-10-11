@@ -1,6 +1,7 @@
 package com.silverwest.dayli.ddaywidget
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -39,6 +40,79 @@ class WidgetStyleTest {
             assertTrue("title $color dark=$dark", DayliUi.contrast(c.title, c.card) >= 4.5f)
             assertTrue("sub $color dark=$dark", DayliUi.contrast(c.sub, c.card) >= 4.5f)
         }
+    }
+
+    @Test
+    fun itemColors_customColors_textStaysReadable() {
+        // "더 많은 색"의 모든 진하기(중간 밝기 포함)·무채색을, 라이트·다크와 카드 진하기별로
+        // 투명도를 합친 최종 카드 배경 기준 대비 4.5:1 이상
+        val custom = (0 until 360 step 15).flatMap { hue ->
+            toneLightness.map { l -> Color.hsl(hue.toFloat(), TONE_SATURATION, l) }
+        } + neutralColors.map { Color(it) }
+        for (dark in listOf(false, true)) for (opacity in listOf(15, 35, 60, 80, 100)) for (color in custom) {
+            val c = WidgetStyle.itemColors(color, dark, tinted = true, opacity, 20, checked = false, ddayDiff = 10)
+            assertTrue("title $color dark=$dark $opacity%", DayliUi.contrast(c.title, c.card) >= 4.5f)
+            assertTrue("sub $color dark=$dark $opacity%", DayliUi.contrast(c.sub, c.card) >= 4.5f)
+            // D-Day 배지: 반투명 배지 바탕에 카드 색이 비친 최종 색 기준
+            for (diff in listOf(10, 3, 1)) {
+                val p = WidgetStyle.itemColors(color, dark, tinted = true, opacity, 20, checked = false, ddayDiff = diff)
+                assertTrue("pill $color dark=$dark $opacity% D-$diff", DayliUi.contrast(p.pillText, p.pillBg) >= 4.5f)
+            }
+        }
+    }
+
+    @Test
+    fun pill_midToneCardInDark_isCorrected() {
+        // 리뷰에서 찾은 경우: 다크 모드 · #7986CB · 카드 100% → 기존 글자 약 2.29:1
+        val c = WidgetStyle.itemColors(Color(0xFF7986CB), dark = true, tinted = true, 100, 20, checked = false, ddayDiff = 9)
+        assertTrue(DayliUi.contrast(c.pillText, c.pillBg) >= 4.5f)
+    }
+
+    @Test
+    fun header_lowOpacity_usesWallpaperStyle_highOpacity_usesThemeText() {
+        // 기본 위젯 바탕(20%)은 배경화면이 비침 → 흰 글자 + 그림자
+        for (dark in listOf(false, true)) {
+            assertTrue("dark=$dark 20%", WidgetStyle.headerOnWallpaper(dark, 20))
+            assertEquals(Color.White, WidgetStyle.headerText(dark, onWallpaper = true))
+            assertTrue("dark=$dark 100%", !WidgetStyle.headerOnWallpaper(dark, 100))
+        }
+    }
+
+    @Test
+    fun header_themeText_readableOnAnyWallpaperWhenChosen() {
+        // 테마 글자를 쓰는 투명도에서는 배경화면이 검정이든 흰색이든 4.5:1 이상
+        for (dark in listOf(false, true)) for (opacity in 0..100 step 5) {
+            if (WidgetStyle.headerOnWallpaper(dark, opacity)) continue
+            val text = WidgetStyle.headerText(dark, onWallpaper = false)
+            val shown = WidgetStyle.containerBase(dark).copy(alpha = WidgetStyle.containerAlpha(opacity) / 255f)
+            for (wallpaper in listOf(Color.Black, Color.White)) {
+                assertTrue("dark=$dark $opacity%", DayliUi.contrast(text, shown.compositeOver(wallpaper)) >= 4.5f)
+            }
+        }
+    }
+
+    @Test
+    fun headerWallpaperLayouts_whiteTextWithShadow() {
+        // 위젯은 그림자를 실행 중에 못 바꿔 레이아웃에 적어 둠 → 코드의 그림자 색과 어긋나지 않게
+        for (file in listOf("item_widget_section_header_wallpaper.xml", "item_widget_group_header_wallpaper.xml")) {
+            val xml = java.io.File("src/main/res/layout", file).readText()
+            val shadows = Regex("""android:shadowColor="#([0-9A-Fa-f]{8})"""").findAll(xml).map { it.groupValues[1].toLong(16) }.toList()
+            assertEquals("$file: TextView마다 그림자", Regex("<TextView").findAll(xml).count(), shadows.size)
+            shadows.forEach { assertEquals(file, WidgetStyle.HEADER_WALLPAPER_SHADOW, Color(it)) }
+        }
+    }
+
+    @Test
+    fun readableText_keepsDefaultWhenEnough_correctsMidTones() {
+        // 밝은 파스텔은 기존 진회색 유지
+        assertEquals(DayliUi.DarkText, DayliUi.readableText(Color(0xFFFFF59D)))
+        // 진한 색은 기존 밝은 회색 유지
+        assertEquals(DayliUi.LightText, DayliUi.readableText(Color(0xFF0D47A1)))
+        // 중간 밝기(기존 두 색 모두 4.5:1 미만)는 검정·흰색으로 보정
+        val mid = Color(0xFF7986CB)
+        val text = DayliUi.readableText(mid)
+        assertTrue(text == Color.Black || text == Color.White)
+        assertTrue(DayliUi.contrast(text, mid) >= 4.5f)
     }
 
     @Test

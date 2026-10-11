@@ -1017,7 +1017,23 @@ private fun WidgetPreviewItem(
     val inTwoDays = remember { Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 2) }.time }
     val ddaySample = Color(0xFF81D4FA)
     val todoSample = Color(0xFFA5D6A7)
-    val headerColor = if (isDark) Color(0xDDF5F5F0) else Color(0xDD4A4A4A)
+    // 위젯 머리글: 바탕이 옅으면 흰 글자 + 그림자, 진하면 테마 글자 (RemoteViewsFactory와 같은 판단)
+    @Composable
+    fun HeaderLabel(text: String) {
+        val onWallpaper = WidgetStyle.headerOnWallpaper(isDark, widgetBgOpacity)
+        Text(
+            text, fontSize = (16f * fm).sp, fontWeight = FontWeight.Bold,
+            color = WidgetStyle.headerText(isDark, onWallpaper),
+            style = if (onWallpaper) androidx.compose.ui.text.TextStyle(
+                shadow = androidx.compose.ui.graphics.Shadow(
+                    color = WidgetStyle.HEADER_WALLPAPER_SHADOW,
+                    offset = androidx.compose.ui.geometry.Offset(0f, 2f),
+                    blurRadius = 8f
+                )
+            ) else androidx.compose.ui.text.TextStyle.Default,
+            modifier = Modifier.padding(start = 10.dp, top = 6.dp, bottom = 2.dp)
+        )
+    }
 
     // 배경화면 느낌의 바탕 (위젯 전체 배경 투명도가 보이도록)
     Box(
@@ -1062,13 +1078,13 @@ private fun WidgetPreviewItem(
                 }
             }
 
-            Text("▎D-Day", fontSize = (16f * fm).sp, fontWeight = FontWeight.Bold, color = headerColor, modifier = Modifier.padding(start = 10.dp, top = 6.dp, bottom = 2.dp))
+            HeaderLabel("▎D-Day")
             WidgetPreviewCard(
                 emoji = "📚", title = "시험 공부", sub = DayliUi.koreanDate(inTwoDays), dday = "D-2", ddayDiff = 2,
                 itemColor = ddaySample, backgroundEnabled = backgroundEnabled, backgroundOpacity = backgroundOpacity,
                 iconBgOpacity = iconBgOpacity, isDark = isDark, fm = fm
             )
-            Text("▎To-Do", fontSize = (16f * fm).sp, fontWeight = FontWeight.Bold, color = headerColor, modifier = Modifier.padding(start = 10.dp, top = 6.dp, bottom = 2.dp))
+            HeaderLabel("▎To-Do")
             WidgetPreviewCard(
                 emoji = "🏃", title = "운동하기", sub = null, dday = null, ddayDiff = null,
                 itemColor = todoSample, backgroundEnabled = backgroundEnabled, backgroundOpacity = backgroundOpacity,
