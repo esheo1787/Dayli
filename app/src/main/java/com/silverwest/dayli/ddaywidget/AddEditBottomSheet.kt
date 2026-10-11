@@ -293,6 +293,17 @@ fun AddEditBottomSheet(
         )
     }
 
+    // AI 사용 횟수 (무료 월 제공분 + 광고로 받은 횟수). 창을 열 때마다 다시 읽음
+    var aiQuota by remember { mutableStateOf(DdaySettings.getAiQuota(context)) }
+    LaunchedEffect(showAutoInputDialog) {
+        if (showAutoInputDialog) aiQuota = DdaySettings.getAiQuota(context)
+    }
+    val aiRemaining = AiQuota.totalRemaining(aiQuota)
+    // 남은 횟수가 적으면 광고를 미리 불러 둠 (다 썼을 때 바로 볼 수 있게)
+    LaunchedEffect(showAutoInputDialog, aiRemaining) {
+        if (showAutoInputDialog && aiRemaining <= 3) RewardedAds.preload(context)
+    }
+
     // 자동 입력 다이얼로그 (OCR + Gemini)
     if (showAutoInputDialog) {
         AlertDialog(
@@ -319,6 +330,25 @@ fun AddEditBottomSheet(
                         "말하거나, 사진을 고르거나, 글을 붙여넣으면 AI가 일정으로 바꿔줘요",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    AiQuotaBar(
+                        quota = aiQuota,
+                        enabled = !isParsingText && !isOcrProcessing,
+                        adStatus = RewardedAds.status,
+                        onWatchAd = {
+                            parseError = null
+                            val shown = RewardedAds.show(
+                                context,
+                                onRewarded = {
+                                    DdaySettings.addAiAdReward(context)
+                                    aiQuota = DdaySettings.getAiQuota(context)
+                                },
+                                onClosed = { aiQuota = DdaySettings.getAiQuota(context) }
+                            )
+                            if (!shown) RewardedAds.preload(context)
+                        },
+                        onRetryAd = { RewardedAds.preload(context) }
                     )
                     Spacer(Modifier.height(14.dp))
 
@@ -445,6 +475,13 @@ fun AddEditBottomSheet(
                 TextButton(
                     onClick = {
                         if (autoInputText.isBlank() && attachedImages.isEmpty()) return@TextButton
+                        // 분석 요청 한 번 = 1회 (일정 여러 개를 뽑아도 1회). 누르는 즉시 차감해 연속 클릭으로 초과 사용 방지
+                        val quotaSource = DdaySettings.consumeAiQuota(context)
+                        aiQuota = DdaySettings.getAiQuota(context)
+                        if (quotaSource == null) {
+                            parseError = "이번 달 무료 횟수를 다 썼어요."
+                            return@TextButton
+                        }
                         isParsingText = true
                         parseError = null
                         coroutineScope.launch {
@@ -529,14 +566,22 @@ fun AddEditBottomSheet(
                                     showAutoInputDialog = false
                                     attachedImages = emptyList()  // 폼 적용 성공 후에만 해제 (실패 시 이미지로 재시도 가능)
                                 }
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                DdaySettings.refundAiQuota(context, quotaSource)
+                                throw e
                             } catch (e: Exception) {
-                                parseError = "분석 실패: ${e.localizedMessage}"
+                                // 분석 실패 → 쓴 횟수 돌려줌. 원인별 안내 (지출 상한 / 잠깐의 요청 제한 / 네트워크)
+                                DdaySettings.refundAiQuota(context, quotaSource)
+                                Log.w("DDAY_WIDGET", "AI 분석 실패", e)
+                                parseError = AiErrors.userMessage(AiErrors.kindOf(e))
                             } finally {
+                                aiQuota = DdaySettings.getAiQuota(context)
                                 isParsingText = false
                             }
                         }
                     },
-                    enabled = (autoInputText.isNotBlank() || attachedImages.isNotEmpty()) && !isParsingText && !isOcrProcessing
+                    enabled = (autoInputText.isNotBlank() || attachedImages.isNotEmpty()) && !isParsingText && !isOcrProcessing &&
+                        aiRemaining > 0
                 ) { Text("분석") }
             },
             dismissButton = {
@@ -1565,6 +1610,92 @@ private fun AiInputModeTile(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
+}
+
+/** AI 입력 창의 남은 횟수 줄. 다 쓰면 광고 보고 받기 (광고 단위가 없으면 다음 달 안내) */
+@Composable
+private fun AiQuotaBar(
+    quota: AiQuota.State,
+    enabled: Boolean,
+    adStatus: RewardedAds.Status,
+    onWatchAd: () -> Unit,
+    onRetryAd: () -> Unit
+) {
+    val free = AiQuota.freeRemaining(quota)
+    val total = AiQuota.totalRemaining(quota)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = buildString {
+                append("이번 달 무료 $free/${AiQuota.FREE_PER_MONTH}회 남음")
+                if (quota.adCredits > 0) append(" · 광고로 받은 ${quota.adCredits}회")
+            },
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            color = if (total > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+        )
+        if (total == 0) {
+            Spacer(Modifier.height(6.dp))
+            // 광고 상태별: 준비됨 → 보기 / 불러오는 중 → 기다림 / 없음·실패 → 이유 + 다시 시도
+            when (adStatus) {
+                RewardedAds.Status.NOT_CONFIGURED -> Text(
+                    "다음 달 1일에 ${AiQuota.FREE_PER_MONTH}회가 다시 채워져요",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                RewardedAds.Status.READY -> Button(
+                    onClick = onWatchAd,
+                    enabled = enabled,
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(vertical = 6.dp)
+                ) {
+                    Text("광고 보고 ${AiQuota.AD_REWARD}회 받기")
+                }
+                RewardedAds.Status.IDLE, RewardedAds.Status.LOADING -> Button(
+                    onClick = {},
+                    enabled = false,
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(vertical = 6.dp)
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text("광고 불러오는 중…")
+                }
+                else -> {
+                    Text(
+                        when (adStatus) {
+                            RewardedAds.Status.NO_FILL -> "지금은 볼 수 있는 광고가 없어요."
+                            RewardedAds.Status.NETWORK_ERROR -> "인터넷 연결을 확인해 주세요."
+                            else -> "광고를 불러오지 못했어요."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedButton(
+                        onClick = onRetryAd,
+                        enabled = enabled,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        contentPadding = PaddingValues(vertical = 6.dp)
+                    ) {
+                        Text("다시 시도")
+                    }
+                }
+            }
+            Text(
+                "직접 입력은 횟수 제한 없이 쓸 수 있어요",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
             )
         }
     }

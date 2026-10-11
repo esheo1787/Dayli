@@ -14,8 +14,8 @@ android {
         applicationId = "com.silverwest.dayli"
         minSdk = 24
         targetSdk = 36
-        versionCode = 19
-        versionName = "1.2.0"
+        versionCode = 20
+        versionName = "1.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -29,7 +29,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Google 공식 테스트 보상형 광고 (개발 중 실제 광고 클릭 방지)
+            buildConfigField("String", "REWARDED_AD_UNIT_ID", "\"ca-app-pub-3940256099942544/5224354917\"")
+        }
         release {
+            // AdMob 콘솔에서 만든 보상형 광고 단위 ID. 비어 있으면 광고 버튼 없이 무료 횟수만 제공
+            buildConfigField("String", "REWARDED_AD_UNIT_ID", "\"\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
